@@ -1,0 +1,2146 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CORC Assessment System</title>
+    <!-- Google Fonts for Modern Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar">
+            <div class="logo-container"
+                style="display: flex; justify-content: center; align-items: center; padding: 20px;">
+                <img src="logo.jpg" alt="ProVision" style="max-width: 100%; height: auto; max-height: 80px;">
+            </div>
+            <ul class="nav-links">
+                <li class="nav-item active" data-target="records">
+                    <span class="nav-icon">📁</span> Records
+                </li>
+                <li class="nav-item" data-target="schedule">
+                    <span class="nav-icon">📅</span> Daily Schedule
+                </li>
+                <li class="nav-item" data-target="reports">
+                    <span class="nav-icon">📈</span> Attendance & Reports
+                </li>
+                <li class="nav-item" data-target="therapists-settings">
+                    <span class="nav-icon">🧑‍⚕️</span> Therapists Settings
+                </li>
+            </ul>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Toast Notification -->
+            <div id="toast" class="toast hidden">Message goes here</div>
+
+            <!-- Active Child Banner -->
+            <div id="active-child-banner" class="active-child-banner hidden" style="display: none !important;">
+                <div class="active-child-info">
+                    <span class="active-child-icon">📁</span>
+                    <div>
+                        <span class="active-child-label">Active Child Profile</span>
+                        <span class="active-child-name" id="active-child-name">—</span>
+                    </div>
+                </div>
+                <div class="active-child-actions">
+                    <button class="btn-secondary btn-sm" id="btn-new-child">+ New Child</button>
+                    <button class="btn-secondary btn-sm" id="btn-clear-child"
+                        style="color: var(--danger); border-color: var(--danger);">✕ Clear</button>
+                </div>
+            </div>
+
+            <!-- Assessment: Rapid Assessment -->
+            <section id="rapid-assessment" class="assessment-pane">
+                <div class="tab-header">
+                    <h2>Rapid Assessment</h2>
+                    <p>Initial quick evaluation of the child.</p>
+                </div>
+                <form class="assessment-form" id="form-rapid">
+                    <div class="form-section">
+                        <h3>Patient Information</h3>
+                        <div class="form-grid">
+                            <div class="input-group">
+                                <label for="rapid-name">Child Name *</label>
+                                <input type="text" id="rapid-name" name="child_name" required
+                                    placeholder="Enter child's name">
+                            </div>
+                            <div class="input-group">
+                                <label for="rapid-sex">Sex</label>
+                                <select id="rapid-sex" name="sex">
+                                    <option value="">Select...</option>
+                                    <option value="Male">Male</option>
+                                    <option value="Female">Female</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label for="rapid-dob">Date of Birth</label>
+                                <input type="date" id="rapid-dob" name="dob">
+                            </div>
+                            <div class="input-group">
+                                <label for="rapid-age">Age</label>
+                                <input type="text" id="rapid-age" name="age">
+                            </div>
+                            <div class="input-group full-width">
+                                <label for="rapid-address">Address</label>
+                                <textarea id="rapid-address" name="address" rows="2"></textarea>
+                            </div>
+                            <div class="input-group">
+                                <label for="rapid-mobile">Mobile Number</label>
+                                <input type="tel" id="rapid-mobile" name="mobile" placeholder="Enter mobile number">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>Clinical Details</h3>
+                        <div class="form-grid">
+                            <div class="input-group full-width">
+                                <label for="rapid-symptoms">Symptoms expressed by parents</label>
+                                <textarea id="rapid-symptoms" name="symptoms" rows="3"></textarea>
+                            </div>
+                            <div class="input-group full-width">
+                                <label for="rapid-birth-history">Birth History</label>
+                                <textarea id="rapid-birth-history" name="birth_history" rows="3"></textarea>
+                            </div>
+                            <div class="input-group full-width">
+                                <label for="rapid-medical-history">Medical History</label>
+                                <textarea id="rapid-medical-history" name="medical_history" rows="3"></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>Therapist Observations & Suggestions</h3>
+                        <div class="therapist-grid">
+                            <div class="therapist-header">Therapist</div>
+                            <div class="therapist-header">Observation</div>
+                            <div class="therapist-header">Suggestion</div>
+
+                            <div class="therapist-label">Physiotherapist</div>
+                            <textarea name="physio_observation" rows="2"></textarea>
+                            <textarea name="physio_suggestion" rows="2"></textarea>
+
+                            <div class="therapist-label">Occupational Therapist</div>
+                            <textarea name="occupational_observation" rows="2"></textarea>
+                            <textarea name="occupational_suggestion" rows="2"></textarea>
+
+                            <div class="therapist-label">Sensory Therapist</div>
+                            <textarea name="sensory_observation" rows="2"></textarea>
+                            <textarea name="sensory_suggestion" rows="2"></textarea>
+
+                            <div class="therapist-label">Speech</div>
+                            <textarea name="speech_observation" rows="2"></textarea>
+                            <textarea name="speech_suggestion" rows="2"></textarea>
+
+                            <div class="therapist-label">P & O Consultant</div>
+                            <textarea name="po_observation" rows="2"></textarea>
+                            <textarea name="po_suggestion" rows="2"></textarea>
+                        </div>
+                        <div class="form-grid" style="margin-top: 20px;">
+                            <div class="input-group">
+                                <label for="rapid-diagnosis">Diagnosis</label>
+                                <input type="text" id="rapid-diagnosis" name="diagnosis">
+                            </div>
+                            <div class="input-group">
+                                <label for="rapid-finalized">Finalized By</label>
+                                <input type="text" id="rapid-finalized" name="finalized_by"
+                                    placeholder="Enter name or title">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn-primary">Save Assessment</button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- Assessment: Child Development -->
+            <section id="child-development" class="assessment-pane">
+                <div class="tab-header">
+                    <h2>Child Development Assessment</h2>
+                    <p>Comprehensive developmental history and profile.</p>
+                </div>
+                <form class="assessment-form" id="form-development">
+                    <!-- Assessment Details & Photo -->
+                    <div class="form-section" style="position: relative; min-height: 250px;">
+                        <h3 style="margin-right: 160px;">Assessment Details</h3>
+
+                        <!-- Top Right Photo Box -->
+                        <div class="photo-upload-box"
+                            style="position: absolute; top: 32px; right: 32px; width: 140px; display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                            <div class="photo-preview-container"
+                                style="width: 120px; height: 150px; border: 2px dashed var(--border); border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; background: var(--bg-main);">
+                                <span id="photo-placeholder"
+                                    style="color: var(--text-light); font-size: 0.85rem; text-align: center;">PHOTO</span>
+                                <img id="dev-photo-preview"
+                                    style="width: 100%; height: 100%; object-fit: cover; display: none;">
+                            </div>
+                            <label for="dev-photo" class="btn-secondary"
+                                style="padding: 6px 12px; font-size: 0.8rem; text-align: center; width: 100%; cursor: pointer;">Upload
+                                Photo</label>
+                            <input type="file" id="dev-photo" accept="image/*" style="display: none;">
+                            <input type="hidden" id="dev-photo-base64" name="photo_base64">
+                        </div>
+
+                        <div class="form-grid" style="margin-right: 160px;">
+                            <div class="input-group">
+                                <label>Sl. NO.</label>
+                                <input type="text" name="sl_no">
+                            </div>
+                            <div class="input-group">
+                                <label>Date of Assessment</label>
+                                <input type="date" name="assessment_date">
+                            </div>
+                            <div class="input-group">
+                                <label>Informant</label>
+                                <input type="text" name="informant">
+                            </div>
+                            <div class="input-group">
+                                <label>Relationship to child</label>
+                                <select name="relationship">
+                                    <option value="">Select...</option>
+                                    <option value="Mother">Mother</option>
+                                    <option value="Father">Father</option>
+                                    <option value="Grandparent">Grandparent</option>
+                                    <option value="Guardian">Guardian</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Child Identification Profile -->
+                    <div class="form-section">
+                        <h3>Child Identification Profile</h3>
+                        <div class="form-grid">
+                            <div class="input-group">
+                                <label>1. Name *</label>
+                                <input type="text" name="child_name" required>
+                            </div>
+                            <div class="input-group">
+                                <label>Sex</label>
+                                <select name="sex">
+                                    <option value="">Select...</option>
+                                    <option value="Male">Male</option>
+                                    <option value="Female">Female</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>2. Date of Birth</label>
+                                <input type="date" name="dob">
+                            </div>
+                            <div class="input-group">
+                                <label>Age</label>
+                                <input type="text" name="age">
+                            </div>
+                            <div class="input-group">
+                                <label>Grade</label>
+                                <input type="text" name="grade">
+                            </div>
+                            <div class="input-group full-width">
+                                <label>3. Address</label>
+                                <textarea name="address" rows="2"></textarea>
+                            </div>
+                            <div class="input-group">
+                                <label>4. Height (cm)</label>
+                                <input type="number" name="height">
+                            </div>
+                            <div class="input-group">
+                                <label>Weight</label>
+                                <input type="number" name="weight">
+                            </div>
+                            <div class="input-group">
+                                <label>BMI</label>
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <input type="text" name="bmi" style="flex: 1;">
+                                    <div class="bmi-gauge-wrapper" id="bmi-gauge-wrapper">
+                                        <div class="bmi-gauge"></div>
+                                        <div class="bmi-inner-circle"></div>
+                                        <div class="bmi-needle" id="bmi-needle"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="input-group">
+                                <label>5. Head Circumference</label>
+                                <input type="text" name="head_circ">
+                            </div>
+                            <div class="input-group">
+                                <label>Chest circumference</label>
+                                <input type="text" name="chest_circ">
+                            </div>
+                            <div class="input-group">
+                                <label>MUAC (R)</label>
+                                <input type="text" name="muac_r">
+                            </div>
+                            <div class="input-group">
+                                <label>MUAC (L)</label>
+                                <input type="text" name="muac_l">
+                            </div>
+                            <div class="input-group">
+                                <label>6. Guardian Type</label>
+                                <select name="guardian_type">
+                                    <option value="">Select...</option>
+                                    <option value="Father">1. Father</option>
+                                    <option value="Mother">2. Mother</option>
+                                    <option value="Other">3. Other Care taker</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>7. Name of Father</label>
+                                <input type="text" name="father_name">
+                            </div>
+                            <div class="input-group">
+                                <label>Contact Number (Father)</label>
+                                <input type="text" name="father_contact">
+                            </div>
+                            <div class="input-group">
+                                <label>8. Name of Mother</label>
+                                <input type="text" name="mother_name">
+                            </div>
+                            <div class="input-group">
+                                <label>Contact Number (Mother)</label>
+                                <input type="text" name="mother_contact">
+                            </div>
+                            <div class="input-group">
+                                <label>9. Other Caretaker</label>
+                                <input type="text" name="other_caretaker">
+                            </div>
+                            <div class="input-group">
+                                <label>Contact Number (Other)</label>
+                                <input type="text" name="other_contact">
+                            </div>
+                            <div class="input-group">
+                                <label>10. Consanguinity</label>
+                                <select name="consanguinity">
+                                    <option value="">Select...</option>
+                                    <option value="Yes">Yes</option>
+                                    <option value="No">No</option>
+                                    <option value="Not known">Not known</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>11. Type of family</label>
+                                <select name="family_type">
+                                    <option value="">Select...</option>
+                                    <option value="Nuclear">Nuclear</option>
+                                    <option value="Joint">Joint</option>
+                                    <option value="Broken">Broken</option>
+                                </select>
+                            </div>
+                            <div class="input-group" style="grid-column: span 2;">
+                                <label>12. Siblings (Brothers / Sisters / Total)</label>
+                                <div style="display:flex; gap:10px;">
+                                    <input type="number" name="siblings_brothers" placeholder="Bros">
+                                    <input type="number" name="siblings_sisters" placeholder="Sis">
+                                    <input type="number" name="siblings_total" placeholder="Total">
+                                </div>
+                            </div>
+                            <div class="input-group full-width">
+                                <label>13. History of disability in family</label>
+                                <textarea name="family_disability_history" rows="2"></textarea>
+                            </div>
+                            <div class="input-group full-width">
+                                <label>14. ID card No, if any</label>
+                                <input type="text" name="id_card_no">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pre-Natal History -->
+                    <div class="form-section">
+                        <h3>Pre-Natal History</h3>
+                        <div class="form-grid">
+                            <div class="input-group">
+                                <label>15. Age of mother at delivery</label>
+                                <input type="text" name="mother_age_delivery">
+                            </div>
+                            <div class="input-group">
+                                <label>16. Health during pregnancy</label>
+                                <select name="pregnancy_health">
+                                    <option value="">Select...</option>
+                                    <option value="Normal">Normal</option>
+                                    <option value="Some diseases">Some diseases</option>
+                                    <option value="Bed rest">Bed rest</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>17. RH incompatibility</label>
+                                <input type="text" name="rh_incompatibility">
+                            </div>
+                            <div class="input-group">
+                                <label>18. Any infectious disease</label>
+                                <input type="text" name="infectious_disease">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Peri-Natal History -->
+                    <div class="form-section">
+                        <h3>Peri-Natal History</h3>
+                        <div class="form-grid">
+                            <div class="input-group">
+                                <label>19. Type of delivery</label>
+                                <select name="delivery_type">
+                                    <option value="">Select...</option>
+                                    <option value="Normal">Normal</option>
+                                    <option value="Delayed">Delayed</option>
+                                    <option value="Breach birth">Breach birth</option>
+                                    <option value="Cesarean">Cesarean</option>
+                                    <option value="Other complication">Other complication</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>20. Place of delivery</label>
+                                <select name="delivery_place">
+                                    <option value="">Select...</option>
+                                    <option value="Hospital">Hospital</option>
+                                    <option value="Home delivery">Home delivery</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>21. Term</label>
+                                <select name="delivery_term">
+                                    <option value="">Select...</option>
+                                    <option value="Full term">Full term</option>
+                                    <option value="Pre-matured">Pre-matured (month)</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>22. Birth cry</label>
+                                <select name="birth_cry">
+                                    <option value="">Select...</option>
+                                    <option value="Cried">Cried</option>
+                                    <option value="Did not cry">Did not cry</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>Birth order</label>
+                                <input type="text" name="birth_order">
+                            </div>
+                            <div class="input-group">
+                                <label>23. Birth weight</label>
+                                <select name="birth_weight">
+                                    <option value="">Select...</option>
+                                    <option value="Normal">Normal</option>
+                                    <option value="Below normal">Below normal</option>
+                                    <option value="Above normal">Above normal</option>
+                                </select>
+                            </div>
+                            <div class="input-group full-width">
+                                <label>24. Others</label>
+                                <input type="text" name="perinatal_others">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Post-Natal History -->
+                    <div class="form-section">
+                        <h3>Post-Natal History</h3>
+                        <div class="form-grid">
+                            <div class="input-group">
+                                <label>25. Days of hospital stay</label>
+                                <input type="number" name="hospital_stay_days">
+                            </div>
+                            <div class="input-group">
+                                <label>26. Incubator support</label>
+                                <select name="incubator_support" class="yes-no-select">
+                                    <option value="">Select...</option>
+                                    <option value="No">No</option>
+                                    <option value="Yes">Yes</option>
+                                </select>
+                                <input type="text" name="incubator_support_desc" class="conditional-desc"
+                                    placeholder="Provide description..." style="display: none; margin-top: 8px;">
+                            </div>
+                            <div class="input-group">
+                                <label>27. Oxygens</label>
+                                <select name="oxygens" class="yes-no-select">
+                                    <option value="">Select...</option>
+                                    <option value="No">No</option>
+                                    <option value="Yes">Yes</option>
+                                </select>
+                                <input type="text" name="oxygens_desc" class="conditional-desc"
+                                    placeholder="Provide description..." style="display: none; margin-top: 8px;">
+                            </div>
+                            <div class="input-group">
+                                <label>28. Fits / convulsions</label>
+                                <select name="convulsions" class="yes-no-select">
+                                    <option value="">Select...</option>
+                                    <option value="No">No</option>
+                                    <option value="Yes">Yes</option>
+                                </select>
+                                <input type="text" name="convulsions_desc" class="conditional-desc"
+                                    placeholder="Provide description..." style="display: none; margin-top: 8px;">
+                            </div>
+                            <div class="input-group">
+                                <label>29. Any major diseases</label>
+                                <select name="major_diseases" class="yes-no-select">
+                                    <option value="">Select...</option>
+                                    <option value="No">No</option>
+                                    <option value="Yes">Yes</option>
+                                </select>
+                                <input type="text" name="major_diseases_desc" class="conditional-desc"
+                                    placeholder="Provide description..." style="display: none; margin-top: 8px;">
+                            </div>
+                            <div class="input-group">
+                                <label>30. Any major surgery</label>
+                                <select name="major_surgery" class="yes-no-select">
+                                    <option value="">Select...</option>
+                                    <option value="No">No</option>
+                                    <option value="Yes">Yes</option>
+                                </select>
+                                <input type="text" name="major_surgery_desc" class="conditional-desc"
+                                    placeholder="Provide description..." style="display: none; margin-top: 8px;">
+                            </div>
+                            <div class="input-group">
+                                <label>31. Any major accident</label>
+                                <select name="major_accident" class="yes-no-select">
+                                    <option value="">Select...</option>
+                                    <option value="No">No</option>
+                                    <option value="Yes">Yes</option>
+                                </select>
+                                <input type="text" name="major_accident_desc" class="conditional-desc"
+                                    placeholder="Provide description..." style="display: none; margin-top: 8px;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Congenital Anomalies -->
+                    <div class="form-section">
+                        <h3>Congenital Anomalies</h3>
+
+                        <div style="margin-bottom: 16px;">
+                            <strong
+                                style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--text-dark);">32.</strong>
+                            <div class="checkbox-group"
+                                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+                                <label><input type="checkbox" name="anomalies" value="Neural Tube Defect"> Neural Tube
+                                    Defect</label>
+                                <label><input type="checkbox" name="anomalies" value="Down's Syndrome"> Down's
+                                    Syndrome</label>
+                                <label><input type="checkbox" name="anomalies" value="Cleft lip & Palate"> Cleft lip &
+                                    Palate</label>
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 16px;">
+                            <strong
+                                style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--text-dark);">33.</strong>
+                            <div class="checkbox-group"
+                                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+                                <label><input type="checkbox" name="anomalies" value="Talipes (club foot)"> Talipes
+                                    (club foot)</label>
+                                <label><input type="checkbox" name="anomalies" value="Developmental Dysplasia of Hip">
+                                    DD of Hip</label>
+                                <label><input type="checkbox" name="anomalies" value="Congenital cataract"> Congenital
+                                    cataract</label>
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 16px;">
+                            <strong
+                                style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--text-dark);">34.</strong>
+                            <div class="checkbox-group"
+                                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+                                <label><input type="checkbox" name="anomalies" value="Congenital Deafness"> Congenital
+                                    Deafness</label>
+                                <label><input type="checkbox" name="anomalies" value="Congenital Heart Diseases">
+                                    Congenital Heart Diseases</label>
+                                <label><input type="checkbox" name="anomalies" value="Retinopathy of Prematurity">
+                                    Retinopathy of Prematurity</label>
+                            </div>
+                        </div>
+
+                        <div class="input-group full-width" style="margin-top: 15px;">
+                            <label>35. Any other</label>
+                            <input type="text" name="anomalies_other">
+                        </div>
+                    </div>
+
+                    <!-- Developmental Delay and Disability -->
+                    <div class="form-section">
+                        <h3>Developmental Delay and Disability</h3>
+                        <div class="form-grid">
+                            <div class="input-group">
+                                <label>36. Vision Impairment</label>
+                                <select name="vision_impairment">
+                                    <option value="">Select...</option>
+                                    <option value="Absent">Absent</option>
+                                    <option value="Present">Present</option>
+                                    <option value="Suspected">Suspected</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>Hearing impairment</label>
+                                <select name="hearing_impairment">
+                                    <option value="">Select...</option>
+                                    <option value="Absent">Absent</option>
+                                    <option value="Present">Present</option>
+                                    <option value="Suspected">Suspected</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>Neuro-motor impairment</label>
+                                <select name="neuromotor_impairment">
+                                    <option value="">Select...</option>
+                                    <option value="Absent">Absent</option>
+                                    <option value="Present">Present</option>
+                                    <option value="Suspected">Suspected</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <h4 style="margin: 20px 0 10px; font-weight: 600; color: var(--primary);">37. Milestones</h4>
+                        <div class="form-grid">
+                            <!-- Motor -->
+                            <div class="input-group">
+                                <strong>Motor</strong>
+                                <label><input type="checkbox" name="milestones" value="Sitting < 8 months"> Sitting < 8
+                                        months</label>
+                                        <label><input type="checkbox" name="milestones" value="Crawling <10 m"> Crawling
+                                            <10 m</label>
+                                                <label><input type="checkbox" name="milestones" value="Standing <14 m">
+                                                    Standing <14 m</label>
+                                                        <label><input type="checkbox" name="milestones"
+                                                                value="Walking < 18 m"> Walking < 18 m</label>
+                            </div>
+                            <!-- Language -->
+                            <div class="input-group">
+                                <strong>Language</strong>
+                                <label><input type="checkbox" name="milestones" value="Babbling < 5 m"> Babbling < 5
+                                        m</label>
+                                        <label><input type="checkbox" name="milestones" value="Words < 12 m"> Words < 12
+                                                m</label>
+                                                <label><input type="checkbox" name="milestones"
+                                                        value="Sentences < 24 m"> Sentences < 24 m</label>
+                            </div>
+                            <!-- Cognitive delay -->
+                            <div class="input-group">
+                                <strong>Cognitive delay</strong>
+                                <label><input type="checkbox" name="milestones" value="Social smile <3 m"> Social smile
+                                    <3 m</label>
+                                        <label><input type="checkbox" name="milestones" value="Eye contact < 3 m"> Eye
+                                            contact < 3 m</label>
+                            </div>
+                        </div>
+
+                        <div class="form-grid" style="margin-top: 20px;">
+                            <div class="input-group">
+                                <label>38. Behaviour Disorder (e.g. Autism)</label>
+                                <select name="behaviour_disorder">
+                                    <option value="">Select...</option>
+                                    <option value="Absent">Absent</option>
+                                    <option value="Present">Present</option>
+                                    <option value="Suspected">Suspected</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>Learning Disorder / Dyslexia</label>
+                                <select name="learning_disorder">
+                                    <option value="">Select...</option>
+                                    <option value="Absent">Absent</option>
+                                    <option value="Present">Present</option>
+                                    <option value="Suspected">Suspected</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>ADHD</label>
+                                <select name="adhd">
+                                    <option value="">Select...</option>
+                                    <option value="Absent">Absent</option>
+                                    <option value="Present">Present</option>
+                                    <option value="Suspected">Suspected</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-grid" style="margin-top: 20px;">
+                            <div class="input-group full-width">
+                                <label>39. Schooling</label>
+                                <input type="text" name="schooling">
+                            </div>
+                            <div class="input-group full-width">
+                                <label>40. Medical history (Surgery, Medical treatment, Physiotherapy)</label>
+                                <textarea name="medical_history_dev" rows="2"></textarea>
+                            </div>
+                            <div class="input-group full-width">
+                                <label>41. Use of aids and appliances (CP chairs, wheel chairs, splints, etc.)</label>
+                                <textarea name="aids_appliances" rows="2"></textarea>
+                            </div>
+                            <div class="input-group full-width">
+                                <label>42. Diagnosis</label>
+                                <input type="text" name="dev_diagnosis">
+                            </div>
+                            <div class="input-group full-width">
+                                <label>43. Expectations of the parents</label>
+                                <input type="text" name="parent_expectations">
+                            </div>
+                            <div class="input-group full-width">
+                                <label>44. Treatment goal</label>
+                                <input type="text" name="treatment_goal">
+                            </div>
+                            <div class="input-group full-width">
+                                <label>45. Treatment plan</label>
+                                <input type="text" name="treatment_plan">
+                            </div>
+
+                            <div class="input-group">
+                                <label>Assessed By</label>
+                                <input type="text" name="assessed_by">
+                            </div>
+                            <div class="input-group">
+                                <label>Signature</label>
+                                <input type="text" name="signature">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn-primary">Save Assessment</button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- Assessment: Physiotherapy -->
+            <section id="physiotherapy" class="assessment-pane">
+                <div class="tab-header">
+                    <h2>Physiotherapy Assessment</h2>
+                    <p>Detailed physical and motor function evaluation.</p>
+                </div>
+                <form class="assessment-form" id="form-physio">
+                    <div class="form-section">
+                        <h3>Patient Information</h3>
+                        <div class="form-grid">
+                            <div class="input-group">
+                                <label for="physio-name">Child Name *</label>
+                                <input type="text" id="physio-name" name="child_name" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>1. Gait</h3>
+                        <div class="form-grid">
+                            <div class="input-group">
+                                <label>Without support</label>
+                                <input type="text" name="gait_without_support">
+                            </div>
+                            <div class="input-group">
+                                <label>With support</label>
+                                <input type="text" name="gait_with_support">
+                            </div>
+                            <div class="input-group">
+                                <label>No walk</label>
+                                <input type="text" name="gait_no_walk">
+                            </div>
+                            <div class="input-group">
+                                <label>Gait pattern</label>
+                                <input type="text" name="gait_pattern">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>2. Use of aids</h3>
+                        <div class="input-group full-width">
+                            <input type="text" name="use_of_aids">
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>3. Visible deformity</h3>
+                        <table class="records-table" style="width: 100%; margin-bottom: 15px;">
+                            <thead>
+                                <tr>
+                                    <th style="text-align: left;">Deformity</th>
+                                    <th>Right</th>
+                                    <th>Left</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Knock knees</td>
+                                    <td><select name="knock_knees_right">
+                                            <option value="">Select...</option>
+                                            <option value="Present">Present</option>
+                                            <option value="Absent">Absent</option>
+                                        </select></td>
+                                    <td><select name="knock_knees_left">
+                                            <option value="">Select...</option>
+                                            <option value="Present">Present</option>
+                                            <option value="Absent">Absent</option>
+                                        </select></td>
+                                </tr>
+                                <tr>
+                                    <td>Bow legs</td>
+                                    <td><select name="bow_legs_right">
+                                            <option value="">Select...</option>
+                                            <option value="Present">Present</option>
+                                            <option value="Absent">Absent</option>
+                                        </select></td>
+                                    <td><select name="bow_legs_left">
+                                            <option value="">Select...</option>
+                                            <option value="Present">Present</option>
+                                            <option value="Absent">Absent</option>
+                                        </select></td>
+                                </tr>
+                                <tr>
+                                    <td>Flat foot</td>
+                                    <td><select name="flat_foot_right">
+                                            <option value="">Select...</option>
+                                            <option value="Present">Present</option>
+                                            <option value="Absent">Absent</option>
+                                        </select></td>
+                                    <td><select name="flat_foot_left">
+                                            <option value="">Select...</option>
+                                            <option value="Present">Present</option>
+                                            <option value="Absent">Absent</option>
+                                        </select></td>
+                                </tr>
+                                <tr>
+                                    <td>Equines</td>
+                                    <td><select name="equines_right">
+                                            <option value="">Select...</option>
+                                            <option value="Present">Present</option>
+                                            <option value="Absent">Absent</option>
+                                        </select></td>
+                                    <td><select name="equines_left">
+                                            <option value="">Select...</option>
+                                            <option value="Present">Present</option>
+                                            <option value="Absent">Absent</option>
+                                        </select></td>
+                                </tr>
+                                <tr>
+                                    <td>Elbow deformity</td>
+                                    <td><select name="elbow_def_right">
+                                            <option value="">Select...</option>
+                                            <option value="Present">Present</option>
+                                            <option value="Absent">Absent</option>
+                                        </select></td>
+                                    <td><select name="elbow_def_left">
+                                            <option value="">Select...</option>
+                                            <option value="Present">Present</option>
+                                            <option value="Absent">Absent</option>
+                                        </select></td>
+                                </tr>
+                                <tr>
+                                    <td>Hand deformity</td>
+                                    <td><select name="hand_def_right">
+                                            <option value="">Select...</option>
+                                            <option value="Present">Present</option>
+                                            <option value="Absent">Absent</option>
+                                        </select></td>
+                                    <td><select name="hand_def_left">
+                                            <option value="">Select...</option>
+                                            <option value="Present">Present</option>
+                                            <option value="Absent">Absent</option>
+                                        </select></td>
+                                </tr>
+                                <tr>
+                                    <td>Others</td>
+                                    <td><input type="text" name="def_others_right"></td>
+                                    <td><input type="text" name="def_others_left"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>4. Impairment of body structure</h3>
+                        <div class="form-grid">
+                            <div class="input-group">
+                                <label>Scoliosis</label>
+                                <select name="scoliosis">
+                                    <option value="">Select...</option>
+                                    <option value="Present">Present</option>
+                                    <option value="Absent">Absent</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>Kyphosis</label>
+                                <select name="kyphosis">
+                                    <option value="">Select...</option>
+                                    <option value="Present">Present</option>
+                                    <option value="Absent">Absent</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>Hyper lordosis</label>
+                                <select name="hyper_lordosis">
+                                    <option value="">Select...</option>
+                                    <option value="Present">Present</option>
+                                    <option value="Absent">Absent</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>Others</label>
+                                <input type="text" name="impairment_others" placeholder="Specify if any">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>5. Gross motor</h3>
+                        <div class="form-grid">
+                            <!-- Left Column -->
+                            <div class="input-group">
+                                <label>Head control</label>
+                                <select name="gm_head_control">
+                                    <option value="">Select...</option>
+                                    <option value="Achieved">Achieved</option>
+                                    <option value="Not Achieved">Not Achieved</option>
+                                    <option value="In Progress">In Progress</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>Sitting with support</label>
+                                <select name="gm_sit_support">
+                                    <option value="">Select...</option>
+                                    <option value="Achieved">Achieved</option>
+                                    <option value="Not Achieved">Not Achieved</option>
+                                    <option value="In Progress">In Progress</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>Rolling</label>
+                                <select name="gm_rolling">
+                                    <option value="">Select...</option>
+                                    <option value="Achieved">Achieved</option>
+                                    <option value="Not Achieved">Not Achieved</option>
+                                    <option value="In Progress">In Progress</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>Sitting without support</label>
+                                <select name="gm_sit_no_support">
+                                    <option value="">Select...</option>
+                                    <option value="Achieved">Achieved</option>
+                                    <option value="Not Achieved">Not Achieved</option>
+                                    <option value="In Progress">In Progress</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>Alternating crawling</label>
+                                <select name="gm_alt_crawling">
+                                    <option value="">Select...</option>
+                                    <option value="Achieved">Achieved</option>
+                                    <option value="Not Achieved">Not Achieved</option>
+                                    <option value="In Progress">In Progress</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>4 point knelling</label>
+                                <select name="gm_4_point_knell">
+                                    <option value="">Select...</option>
+                                    <option value="Achieved">Achieved</option>
+                                    <option value="Not Achieved">Not Achieved</option>
+                                    <option value="In Progress">In Progress</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>Bunny hopping</label>
+                                <select name="gm_bunny_hopping">
+                                    <option value="">Select...</option>
+                                    <option value="Achieved">Achieved</option>
+                                    <option value="Not Achieved">Not Achieved</option>
+                                    <option value="In Progress">In Progress</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>2 point knelling</label>
+                                <select name="gm_2_point_knell">
+                                    <option value="">Select...</option>
+                                    <option value="Achieved">Achieved</option>
+                                    <option value="Not Achieved">Not Achieved</option>
+                                    <option value="In Progress">In Progress</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>Half knelling</label>
+                                <select name="gm_half_knell">
+                                    <option value="">Select...</option>
+                                    <option value="Achieved">Achieved</option>
+                                    <option value="Not Achieved">Not Achieved</option>
+                                    <option value="In Progress">In Progress</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>Standing without support</label>
+                                <select name="gm_stand_no_support">
+                                    <option value="">Select...</option>
+                                    <option value="Achieved">Achieved</option>
+                                    <option value="Not Achieved">Not Achieved</option>
+                                    <option value="In Progress">In Progress</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>Standing with support</label>
+                                <select name="gm_stand_support">
+                                    <option value="">Select...</option>
+                                    <option value="Achieved">Achieved</option>
+                                    <option value="Not Achieved">Not Achieved</option>
+                                    <option value="In Progress">In Progress</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>Standing on tip toes</label>
+                                <select name="gm_stand_tiptoes">
+                                    <option value="">Select...</option>
+                                    <option value="Achieved">Achieved</option>
+                                    <option value="Not Achieved">Not Achieved</option>
+                                    <option value="In Progress">In Progress</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>Standing on heels</label>
+                                <select name="gm_stand_heels">
+                                    <option value="">Select...</option>
+                                    <option value="Achieved">Achieved</option>
+                                    <option value="Not Achieved">Not Achieved</option>
+                                    <option value="In Progress">In Progress</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>Jumping on one leg</label>
+                                <select name="gm_jump_one_leg">
+                                    <option value="">Select...</option>
+                                    <option value="Achieved">Achieved</option>
+                                    <option value="Not Achieved">Not Achieved</option>
+                                    <option value="In Progress">In Progress</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>Standing on one leg</label>
+                                <select name="gm_stand_one_leg">
+                                    <option value="">Select...</option>
+                                    <option value="Achieved">Achieved</option>
+                                    <option value="Not Achieved">Not Achieved</option>
+                                    <option value="In Progress">In Progress</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>Jumping on two legs</label>
+                                <select name="gm_jump_two_legs">
+                                    <option value="">Select...</option>
+                                    <option value="Achieved">Achieved</option>
+                                    <option value="Not Achieved">Not Achieved</option>
+                                    <option value="In Progress">In Progress</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>Stair climbing with support</label>
+                                <select name="gm_stair_support">
+                                    <option value="">Select...</option>
+                                    <option value="Achieved">Achieved</option>
+                                    <option value="Not Achieved">Not Achieved</option>
+                                    <option value="In Progress">In Progress</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>Running</label>
+                                <select name="gm_running">
+                                    <option value="">Select...</option>
+                                    <option value="Achieved">Achieved</option>
+                                    <option value="Not Achieved">Not Achieved</option>
+                                    <option value="In Progress">In Progress</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>Stair climbing without support</label>
+                                <select name="gm_stair_no_support">
+                                    <option value="">Select...</option>
+                                    <option value="Achieved">Achieved</option>
+                                    <option value="Not Achieved">Not Achieved</option>
+                                    <option value="In Progress">In Progress</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>Regular</label>
+                                <select name="gm_regular">
+                                    <option value="">Select...</option>
+                                    <option value="Achieved">Achieved</option>
+                                    <option value="Not Achieved">Not Achieved</option>
+                                    <option value="In Progress">In Progress</option>
+                                </select>
+                            </div>
+                            <div class="input-group full-width">
+                                <label>Running Issues:</label>
+                                <input type="text" name="gm_running_issues">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>6. Transition without support</h3>
+                        <div class="form-grid">
+                            <div class="input-group">
+                                <label>Supine - prone - sitting</label>
+                                <select name="tr_supine_prone_sit">
+                                    <option value="">Select...</option>
+                                    <option value="Achieved">Achieved</option>
+                                    <option value="Not Achieved">Not Achieved</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>Prone - Supine - Rolling</label>
+                                <select name="tr_prone_supine_roll">
+                                    <option value="">Select...</option>
+                                    <option value="Achieved">Achieved</option>
+                                    <option value="Not Achieved">Not Achieved</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>Sitting with support</label>
+                                <select name="tr_sit_support">
+                                    <option value="">Select...</option>
+                                    <option value="Achieved">Achieved</option>
+                                    <option value="Not Achieved">Not Achieved</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>Sitting without support</label>
+                                <select name="tr_sit_no_support">
+                                    <option value="">Select...</option>
+                                    <option value="Achieved">Achieved</option>
+                                    <option value="Not Achieved">Not Achieved</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>Sitting - Standing</label>
+                                <select name="tr_sit_stand">
+                                    <option value="">Select...</option>
+                                    <option value="Achieved">Achieved</option>
+                                    <option value="Not Achieved">Not Achieved</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>Standing - Sitting</label>
+                                <select name="tr_stand_sit">
+                                    <option value="">Select...</option>
+                                    <option value="Achieved">Achieved</option>
+                                    <option value="Not Achieved">Not Achieved</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>Crawling - Kneeling - Half kneeling - Standing</label>
+                                <select name="tr_crawl_kneel_stand">
+                                    <option value="">Select...</option>
+                                    <option value="Achieved">Achieved</option>
+                                    <option value="Not Achieved">Not Achieved</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>Standing - Half kneeling - Kneeling - Crawling</label>
+                                <select name="tr_stand_kneel_crawl">
+                                    <option value="">Select...</option>
+                                    <option value="Achieved">Achieved</option>
+                                    <option value="Not Achieved">Not Achieved</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>Quadruped - side sitting</label>
+                                <select name="tr_quad_side_sit">
+                                    <option value="">Select...</option>
+                                    <option value="Achieved">Achieved</option>
+                                    <option value="Not Achieved">Not Achieved</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>7. Joint Range of motion (ROM) passive</h3>
+                        <table class="records-table" style="width: 100%; margin-bottom: 15px;">
+                            <thead>
+                                <tr>
+                                    <th>Joint</th>
+                                    <th>Movement</th>
+                                    <th>Right</th>
+                                    <th>Left</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td rowspan="4"><strong>Hip</strong></td>
+                                    <td>Horiz. abduction / adduction</td>
+                                    <td><input type="text" name="rom_hip_horiz_r"></td>
+                                    <td><input type="text" name="rom_hip_horiz_l"></td>
+                                </tr>
+                                <tr>
+                                    <td>Vertical abduction / adduction</td>
+                                    <td><input type="text" name="rom_hip_vert_r"></td>
+                                    <td><input type="text" name="rom_hip_vert_l"></td>
+                                </tr>
+                                <tr>
+                                    <td>Flexion / extension</td>
+                                    <td><input type="text" name="rom_hip_flex_r"></td>
+                                    <td><input type="text" name="rom_hip_flex_l"></td>
+                                </tr>
+                                <tr>
+                                    <td>External / internal rotation</td>
+                                    <td><input type="text" name="rom_hip_rot_r"></td>
+                                    <td><input type="text" name="rom_hip_rot_l"></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Knee</strong></td>
+                                    <td>Flexion / extension</td>
+                                    <td><input type="text" name="rom_knee_flex_r"></td>
+                                    <td><input type="text" name="rom_knee_flex_l"></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Ankle (Knee bended)</strong></td>
+                                    <td>Dorsi / Plantar flexion</td>
+                                    <td><input type="text" name="rom_ankle_bend_r"></td>
+                                    <td><input type="text" name="rom_ankle_bend_l"></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Ankle (Knee straight)</strong></td>
+                                    <td>Dorsi / Plantar flexion</td>
+                                    <td><input type="text" name="rom_ankle_str_r"></td>
+                                    <td><input type="text" name="rom_ankle_str_l"></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Elbow</strong></td>
+                                    <td>Flexion / extension</td>
+                                    <td><input type="text" name="rom_elbow_flex_r"></td>
+                                    <td><input type="text" name="rom_elbow_flex_l"></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Hand</strong></td>
+                                    <td>General ROM</td>
+                                    <td><input type="text" name="rom_hand_r"></td>
+                                    <td><input type="text" name="rom_hand_l"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>8. Limb length measurement</h3>
+                        <div class="form-grid">
+                            <div class="input-group">
+                                <label>Right</label>
+                                <input type="text" name="limb_length_right">
+                            </div>
+                            <div class="input-group">
+                                <label>Left</label>
+                                <input type="text" name="limb_length_left">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>9. Muscle contractures</h3>
+                        <div class="form-grid">
+                            <div class="input-group">
+                                <label>Upper extremity - Right</label>
+                                <select name="contracture_upper_r">
+                                    <option value="">Select...</option>
+                                    <option value="Present">Present</option>
+                                    <option value="Absent">Absent</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>Lower extremity - Right</label>
+                                <select name="contracture_lower_r">
+                                    <option value="">Select...</option>
+                                    <option value="Present">Present</option>
+                                    <option value="Absent">Absent</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>Upper extremity - Left</label>
+                                <select name="contracture_upper_l">
+                                    <option value="">Select...</option>
+                                    <option value="Present">Present</option>
+                                    <option value="Absent">Absent</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>Lower extremity - Left</label>
+                                <select name="contracture_lower_l">
+                                    <option value="">Select...</option>
+                                    <option value="Present">Present</option>
+                                    <option value="Absent">Absent</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>Upper extremity - Structural</label>
+                                <select name="contracture_upper_struct">
+                                    <option value="">Select...</option>
+                                    <option value="Present">Present</option>
+                                    <option value="Absent">Absent</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>Lower extremity - Structural</label>
+                                <select name="contracture_lower_struct">
+                                    <option value="">Select...</option>
+                                    <option value="Present">Present</option>
+                                    <option value="Absent">Absent</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>Upper extremity - Dynamic</label>
+                                <select name="contracture_upper_dyn">
+                                    <option value="">Select...</option>
+                                    <option value="Present">Present</option>
+                                    <option value="Absent">Absent</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>Lower extremity - Dynamic</label>
+                                <select name="contracture_lower_dyn">
+                                    <option value="">Select...</option>
+                                    <option value="Present">Present</option>
+                                    <option value="Absent">Absent</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>10. Muscle Strength (1/5 - 5/5)</h3>
+                        <table class="records-table" style="width: 100%; margin-bottom: 15px;">
+                            <thead>
+                                <tr>
+                                    <th>Muscle Group</th>
+                                    <th>RT</th>
+                                    <th>LT</th>
+                                    <th>Muscle Group</th>
+                                    <th>RT</th>
+                                    <th>LT</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>Hip</strong></td>
+                                    <td><input type="text" name="strength_hip_r" style="width: 50px;"></td>
+                                    <td><input type="text" name="strength_hip_l" style="width: 50px;"></td>
+                                    <td><strong>Knee</strong></td>
+                                    <td><input type="text" name="strength_knee_r" style="width: 50px;"></td>
+                                    <td><input type="text" name="strength_knee_l" style="width: 50px;"></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Ankle</strong></td>
+                                    <td><input type="text" name="strength_ankle_r" style="width: 50px;"></td>
+                                    <td><input type="text" name="strength_ankle_l" style="width: 50px;"></td>
+                                    <td><strong>Shoulder</strong></td>
+                                    <td><input type="text" name="strength_shoulder_r" style="width: 50px;"></td>
+                                    <td><input type="text" name="strength_shoulder_l" style="width: 50px;"></td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Elbow</strong></td>
+                                    <td><input type="text" name="strength_elbow_r" style="width: 50px;"></td>
+                                    <td><input type="text" name="strength_elbow_l" style="width: 50px;"></td>
+                                    <td><strong>Wrist and fingers</strong></td>
+                                    <td><input type="text" name="strength_wrist_r" style="width: 50px;"></td>
+                                    <td><input type="text" name="strength_wrist_l" style="width: 50px;"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>11. Muscle tone in general</h3>
+                        <div class="form-grid">
+                            <div class="input-group full-width">
+                                <select name="muscle_tone_general">
+                                    <option value="">Select...</option>
+                                    <option value="High">High</option>
+                                    <option value="Normal">Normal</option>
+                                    <option value="Low">Low</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>12. Clonus</h3>
+                        <div class="input-group full-width">
+                            <input type="text" name="clonus">
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>13. Reflexes</h3>
+                        <table class="records-table" style="width: 100%; margin-bottom: 15px;">
+                            <thead>
+                                <tr>
+                                    <th>Reflex</th>
+                                    <th>Side</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td rowspan="2">Proprioceptive reflex (Patellar)</td>
+                                    <td>Right</td>
+                                    <td>
+                                        <select name="reflex_patellar_r">
+                                            <option value="">Select...</option>
+                                            <option value="Absent">Absent</option>
+                                            <option value="Increase">Increase</option>
+                                            <option value="Zone enlarged">Zone enlarged</option>
+                                        </select>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Left</td>
+                                    <td>
+                                        <select name="reflex_patellar_l">
+                                            <option value="">Select...</option>
+                                            <option value="Absent">Absent</option>
+                                            <option value="Increase">Increase</option>
+                                            <option value="Zone enlarged">Zone enlarged</option>
+                                        </select>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td rowspan="2">Achilles reflex</td>
+                                    <td>Right</td>
+                                    <td>
+                                        <select name="reflex_achilles_r">
+                                            <option value="">Select...</option>
+                                            <option value="Absent">Absent</option>
+                                            <option value="Increase">Increase</option>
+                                            <option value="Zone enlarged">Zone enlarged</option>
+                                        </select>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Left</td>
+                                    <td>
+                                        <select name="reflex_achilles_l">
+                                            <option value="">Select...</option>
+                                            <option value="Absent">Absent</option>
+                                            <option value="Increase">Increase</option>
+                                            <option value="Zone enlarged">Zone enlarged</option>
+                                        </select>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td rowspan="2">Babinski Reflex</td>
+                                    <td>Right</td>
+                                    <td><input type="text" name="reflex_babinski_r"></td>
+                                </tr>
+                                <tr>
+                                    <td>Left</td>
+                                    <td><input type="text" name="reflex_babinski_l"></td>
+                                </tr>
+                                <tr>
+                                    <td rowspan="2">Limb length measurement (Reflex sec)</td>
+                                    <td>Right</td>
+                                    <td><input type="text" name="reflex_limb_length_r"></td>
+                                </tr>
+                                <tr>
+                                    <td>Left</td>
+                                    <td><input type="text" name="reflex_limb_length_l"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>14. Co-ordination</h3>
+                        <div class="form-grid">
+                            <div class="input-group full-width">
+                                <label>Able to cross the midline</label>
+                                <input type="text" name="coordination_midline">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>15. Fine Motor Assessment</h3>
+                        <div class="form-grid">
+                            <div class="input-group">
+                                <label>Pinch grip</label>
+                                <input type="text" name="fine_motor_pinch">
+                            </div>
+                            <div class="input-group">
+                                <label>Pro and supination of the hands</label>
+                                <input type="text" name="fine_motor_supination">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>16. Previous therapies</h3>
+                        <div class="input-group full-width">
+                            <textarea name="previous_therapies" rows="3"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>17. Other comments</h3>
+                        <div class="input-group full-width">
+                            <textarea name="physio_other_comments" rows="3"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>Diagnosis & Treatment Plan</h3>
+                        <div class="form-grid">
+                            <div class="input-group full-width">
+                                <label>DIAGNOSIS</label>
+                                <textarea name="physio_diagnosis" rows="2"></textarea>
+                            </div>
+                            <div class="input-group full-width">
+                                <label>TREATMENT PLAN</label>
+                                <textarea name="physio_treatment_plan" rows="3"></textarea>
+                            </div>
+                            <div class="input-group">
+                                <label>Assessed By</label>
+                                <input type="text" name="assessed_by">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn-primary">Save Assessment</button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- Assessment: Speech -->
+            <section id="speech" class="assessment-pane">
+                <div class="tab-header">
+                    <h2>Speech Assessment</h2>
+                    <p>Evaluation of articulation, voice, and intelligibility.</p>
+                </div>
+                <form class="assessment-form" id="form-speech">
+                    <div class="form-section">
+                        <h3>Patient Information</h3>
+                        <div class="form-grid">
+                            <div class="input-group">
+                                <label for="speech-name">Child Name *</label>
+                                <input type="text" id="speech-name" name="child_name" required>
+                            </div>
+                            <div class="input-group">
+                                <label for="speech-date">Date of Assessment</label>
+                                <input type="date" id="speech-date" name="assessment_date">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>Speech Parameters</h3>
+                        <div class="form-grid">
+
+                            <!-- Articulation -->
+                            <div class="input-group conditional-group full-width">
+                                <label>1. Articulation</label>
+                                <select name="speech_articulation" class="yes-no-select">
+                                    <option value="">Select...</option>
+                                    <option value="Normal">Normal</option>
+                                    <option value="Defective">Defective</option>
+                                </select>
+                                <div class="conditional-desc"
+                                    style="display: none; margin-top: 10px; padding: 10px; border-left: 3px solid var(--primary); background: var(--bg-main);">
+                                    <label style="font-size: 0.85rem;">If Defective:</label>
+                                    <div style="display: flex; gap: 10px; margin-top: 5px;">
+                                        <input type="text" name="speech_articulation_soda" placeholder="SODA">
+                                        <input type="text" name="speech_articulation_nasality" placeholder="Nasality">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Voice -->
+                            <div class="input-group conditional-group full-width">
+                                <label>2. Voice</label>
+                                <select name="speech_voice" class="yes-no-select">
+                                    <option value="">Select...</option>
+                                    <option value="Normal">Normal</option>
+                                    <option value="Defective">Defective</option>
+                                </select>
+                                <div class="conditional-desc"
+                                    style="display: none; margin-top: 10px; padding: 10px; border-left: 3px solid var(--primary); background: var(--bg-main);">
+                                    <label style="font-size: 0.85rem; display: block; margin-bottom: 5px;">If
+                                        Defective:</label>
+                                    <div class="form-grid">
+                                        <div class="input-group">
+                                            <label>a. Pitch</label>
+                                            <select name="speech_pitch">
+                                                <option value="">Select...</option>
+                                                <option value="Normal">Normal</option>
+                                                <option value="High">High</option>
+                                                <option value="Low">Low</option>
+                                            </select>
+                                        </div>
+                                        <div class="input-group">
+                                            <label>b. Intensity</label>
+                                            <select name="speech_intensity">
+                                                <option value="">Select...</option>
+                                                <option value="Normal">Normal</option>
+                                                <option value="Too Loud">Too Loud</option>
+                                                <option value="Too Soft">Too Soft</option>
+                                            </select>
+                                        </div>
+                                        <div class="input-group full-width">
+                                            <label>c. Quality</label>
+                                            <select name="speech_quality">
+                                                <option value="">Select...</option>
+                                                <option value="Normal">Normal</option>
+                                                <option value="Breathy">Breathy</option>
+                                                <option value="Hyper nasal">Hyper nasal</option>
+                                                <option value="Strained">Strained</option>
+                                                <option value="Throaty">Throaty</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Rhythm -->
+                            <div class="input-group conditional-group full-width">
+                                <label>3. Rhythm</label>
+                                <select name="speech_rhythm" class="yes-no-select">
+                                    <option value="">Select...</option>
+                                    <option value="Normal">Normal</option>
+                                    <option value="Defective">Defective</option>
+                                </select>
+                                <div class="conditional-desc" style="display: none; margin-top: 10px;">
+                                    <input type="text" name="speech_rhythm_defective"
+                                        placeholder="If defective, specify...">
+                                </div>
+                            </div>
+
+                            <!-- Intonation -->
+                            <div class="input-group conditional-group full-width">
+                                <label>4. Intonation</label>
+                                <select name="speech_intonation" class="yes-no-select">
+                                    <option value="">Select...</option>
+                                    <option value="Normal">Normal</option>
+                                    <option value="Defective">Defective</option>
+                                </select>
+                                <div class="conditional-desc" style="display: none; margin-top: 10px;">
+                                    <input type="text" name="speech_intonation_defective"
+                                        placeholder="If defective, specify...">
+                                </div>
+                            </div>
+
+                            <!-- Speech Intelligibility -->
+                            <div class="input-group conditional-group full-width">
+                                <label>5. Speech Intelligibility</label>
+                                <select name="speech_intelligibility" class="yes-no-select">
+                                    <option value="">Select...</option>
+                                    <option value="Normal">Normal</option>
+                                    <option value="Defective">Defective</option>
+                                </select>
+                                <div class="conditional-desc"
+                                    style="display: none; margin-top: 10px; padding: 10px; border-left: 3px solid var(--primary); background: var(--bg-main);">
+                                    <label style="font-size: 0.85rem; display: block; margin-bottom: 5px;">If
+                                        Defective:</label>
+                                    <select name="speech_intelligibility_defective">
+                                        <option value="">Select...</option>
+                                        <option value="Context known intelligible">Context known intelligible</option>
+                                        <option value="Context unknown non-intelligible">Context unknown
+                                            non-intelligible</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>Diagnosis & Plan</h3>
+                        <div class="form-grid">
+                            <div class="input-group full-width">
+                                <label>6. Diagnosis</label>
+                                <textarea name="speech_diagnosis" rows="2"></textarea>
+                            </div>
+                            <div class="input-group full-width">
+                                <label>7. Follow up suggested</label>
+                                <textarea name="speech_follow_up" rows="2"></textarea>
+                            </div>
+                            <div class="input-group">
+                                <label>Assessed By</label>
+                                <input type="text" name="speech_assessed_by">
+                            </div>
+                            <div class="input-group">
+                                <label>Signature</label>
+                                <input type="text" name="speech_signature">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn-primary">Save Assessment</button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- Assessment: Progress Review -->
+            <section id="progress-review" class="assessment-pane">
+                <div class="tab-header">
+                    <h2>Quarterly Progress Review</h2>
+                    <p>Track short-term and long-term goals.</p>
+                </div>
+                <form class="assessment-form" id="form-progress">
+                    <div class="form-section">
+                        <h3>Review Details</h3>
+                        <div class="form-grid">
+                            <div class="input-group">
+                                <label for="prog-name">Child Name *</label>
+                                <input type="text" id="prog-name" name="child_name" required>
+                            </div>
+                            <div class="input-group">
+                                <label for="prog-date">Date</label>
+                                <input type="date" id="prog-date" name="review_date">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="goals-container">
+                        <div class="form-section goal-entry">
+                            <h3>Goal Tracking</h3>
+                            <div class="form-grid">
+                                <div class="input-group full-width">
+                                    <label>Long Term Goal</label>
+                                    <textarea name="long_term_goal[]" rows="2"></textarea>
+                                </div>
+                                <div class="input-group full-width">
+                                    <label>Short Term Goal</label>
+                                    <textarea name="short_term_goal[]" rows="2"></textarea>
+                                </div>
+                                <div class="input-group full-width">
+                                    <label>Achievement during this quarter</label>
+                                    <textarea name="achievement[]" rows="2"></textarea>
+                                </div>
+                                <div class="input-group full-width">
+                                    <label>Plan for next quarter</label>
+                                    <textarea name="next_plan[]" rows="2"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions space-between">
+                        <button type="button" class="btn-secondary" id="add-goal-btn">+ Add Another Goal</button>
+                        <button type="submit" class="btn-primary">Save Review</button>
+                    </div>
+                </form>
+            </section>
+
+            <!-- Main: Records (always active) -->
+            <section id="records" class="tab-content active">
+                <div class="tab-header">
+                    <h2>📁 Child Folders</h2>
+                    <p>Search records or create a new assessment for a child.</p>
+                </div>
+
+                <div class="records-toolbar">
+                    <input type="text" id="search-input" placeholder="Search by child name..." class="search-box">
+                    <button id="search-btn" class="btn-primary">Search</button>
+                    <button id="btn-new-assessment" class="btn-new-assessment">⚡ New Assessment</button>
+                </div>
+
+                <!-- Child Folder Cards -->
+                <div id="children-folders" class="children-folders">
+                    <!-- Folder cards rendered by JS -->
+                </div>
+
+                <!-- Modal for Viewing Assessment Record -->
+                <div id="record-modal" class="modal hidden">
+                    <div class="modal-content">
+                        <span class="close-modal">&times;</span>
+                        <h3 id="modal-title">Record Details</h3>
+                        <div id="modal-body" class="modal-body-content"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Main: Daily Schedule -->
+            <section id="schedule" class="tab-content">
+                <div class="tab-header" style="display: flex; justify-content: space-between; align-items: flex-end;">
+                    <div>
+                        <h2>📅 Daily Therapy Schedule</h2>
+                        <p>Plan daily therapy sessions for all children.</p>
+                    </div>
+                    <div style="display: flex; gap: 15px; align-items: flex-end;">
+                        <div class="input-group" style="margin-bottom: 0;">
+                            <label>Filter by Child</label>
+                            <select id="schedule-child-filter">
+                                <option value="">All Children</option>
+                            </select>
+                        </div>
+                        <div class="input-group" style="margin-bottom: 0;">
+                            <label>Schedule Date</label>
+                            <input type="date" id="schedule-date" required>
+                        </div>
+                        <button id="btn-share-schedule" class="btn-secondary">📤 Share</button>
+                        <button id="btn-print-schedule" class="btn-secondary">🖨 Print</button>
+                    </div>
+                </div>
+
+                <div class="schedule-grid-container" id="schedule-print-area">
+                    <table class="schedule-table">
+                        <thead>
+                            <tr>
+                                <th class="sticky-col">NAME</th>
+                                <th>10.00 -<br>10.30</th>
+                                <th>10.30 -<br>11.00</th>
+                                <th>11.00 -<br>11.30</th>
+                                <th>11.30 -<br>12.00</th>
+                                <th>12.00 -<br>12.30</th>
+                                <th>12.30 -<br>1.00</th>
+                                <th>1.00 -<br>1.30</th>
+                                <th>2.00 -<br>2.30</th>
+                                <th>2.30 -<br>3.00</th>
+                                <th>3.00 -<br>3.30</th>
+                                <th>3.30 -<br>4.00</th>
+                                <th>4.00 -<br>5.00</th>
+                            </tr>
+                        </thead>
+                        <tbody id="schedule-table-body">
+                            <tr><td colspan="13" style="text-align: center;">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Main: Attendance & Reports -->
+            <section id="reports" class="tab-content">
+                <div class="tab-header">
+                    <h2>📈 Attendance & Reports</h2>
+                    <p>View daily therapy summaries and generate reports.</p>
+                </div>
+                
+                <div class="reports-toolbar" style="display: flex; gap: 15px; margin-bottom: 20px; align-items: flex-end;">
+                    <div class="input-group" style="margin-bottom: 0;">
+                        <label>Start Date</label>
+                        <input type="date" id="report-start-date">
+                    </div>
+                    <div class="input-group" style="margin-bottom: 0;">
+                        <label>End Date</label>
+                        <input type="date" id="report-end-date">
+                    </div>
+                    <div class="input-group" style="margin-bottom: 0; min-width: 200px;">
+                        <label>Child</label>
+                        <select id="report-child-select">
+                            <option value="">All Children</option>
+                        </select>
+                    </div>
+                    <button id="btn-generate-report" class="btn-primary">Generate Report</button>
+                    <button id="btn-print-receipt" class="btn-secondary" style="margin-left: auto;">🖨 Print Receipt</button>
+                </div>
+
+
+                <div class="view-toggle" style="display: flex; gap: 10px; margin-bottom: 15px;">
+                    <button id="btn-view-table" class="btn-primary">Table View</button>
+                    <button id="btn-view-graph" class="btn-secondary">Graphical View</button>
+                </div>
+
+                <div id="graph-area" style="display: none; padding: 30px; background: white; border: 1px solid #e2e8f0; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); height: 400px; margin-bottom: 20px;">
+                    <canvas id="attendanceChart"></canvas>
+                </div>
+
+                <div id="print-area">
+                    <table class="records-table" style="width: 100%; font-size: 0.9rem;">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Child Name</th>
+                                <th>Time Slot</th>
+                                <th>Therapy</th>
+                                <th>Therapist</th>
+                                <th>Fee (₹)</th>
+                                <th>Concession (₹)</th>
+                                <th>Paid (₹)</th>
+                                <th>Balance (₹)</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reports-table-body">
+                            <tr><td colspan="10" style="text-align: center;">Generate a report to see data</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Therapists Settings Tab -->
+            <section id="therapists-settings" class="tab-content">
+                <div class="tab-header">
+                    <h2>🧑‍⚕️ Therapists Settings</h2>
+                    <p>Manage therapists, default therapies, and fees.</p>
+                </div>
+
+                <div class="card" style="margin-bottom: 20px;">
+                    <h3>Add New Therapist</h3>
+                    <form id="add-therapist-form" style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap;">
+                        <div class="input-group" style="margin-bottom: 0;">
+                            <label>Name</label>
+                            <input type="text" id="new-therapist-name" required placeholder="e.g. Dr. Smith">
+                        </div>
+                        <div class="input-group" style="margin-bottom: 0;">
+                            <label>Default Therapy</label>
+                            <select id="new-therapist-type" required>
+                                <option value="">Select...</option>
+                                <option value="Assessment and Goal setting">Assessment and Goal setting</option>
+                                <option value="Medical review">Medical review</option>
+                                <option value="Physiotherapy">Physiotherapy</option>
+                                <option value="Occupational Therapy">Occupational Therapy</option>
+                                <option value="Sensory integration Sessions">Sensory integration Sessions</option>
+                                <option value="Speech Training Sessions">Speech Training Sessions</option>
+                                <option value="Hydro therapy Sessions">Hydro therapy Sessions</option>
+                                <option value="ADL Sessions">ADL Sessions</option>
+                                <option value="Outdoor Activity Sessions">Outdoor Activity Sessions</option>
+                                <option value="Academic Sessions">Academic Sessions</option>
+                                <option value="Music Therapy">Music Therapy</option>
+                                <option value="Reflex Therapy">Reflex Therapy</option>
+                                <option value="Siddha Treatment">Siddha Treatment</option>
+                                <option value="Home programme">Home programme</option>
+                                <option value="Nursing care and counselling">Nursing care and counselling</option>
+                                <option value="Orthotic Review">Orthotic Review</option>
+                                <option value="Other services">Other services</option>
+                            </select>
+                        </div>
+                        <div class="input-group" style="margin-bottom: 0; max-width: 150px;">
+                            <label>Default Fee (₹)</label>
+                            <input type="number" id="new-therapist-fee" value="0">
+                        </div>
+                        <button type="submit" class="btn-primary">Add Therapist</button>
+                    </form>
+                </div>
+
+                <table class="records-table" style="width: 100%;">
+                    <thead>
+                        <tr>
+                            <th>Therapist Name</th>
+                            <th>Default Therapy</th>
+                            <th>Default Fee (₹)</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="therapists-table-body">
+                        <tr><td colspan="4" style="text-align: center;">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <!-- Modal for Logging Therapy -->
+            <div id="log-therapy-modal" class="modal hidden">
+                <div class="modal-content" style="max-width: 500px;">
+                    <span class="close-modal">&times;</span>
+                    <h3>Log Therapy Session</h3>
+                    <form id="log-therapy-form">
+                        <input type="hidden" id="log-therapy-child-id">
+                        <div class="form-grid">
+                            <div class="input-group full-width">
+                                <label>Child Name</label>
+                                <input type="text" id="log-therapy-child-name" readonly style="background: #f3f4f6;">
+                            </div>
+                            <div class="input-group full-width">
+                                <label>Date</label>
+                                <input type="date" id="log-therapy-date" required>
+                            </div>
+                            <div class="input-group full-width">
+                                <label>Therapy Type</label>
+                                <select id="log-therapy-type" required>
+                                    <option value="">Select...</option>
+                                    <option value="Assessment and Goal setting">Assessment and Goal setting</option>
+                                    <option value="Medical review">Medical review</option>
+                                    <option value="Physiotherapy">Physiotherapy</option>
+                                    <option value="Occupational Therapy">Occupational Therapy</option>
+                                    <option value="Sensory integration Sessions">Sensory integration Sessions</option>
+                                    <option value="Speech Training Sessions">Speech Training Sessions</option>
+                                    <option value="Hydro therapy Sessions">Hydro therapy Sessions</option>
+                                    <option value="ADL Sessions">ADL Sessions</option>
+                                    <option value="Outdoor Activity Sessions">Outdoor Activity Sessions</option>
+                                    <option value="Academic Sessions">Academic Sessions</option>
+                                    <option value="Music Therapy">Music Therapy</option>
+                                    <option value="Reflex Therapy">Reflex Therapy</option>
+                                    <option value="Siddha Treatment">Siddha Treatment</option>
+                                    <option value="Home programme">Home programme</option>
+                                    <option value="Nursing care and counselling">Nursing care and counselling</option>
+                                    <option value="Orthotic Review">Orthotic Review</option>
+                                    <option value="Other services">Other services</option>
+                                </select>
+                            </div>
+                            <div class="input-group full-width" id="orthotic-group" style="display: none;">
+                                <label>Orthotic Option</label>
+                                <select id="log-therapy-sub-therapy">
+                                    <option value="">Select Option...</option>
+                                    <option value="AFO - unilateral">AFO - unilateral</option>
+                                    <option value="AFO - unilateral - with Otto Bock PP">AFO - unilateral - with Otto Bock PP</option>
+                                    <option value="AFO - bilateral">AFO - bilateral</option>
+                                    <option value="AFO - bilateral - with Otto Bock PP">AFO - bilateral - with Otto Bock PP</option>
+                                    <option value="KAFO - unilateral without joints">KAFO - unilateral without joints</option>
+                                    <option value="KAFO - bilateral without joints">KAFO - bilateral without joints</option>
+                                    <option value="KAFO - unilateral with joints">KAFO - unilateral with joints</option>
+                                    <option value="KAFO - unilateral - with OttoBock">KAFO - unilateral - with OttoBock</option>
+                                    <option value="KAFO - bilateral with joints">KAFO - bilateral with joints</option>
+                                    <option value="KAFO - unilateral with otto bock">KAFO - unilateral with otto bock</option>
+                                    <option value="SMO - Unilateral">SMO - Unilateral</option>
+                                    <option value="SMO - Bilateral">SMO - Bilateral</option>
+                                    <option value="BK">BK</option>
+                                    <option value="AK">AK</option>
+                                    <option value="Others">Others</option>
+                                </select>
+                            </div>
+                            <div class="input-group full-width">
+                                <label>Therapist</label>
+                                <select id="log-therapy-therapist">
+                                    <option value="">Select Therapist...</option>
+                                    <option value="Dr. Alen Sam">Dr. Alen Sam</option>
+                                    <option value="Dr. Belsi Felix">Dr. Belsi Felix</option>
+                                    <option value="Mr. Fredly">Mr. Fredly</option>
+                                    <option value="Ms. Jeya Nadhini">Ms. Jeya Nadhini</option>
+                                    <option value="Ms. Anisha">Ms. Anisha</option>
+                                    <option value="Dr. Vijayasanthi">Dr. Vijayasanthi</option>
+                                    <option value="Mr. Justin Vens">Mr. Justin Vens</option>
+                                    <option value="Mr. Natharajan">Mr. Natharajan</option>
+                                    <option value="Mr. Jenish">Mr. Jenish</option>
+                                    <option value="Dr. Mohandoss">Dr. Mohandoss</option>
+                                    <option value="Mr. Vimal">Mr. Vimal</option>
+                                    <option value="Ms. Vidhya">Ms. Vidhya</option>
+                                    <option value="Ms. Lega">Ms. Lega</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>Fee (₹)</label>
+                                <input type="number" id="log-therapy-fee" value="0">
+                            </div>
+                            <div class="input-group">
+                                <label>Concession (₹)</label>
+                                <input type="number" id="log-therapy-concession" value="0">
+                            </div>
+                            <div class="input-group">
+                                <label>To Be Paid (₹)</label>
+                                <input type="number" id="log-therapy-to-be-paid" value="0" readonly style="background: #f3f4f6;">
+                            </div>
+                            <div class="input-group">
+                                <label>Amount Paid (₹)</label>
+                                <input type="number" id="log-therapy-paid" value="0">
+                            </div>
+                            <div class="input-group full-width">
+                                <label>Balance (₹)</label>
+                                <input type="number" id="log-therapy-balance" value="0" readonly style="background: #f3f4f6; color: var(--danger); font-weight: bold;">
+                            </div>
+                            <div class="input-group full-width">
+                                <label>Time Slot</label>
+                                <select id="log-therapy-time-slot" required>
+                                    <option value="">Select Time Slot...</option>
+                                    <option value="10.00 - 10.30">10.00 - 10.30</option>
+                                    <option value="10.30 - 11.00">10.30 - 11.00</option>
+                                    <option value="11.00 - 11.30">11.00 - 11.30</option>
+                                    <option value="11.30 - 12.00">11.30 - 12.00</option>
+                                    <option value="12.00 - 12.30">12.00 - 12.30</option>
+                                    <option value="12.30 - 1.00">12.30 - 1.00</option>
+                                    <option value="1.00 - 1.30">1.00 - 1.30</option>
+                                    <option value="2.00 - 2.30">2.00 - 2.30</option>
+                                    <option value="2.30 - 3.00">2.30 - 3.00</option>
+                                    <option value="3.00 - 3.30">3.00 - 3.30</option>
+                                    <option value="3.30 - 4.00">3.30 - 4.00</option>
+                                    <option value="4.00 - 5.00">4.00 - 5.00</option>
+                                </select>
+                            </div>
+                            <div class="input-group full-width">
+                                <label>Notes</label>
+                                <textarea id="log-therapy-notes" rows="2" placeholder="Optional notes..."></textarea>
+                            </div>
+                        </div>
+                        <div class="form-actions" style="margin-top: 20px;">
+                            <button type="submit" class="btn-primary">Save Session</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Modal for Editing Schedule Block -->
+            <div id="schedule-modal" class="modal hidden">
+                <div class="modal-content" style="max-width: 400px; max-height: unset; overflow: visible;">
+                    <span class="close-modal">&times;</span>
+                    <h3>Schedule Therapy</h3>
+                    <p id="schedule-modal-subtitle" style="color: var(--text-light); margin-bottom: 15px; font-size: 0.9rem;"></p>
+                    <form id="schedule-form">
+                        <input type="hidden" id="schedule-child-id">
+                        <input type="hidden" id="schedule-time-slot">
+                        <div class="form-grid">
+                            <div class="input-group full-width">
+                                <label>Therapy Type</label>
+                                <select id="schedule-therapy-type" required>
+                                    <option value="">Select...</option>
+                                    <!-- Options will be cloned from log-therapy-type -->
+                                </select>
+                            </div>
+                            <div class="input-group full-width">
+                                <label>Therapist</label>
+                                <select id="schedule-therapist">
+                                    <option value="">Select Therapist...</option>
+                                    <!-- Options populated dynamically -->
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-actions" style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
+                            <button type="button" id="btn-delete-schedule" class="btn-secondary" style="color: var(--danger); border-color: var(--danger); display: none;">Remove</button>
+                            <button type="submit" class="btn-primary">Save</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+
+            <!-- Assessment Panel Overlay (fullscreen) -->
+            <div id="assessment-panel" class="assessment-panel hidden">
+                <div class="ap-header">
+                    <button id="btn-ap-back" class="ap-back-btn">← Back</button>
+                    <h2 id="ap-title">New Assessment</h2>
+                    <button id="btn-ap-close" class="ap-close-btn">✕</button>
+                </div>
+
+                <!-- Step 1: Type Picker -->
+                <div id="ap-type-picker">
+                    <p class="ap-subtitle">Select the type of assessment to fill out</p>
+                    <div class="ap-type-grid">
+                        <div class="ap-type-card" data-form-id="rapid-assessment" data-form-name="Rapid Assessment">
+                            <span class="ap-type-icon">⚡</span>
+                            <strong>Rapid Assessment</strong>
+                            <p>Initial quick evaluation of the child</p>
+                        </div>
+                        <div class="ap-type-card" data-form-id="child-development" data-form-name="Child Development">
+                            <span class="ap-type-icon">👶</span>
+                            <strong>Child Development</strong>
+                            <p>Comprehensive developmental history &amp; profile</p>
+                        </div>
+                        <div class="ap-type-card" data-form-id="physiotherapy" data-form-name="Physiotherapy">
+                            <span class="ap-type-icon">💪</span>
+                            <strong>Physiotherapy</strong>
+                            <p>Physical and motor function evaluation</p>
+                        </div>
+                        <div class="ap-type-card" data-form-id="speech" data-form-name="Speech Assessment">
+                            <span class="ap-type-icon">🗣️</span>
+                            <strong>Speech Assessment</strong>
+                            <p>Articulation, voice and intelligibility</p>
+                        </div>
+                        <div class="ap-type-card" data-form-id="progress-review" data-form-name="Progress Review">
+                            <span class="ap-type-icon">📈</span>
+                            <strong>Progress Review</strong>
+                            <p>Quarterly goal tracking &amp; achievement</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2: Form Container (form section moved here by JS) -->
+                <div id="ap-form-container" class="hidden"></div>
+            </div>
+
+        </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>
