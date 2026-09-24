@@ -1753,6 +1753,13 @@ document.addEventListener('DOMContentLoaded', () => {
         scheduleModal.classList.add('show');
     });
 
+    scheduleModal?.querySelector('.close-modal')?.addEventListener('click', () => {
+        scheduleModal.classList.remove('show');
+    });
+    window.addEventListener('click', e => {
+        if (e.target === scheduleModal) scheduleModal.classList.remove('show');
+    });
+
     if (scheduleForm) {
         scheduleForm.addEventListener('submit', async (e) => {
             e.preventDefault();
