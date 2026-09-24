@@ -110,13 +110,13 @@ app.post('/api/children', async (req, res) => {
 app.get('/api/children', async (req, res) => {
     const { search } = req.query;
     try {
-        let sql = \`SELECT * FROM children\`;
+        let sql = `SELECT * FROM children`;
         let params = [];
         if (search) {
-            sql += \` WHERE name ILIKE $1\`;
-            params.push(\`%\${search}%\`);
+            sql += ` WHERE name ILIKE $1`;
+            params.push(`%${search}%`);
         }
-        sql += \` ORDER BY created_at DESC\`;
+        sql += ` ORDER BY created_at DESC`;
 
         const childrenResult = await pool.query(sql, params);
         const children = childrenResult.rows;
@@ -126,10 +126,10 @@ app.get('/api/children', async (req, res) => {
         const childIds = children.map(c => c.id);
         
         // Construct IN clause dynamically
-        const placeholders = childIds.map((_, i) => \`$\${i + 1}\`).join(',');
+        const placeholders = childIds.map((_, i) => `$${i + 1}`).join(',');
         
         const assessmentsResult = await pool.query(
-            \`SELECT id, child_id, form_type, created_at FROM assessments WHERE child_id IN (\${placeholders}) ORDER BY created_at DESC\`,
+            `SELECT id, child_id, form_type, created_at FROM assessments WHERE child_id IN (${placeholders}) ORDER BY created_at DESC`,
             childIds
         );
         
@@ -150,11 +150,11 @@ app.get('/api/children', async (req, res) => {
 
 app.get('/api/children/:id', async (req, res) => {
     try {
-        const childResult = await pool.query(\`SELECT * FROM children WHERE id = $1\`, [req.params.id]);
+        const childResult = await pool.query(`SELECT * FROM children WHERE id = $1`, [req.params.id]);
         if (childResult.rows.length === 0) return res.status(404).json({ error: 'Child not found' });
         
         const child = childResult.rows[0];
-        const assessmentsResult = await pool.query(\`SELECT * FROM assessments WHERE child_id = $1 ORDER BY created_at DESC\`, [req.params.id]);
+        const assessmentsResult = await pool.query(`SELECT * FROM assessments WHERE child_id = $1 ORDER BY created_at DESC`, [req.params.id]);
         
         const assessments = assessmentsResult.rows.map(a => {
             try { a.data = JSON.parse(a.data); } catch(e) {}
@@ -172,8 +172,8 @@ app.delete('/api/children/:id', async (req, res) => {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
-        await client.query(\`DELETE FROM assessments WHERE child_id = $1\`, [req.params.id]);
-        const result = await client.query(\`DELETE FROM children WHERE id = $1\`, [req.params.id]);
+        await client.query(`DELETE FROM assessments WHERE child_id = $1`, [req.params.id]);
+        const result = await client.query(`DELETE FROM children WHERE id = $1`, [req.params.id]);
         
         if (result.rowCount === 0) {
             await client.query('ROLLBACK');
@@ -199,7 +199,7 @@ app.post('/api/assessments', async (req, res) => {
 
     try {
         const result = await pool.query(
-            \`INSERT INTO assessments (child_id, child_name, form_type, data) VALUES ($1, $2, $3, $4) RETURNING id\`,
+            `INSERT INTO assessments (child_id, child_name, form_type, data) VALUES ($1, $2, $3, $4) RETURNING id`,
             [child_id || null, child_name, form_type, JSON.stringify(data)]
         );
         res.status(201).json({ message: 'Assessment saved successfully', id: result.rows[0].id });
@@ -212,13 +212,13 @@ app.post('/api/assessments', async (req, res) => {
 app.get('/api/assessments', async (req, res) => {
     const { search } = req.query;
     try {
-        let sql = \`SELECT id, child_id, child_name, form_type, created_at FROM assessments\`;
+        let sql = `SELECT id, child_id, child_name, form_type, created_at FROM assessments`;
         let params = [];
         if (search) {
-            sql += \` WHERE child_name ILIKE $1\`;
-            params.push(\`%\${search}%\`);
+            sql += ` WHERE child_name ILIKE $1`;
+            params.push(`%${search}%`);
         }
-        sql += \` ORDER BY created_at DESC\`;
+        sql += ` ORDER BY created_at DESC`;
 
         const result = await pool.query(sql, params);
         res.json(result.rows);
@@ -230,7 +230,7 @@ app.get('/api/assessments', async (req, res) => {
 
 app.get('/api/assessments/:id', async (req, res) => {
     try {
-        const result = await pool.query(\`SELECT * FROM assessments WHERE id = $1\`, [req.params.id]);
+        const result = await pool.query(`SELECT * FROM assessments WHERE id = $1`, [req.params.id]);
         if (result.rows.length === 0) return res.status(404).json({ error: 'Assessment not found' });
         
         const row = result.rows[0];
@@ -248,7 +248,7 @@ app.put('/api/assessments/:id', async (req, res) => {
 
     try {
         const result = await pool.query(
-            \`UPDATE assessments SET data = $1 WHERE id = $2\`,
+            `UPDATE assessments SET data = $1 WHERE id = $2`,
             [JSON.stringify(data), req.params.id]
         );
         if (result.rowCount === 0) return res.status(404).json({ error: 'Assessment not found' });
@@ -261,7 +261,7 @@ app.put('/api/assessments/:id', async (req, res) => {
 
 app.delete('/api/assessments/:id', async (req, res) => {
     try {
-        const result = await pool.query(\`DELETE FROM assessments WHERE id = $1\`, [req.params.id]);
+        const result = await pool.query(`DELETE FROM assessments WHERE id = $1`, [req.params.id]);
         if (result.rowCount === 0) return res.status(404).json({ error: 'Assessment not found' });
         res.json({ message: 'Assessment deleted successfully' });
     } catch (err) {
@@ -278,9 +278,9 @@ app.post('/api/attendance', async (req, res) => {
 
     try {
         const result = await pool.query(
-            \`INSERT INTO therapy_attendance (
+            `INSERT INTO therapy_attendance (
                 child_id, therapy_type, date, time_slot, therapist_name, sub_therapy, fee, concession, to_be_paid, paid, balance, notes
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id\`,
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id`,
             [
                 child_id, therapy_type, date, time_slot || null, therapist_name || null, sub_therapy || null,
                 fee || 0, concession || 0, to_be_paid || 0, paid || 0, balance || 0, notes || null
@@ -296,29 +296,29 @@ app.post('/api/attendance', async (req, res) => {
 app.get('/api/reports/attendance', async (req, res) => {
     const { start_date, end_date, child_id } = req.query;
     try {
-        let sql = \`
+        let sql = `
             SELECT t.*, c.name as child_name 
             FROM therapy_attendance t 
             JOIN children c ON t.child_id = c.id 
             WHERE 1=1
-        \`;
+        `;
         const params = [];
         let paramIndex = 1;
 
         if (start_date) {
-            sql += \` AND t.date >= $\${paramIndex++}\`;
+            sql += ` AND t.date >= $${paramIndex++}`;
             params.push(start_date);
         }
         if (end_date) {
-            sql += \` AND t.date <= $\${paramIndex++}\`;
+            sql += ` AND t.date <= $${paramIndex++}`;
             params.push(end_date);
         }
         if (child_id) {
-            sql += \` AND t.child_id = $\${paramIndex++}\`;
+            sql += ` AND t.child_id = $${paramIndex++}`;
             params.push(child_id);
         }
 
-        sql += \` ORDER BY t.date DESC\`;
+        sql += ` ORDER BY t.date DESC`;
         const result = await pool.query(sql, params);
         res.json(result.rows);
     } catch (err) {
@@ -331,7 +331,7 @@ app.put('/api/reports/attendance/:id', async (req, res) => {
     const { fee, concession, paid, balance } = req.body;
     try {
         const result = await pool.query(
-            \`UPDATE therapy_attendance SET fee = $1, concession = $2, paid = $3, balance = $4 WHERE id = $5\`,
+            `UPDATE therapy_attendance SET fee = $1, concession = $2, paid = $3, balance = $4 WHERE id = $5`,
             [fee, concession, paid, balance, req.params.id]
         );
         res.json({ success: true, changes: result.rowCount });
@@ -343,7 +343,7 @@ app.put('/api/reports/attendance/:id', async (req, res) => {
 
 app.delete('/api/reports/attendance/:id', async (req, res) => {
     try {
-        const result = await pool.query(\`DELETE FROM therapy_attendance WHERE id = $1\`, [req.params.id]);
+        const result = await pool.query(`DELETE FROM therapy_attendance WHERE id = $1`, [req.params.id]);
         res.json({ success: true, changes: result.rowCount });
     } catch (err) {
         console.error(err);
@@ -355,7 +355,7 @@ app.delete('/api/reports/attendance/:id', async (req, res) => {
 
 app.get('/api/therapists', async (req, res) => {
     try {
-        const result = await pool.query(\`SELECT * FROM therapists ORDER BY name ASC\`);
+        const result = await pool.query(`SELECT * FROM therapists ORDER BY name ASC`);
         res.json(result.rows);
     } catch (err) {
         console.error(err);
@@ -369,7 +369,7 @@ app.post('/api/therapists', async (req, res) => {
     
     try {
         const result = await pool.query(
-            \`INSERT INTO therapists (name, therapy_type, fee) VALUES ($1, $2, $3) RETURNING id, name, therapy_type, fee\`,
+            `INSERT INTO therapists (name, therapy_type, fee) VALUES ($1, $2, $3) RETURNING id, name, therapy_type, fee`,
             [name, therapy_type, fee || 0]
         );
         res.status(201).json(result.rows[0]);
@@ -381,7 +381,7 @@ app.post('/api/therapists', async (req, res) => {
 
 app.delete('/api/therapists/:id', async (req, res) => {
     try {
-        await pool.query(\`DELETE FROM therapists WHERE id = $1\`, [req.params.id]);
+        await pool.query(`DELETE FROM therapists WHERE id = $1`, [req.params.id]);
         res.json({ message: 'Therapist deleted' });
     } catch (err) {
         console.error(err);
@@ -396,12 +396,12 @@ app.get('/api/schedules', async (req, res) => {
     if (!date) return res.status(400).json({ error: 'Date is required' });
     
     try {
-        const result = await pool.query(\`
+        const result = await pool.query(`
             SELECT s.*, c.name as child_name 
             FROM schedules s 
             JOIN children c ON s.child_id = c.id 
             WHERE s.date = $1
-        \`, [date]);
+        `, [date]);
         res.json(result.rows);
     } catch (err) {
         console.error(err);
@@ -415,20 +415,20 @@ app.post('/api/schedules', async (req, res) => {
     
     try {
         const checkResult = await pool.query(
-            \`SELECT id FROM schedules WHERE date = $1 AND child_id = $2 AND time_slot = $3\`,
+            `SELECT id FROM schedules WHERE date = $1 AND child_id = $2 AND time_slot = $3`,
             [date, child_id, time_slot]
         );
         
         if (checkResult.rows.length > 0) {
             const rowId = checkResult.rows[0].id;
             await pool.query(
-                \`UPDATE schedules SET therapy_type = $1, therapist_name = $2 WHERE id = $3\`,
+                `UPDATE schedules SET therapy_type = $1, therapist_name = $2 WHERE id = $3`,
                 [therapy_type, therapist_name, rowId]
             );
             res.json({ id: rowId, date, child_id, time_slot, therapy_type, therapist_name });
         } else {
             const insertResult = await pool.query(
-                \`INSERT INTO schedules (date, child_id, time_slot, therapy_type, therapist_name) VALUES ($1, $2, $3, $4, $5) RETURNING id\`,
+                `INSERT INTO schedules (date, child_id, time_slot, therapy_type, therapist_name) VALUES ($1, $2, $3, $4, $5) RETURNING id`,
                 [date, child_id, time_slot, therapy_type, therapist_name]
             );
             res.status(201).json({ id: insertResult.rows[0].id, date, child_id, time_slot, therapy_type, therapist_name });
@@ -441,7 +441,7 @@ app.post('/api/schedules', async (req, res) => {
 
 app.delete('/api/schedules/:id', async (req, res) => {
     try {
-        await pool.query(\`DELETE FROM schedules WHERE id = $1\`, [req.params.id]);
+        await pool.query(`DELETE FROM schedules WHERE id = $1`, [req.params.id]);
         res.json({ message: 'Schedule deleted' });
     } catch (err) {
         console.error(err);
@@ -455,6 +455,6 @@ module.exports = app;
 // Optionally start server if run directly (useful for local testing)
 if (require.main === module) {
     app.listen(PORT, () => {
-        console.log(\`Server is running on http://localhost:\${PORT}\`);
+        console.log(`Server is running on http://localhost:${PORT}`);
     });
 }
