@@ -89,6 +89,71 @@ pool.connect((err, client, release) => {
     }
 });
 
+// ─── DB Init API ─────────────────────────────────────────────────────────────
+app.get('/api/init-db', async (req, res) => {
+    const initSql = `
+        CREATE TABLE IF NOT EXISTS children (
+            id SERIAL PRIMARY KEY,
+            name TEXT NOT NULL,
+            dob TEXT,
+            sex TEXT,
+            mobile TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS assessments (
+            id SERIAL PRIMARY KEY,
+            child_id INTEGER REFERENCES children(id) ON DELETE CASCADE,
+            child_name TEXT NOT NULL,
+            form_type TEXT NOT NULL,
+            data TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS therapy_attendance (
+            id SERIAL PRIMARY KEY,
+            child_id INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+            therapy_type TEXT NOT NULL,
+            date TEXT NOT NULL,
+            time_slot TEXT,
+            therapist_name TEXT,
+            sub_therapy TEXT,
+            fee REAL,
+            concession REAL,
+            to_be_paid REAL,
+            paid REAL,
+            balance REAL,
+            notes TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS therapists (
+            id SERIAL PRIMARY KEY,
+            name TEXT NOT NULL,
+            therapy_type TEXT NOT NULL,
+            fee REAL NOT NULL DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS schedules (
+            id SERIAL PRIMARY KEY,
+            date TEXT NOT NULL,
+            child_id INTEGER NOT NULL REFERENCES children(id) ON DELETE CASCADE,
+            time_slot TEXT NOT NULL,
+            therapy_type TEXT NOT NULL,
+            therapist_name TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+    `;
+    try {
+        await pool.query(initSql);
+        res.json({ message: 'Database tables initialized successfully!' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // ─── Children API ─────────────────────────────────────────────────────────────
 
 app.post('/api/children', async (req, res) => {
@@ -103,7 +168,7 @@ app.post('/api/children', async (req, res) => {
         res.status(201).json(result.rows[0]);
     } catch (err) {
         console.error(err);
-        res.status(500).json({ error: 'Failed to create child profile' });
+        res.status(500).json({ error: 'Failed to create child profile: ' + err.message });
     }
 });
 
