@@ -1236,6 +1236,11 @@ button {
     }
     .schedule-cell {
         padding: 1px !important;
+        word-break: break-all !important;
+        overflow: hidden;
+    }
+    .schedule-cell .therapist-name {
+        font-size: 5pt !important;
     }
     .schedule-grid-container {
         border: none;
