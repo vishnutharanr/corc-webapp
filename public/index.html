@@ -1817,7 +1817,27 @@
                     <p>View daily therapy summaries and generate reports.</p>
                 </div>
                 
-                <div class="reports-toolbar" style="display: flex; gap: 15px; margin-bottom: 20px; align-items: flex-end;">
+                <!-- Dashboard Metrics -->
+                <div class="metrics-dashboard" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                    <div class="metric-card" style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center;">
+                        <h4 style="margin: 0; color: var(--text-light); font-size: 0.9rem;">Total Sessions</h4>
+                        <div id="metric-total-sessions" style="font-size: 1.8rem; font-weight: bold; color: var(--primary); margin-top: 5px;">0</div>
+                    </div>
+                    <div class="metric-card" style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center;">
+                        <h4 style="margin: 0; color: var(--text-light); font-size: 0.9rem;">Attendance Rate</h4>
+                        <div id="metric-attendance-rate" style="font-size: 1.8rem; font-weight: bold; color: var(--success); margin-top: 5px;">0%</div>
+                    </div>
+                    <div class="metric-card" style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center;">
+                        <h4 style="margin: 0; color: var(--text-light); font-size: 0.9rem;">Revenue Collected</h4>
+                        <div id="metric-revenue" style="font-size: 1.8rem; font-weight: bold; color: var(--text-dark); margin-top: 5px;">₹0</div>
+                    </div>
+                    <div class="metric-card" style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center;">
+                        <h4 style="margin: 0; color: var(--text-light); font-size: 0.9rem;">Pending Balances</h4>
+                        <div id="metric-balance" style="font-size: 1.8rem; font-weight: bold; color: var(--danger); margin-top: 5px;">₹0</div>
+                    </div>
+                </div>
+                
+                <div class="reports-toolbar" style="display: flex; gap: 15px; margin-bottom: 20px; align-items: flex-end; flex-wrap: wrap;">
                     <div class="input-group" style="margin-bottom: 0;">
                         <label>Start Date</label>
                         <input type="date" id="report-start-date">
@@ -1826,14 +1846,25 @@
                         <label>End Date</label>
                         <input type="date" id="report-end-date">
                     </div>
-                    <div class="input-group" style="margin-bottom: 0; min-width: 200px;">
+                    <div class="input-group" style="margin-bottom: 0; min-width: 150px;">
                         <label>Child</label>
                         <select id="report-child-select">
                             <option value="">All Children</option>
                         </select>
                     </div>
+                    <div class="input-group" style="margin-bottom: 0; min-width: 150px;">
+                        <label>Therapist</label>
+                        <select id="report-therapist-select">
+                            <option value="">All Therapists</option>
+                        </select>
+                    </div>
+                    <div class="input-group" style="margin-bottom: 0; display: flex; align-items: center; padding-bottom: 8px;">
+                        <input type="checkbox" id="report-pending-balance" style="margin-right: 5px;">
+                        <label for="report-pending-balance" style="margin: 0; font-size: 0.9rem; cursor: pointer;">Pending Balances</label>
+                    </div>
                     <button id="btn-generate-report" class="btn-primary">Generate Report</button>
-                    <button id="btn-print-receipt" class="btn-secondary" style="margin-left: auto;">🖨 Print Receipt</button>
+                    <button id="btn-export-csv" class="btn-secondary" style="margin-left: auto;">📥 Export CSV</button>
+                    <button id="btn-print-receipt" class="btn-secondary">🖨 Print Receipt</button>
                 </div>
 
 
@@ -1855,6 +1886,7 @@
                                 <th>Time Slot</th>
                                 <th>Therapy</th>
                                 <th>Therapist</th>
+                                <th>Status</th>
                                 <th>Fee (₹)</th>
                                 <th>Concession (₹)</th>
                                 <th>Paid (₹)</th>
@@ -1863,7 +1895,7 @@
                             </tr>
                         </thead>
                         <tbody id="reports-table-body">
-                            <tr><td colspan="10" style="text-align: center;">Generate a report to see data</td></tr>
+                            <tr><td colspan="11" style="text-align: center;">Generate a report to see data</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -1944,6 +1976,15 @@
                             <div class="input-group full-width">
                                 <label>Date</label>
                                 <input type="date" id="log-therapy-date" required>
+                            </div>
+                            <div class="input-group full-width">
+                                <label>Status</label>
+                                <select id="log-therapy-status" required>
+                                    <option value="Present">Present</option>
+                                    <option value="Absent">Absent / No-Show</option>
+                                    <option value="Cancelled by Parent">Cancelled by Parent</option>
+                                    <option value="Cancelled by Clinic">Cancelled by Clinic</option>
+                                </select>
                             </div>
                             <div class="input-group full-width">
                                 <label>Therapy Type</label>

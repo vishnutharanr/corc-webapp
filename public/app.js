@@ -1046,6 +1046,7 @@ document.addEventListener('DOMContentLoaded', () => {
         toBePaidInput.value = 0;
         paidInput.value = 0;
         balanceInput.value = 0;
+        document.getElementById('log-therapy-status').value = 'Present';
         document.getElementById('log-therapy-time-slot').value = '';
         document.getElementById('log-therapy-notes').value = '';
         logModal.classList.add('show');
@@ -1066,7 +1067,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 to_be_paid: parseFloat(toBePaidInput.value) || 0,
                 paid: parseFloat(paidInput.value) || 0,
                 balance: parseFloat(balanceInput.value) || 0,
-                notes: document.getElementById('log-therapy-notes').value
+                notes: document.getElementById('log-therapy-notes').value,
+                status: document.getElementById('log-therapy-status').value
             };
             try {
                 const resp = await fetch('/api/attendance', {
@@ -1120,9 +1122,43 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (err) { console.error('Failed to load children for report filter', err); }
     }
 
+    async function populateReportTherapistSelect() {
+        const select = document.getElementById('report-therapist-select');
+        if (!select) return;
+
+        const currentActive = select.value;
+
+        try {
+            const therapists = await (await fetch('/api/therapists')).json();
+            
+            select.innerHTML = '<option value="">All Therapists</option>';
+            const uniqueNames = [...new Set(therapists.map(t => t.name))];
+            uniqueNames.forEach(name => {
+                const opt = document.createElement('option');
+                opt.value = name;
+                opt.textContent = name;
+                select.appendChild(opt);
+            });
+
+            if (Array.from(select.options).some(opt => opt.value === currentActive)) {
+                select.value = currentActive;
+            } else {
+                select.value = '';
+            }
+        } catch (err) { console.error('Failed to load therapists for report filter', err); }
+    }
+
     const reportChildSelect = document.getElementById('report-child-select');
     if (reportChildSelect) {
         reportChildSelect.addEventListener('change', fetchReports);
+    }
+    const reportTherapistSelect = document.getElementById('report-therapist-select');
+    if (reportTherapistSelect) {
+        reportTherapistSelect.addEventListener('change', fetchReports);
+    }
+    const reportPendingBalance = document.getElementById('report-pending-balance');
+    if (reportPendingBalance) {
+        reportPendingBalance.addEventListener('change', fetchReports);
     }
 
     const reportsTableBody = document.getElementById('reports-table-body');
@@ -1221,6 +1257,7 @@ document.addEventListener('DOMContentLoaded', () => {
         item.addEventListener('click', () => {
             if (item.getAttribute('data-target') === 'reports') {
                 populateReportChildSelect();
+                populateReportTherapistSelect();
                 // Optionally auto-fetch recent reports
                 fetchReports();
             }
@@ -1248,16 +1285,36 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await resp.json();
             
             if (data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="10" style="text-align: center;">No therapy records found for this period.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="11" style="text-align: center;">No therapy records found for this period.</td></tr>';
+                resetDashboardMetrics();
+                return;
+            }
+            
+            // Client-side filtering for Therapist and Pending Balance
+            const therapistFilter = document.getElementById('report-therapist-select')?.value;
+            const pendingBalanceOnly = document.getElementById('report-pending-balance')?.checked;
+            
+            const filteredData = data.filter(row => {
+                let match = true;
+                if (therapistFilter && row.therapist_name !== therapistFilter) match = false;
+                if (pendingBalanceOnly && (row.balance || 0) <= 0) match = false;
+                return match;
+            });
+
+            if (filteredData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="11" style="text-align: center;">No matching records found.</td></tr>';
+                resetDashboardMetrics();
                 return;
             }
 
             let sumFee = 0, sumConcession = 0, sumPaid = 0, sumBalance = 0;
+            let totalSessions = filteredData.length;
+            let presentCount = 0;
             let html = '';
 
             // Group data by child
             const grouped = {};
-            data.forEach(row => {
+            filteredData.forEach(row => {
                 if (!grouped[row.child_id]) {
                     grouped[row.child_id] = { 
                         name: row.child_name, 
@@ -1270,6 +1327,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 grouped[row.child_id].sumConcession += row.concession || 0;
                 grouped[row.child_id].sumPaid += row.paid || 0;
                 grouped[row.child_id].sumBalance += row.balance || 0;
+                
+                if (row.status === 'Present') presentCount++;
             });
 
             Object.values(grouped).forEach((group, index) => {
@@ -1280,7 +1339,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 // Header row
                 html += `<tr class="accordion-header" data-child-index="${index}" style="cursor: pointer; background: #f8fafc;">
-                    <td colspan="5"><strong><span class="toggle-icon">▼</span> ${group.name}</strong> <span style="color: #64748b; font-size: 0.9em; margin-left: 10px;">(${group.rows.length} session${group.rows.length > 1 ? 's' : ''})</span></td>
+                    <td colspan="6"><strong><span class="toggle-icon">▼</span> ${group.name}</strong> <span style="color: #64748b; font-size: 0.9em; margin-left: 10px;">(${group.rows.length} session${group.rows.length > 1 ? 's' : ''})</span></td>
                     <td class="header-fee"><strong>${group.sumFee}</strong></td>
                     <td class="header-concession"><strong>${group.sumConcession}</strong></td>
                     <td class="header-paid"><strong>${group.sumPaid}</strong></td>
@@ -1300,17 +1359,22 @@ document.addEventListener('DOMContentLoaded', () => {
                         <td>${row.time_slot || '-'}</td>
                         <td>${therapyDisplay}</td>
                         <td>${row.therapist_name || '-'}</td>
+                        <td>
+                            <span style="display:inline-block; padding:2px 6px; border-radius:4px; font-size:0.8rem; background:${row.status==='Present'?'#dcfce7':row.status.includes('Cancelled')?'#fef08a':'#fee2e2'}; color:${row.status==='Present'?'#166534':row.status.includes('Cancelled')?'#854d0e':'#991b1b'};">
+                                ${row.status || 'Present'}
+                            </span>
+                        </td>
                         <td><input type="number" class="edit-attendance" data-field="fee" value="${row.fee || 0}" style="width: 70px; padding: 2px 5px; border: 1px solid #ccc; border-radius: 4px;"></td>
                         <td><input type="number" class="edit-attendance" data-field="concession" value="${row.concession || 0}" style="width: 70px; padding: 2px 5px; border: 1px solid #ccc; border-radius: 4px;"></td>
                         <td><input type="number" class="edit-attendance" data-field="paid" value="${row.paid || 0}" style="width: 70px; padding: 2px 5px; border: 1px solid #ccc; border-radius: 4px;"></td>
-                        <td><input type="number" class="edit-attendance" data-field="balance" value="${row.balance || 0}" style="width: 70px; padding: 2px 5px; border: 1px solid #ccc; border-radius: 4px;"></td>
+                        <td><input type="number" class="edit-attendance" data-field="balance" value="${row.balance || 0}" style="width: 70px; padding: 2px 5px; border: 1px solid #ccc; border-radius: 4px; ${row.balance > 0 ? 'border-color:var(--danger);color:var(--danger);font-weight:bold;background:#fef2f2;' : ''}"></td>
                         <td style="text-align: center;"><button type="button" class="btn-delete-attendance" data-id="${row.id}" style="background: none; border: none; color: var(--danger); cursor: pointer; font-size: 1.1rem;" title="Delete Session">🗑️</button></td>
                     </tr>`;
                 });
 
                 // Child-specific Totals row at the bottom of their folder
                 html += `<tr class="accordion-content accordion-child-${index} footer-row" style="display: none; background: #f8fafc; font-weight: bold;">
-                    <td colspan="5" style="text-align: right;">TOTALS:</td>
+                    <td colspan="6" style="text-align: right;">TOTALS:</td>
                     <td class="footer-fee">${group.sumFee}</td>
                     <td class="footer-concession">${group.sumConcession}</td>
                     <td class="footer-paid">${group.sumPaid}</td>
@@ -1339,12 +1403,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             });
 
-            updateAttendanceGraph(data);
-
+            updateAttendanceGraph(filteredData);
+            
+            // Update Dashboard Metrics
+            document.getElementById('metric-total-sessions').textContent = totalSessions;
+            const attRate = totalSessions > 0 ? Math.round((presentCount / totalSessions) * 100) : 0;
+            const attRateEl = document.getElementById('metric-attendance-rate');
+            attRateEl.textContent = attRate + '%';
+            attRateEl.style.color = attRate >= 80 ? 'var(--success)' : (attRate >= 50 ? 'var(--warning)' : 'var(--danger)');
+            document.getElementById('metric-revenue').textContent = '₹' + sumPaid;
+            document.getElementById('metric-balance').textContent = '₹' + sumBalance;
+            window.currentReportData = filteredData; // Store for CSV export
 
         } catch (err) {
-            tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: red;">Failed to load reports.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; color: red;">Failed to load reports.</td></tr>';
+            resetDashboardMetrics();
         }
+    }
+    
+    function resetDashboardMetrics() {
+        document.getElementById('metric-total-sessions').textContent = '0';
+        document.getElementById('metric-attendance-rate').textContent = '0%';
+        document.getElementById('metric-revenue').textContent = '₹0';
+        document.getElementById('metric-balance').textContent = '₹0';
+        window.currentReportData = [];
     }
 
     // View Toggles
@@ -1478,6 +1560,40 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnPrint) {
         btnPrint.addEventListener('click', () => {
             window.print();
+        });
+    }
+    
+    const btnExportCSV = document.getElementById('btn-export-csv');
+    if (btnExportCSV) {
+        btnExportCSV.addEventListener('click', () => {
+            if (!window.currentReportData || window.currentReportData.length === 0) {
+                showToast('No data to export', true);
+                return;
+            }
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "Date,Child Name,Time Slot,Therapy,Therapist,Status,Fee,Concession,Paid,Balance\n";
+            window.currentReportData.forEach(row => {
+                const arr = [
+                    row.date,
+                    `"${row.child_name || ''}"`,
+                    row.time_slot || '',
+                    `"${row.therapy_type || ''}"`,
+                    `"${row.therapist_name || ''}"`,
+                    row.status || 'Present',
+                    row.fee || 0,
+                    row.concession || 0,
+                    row.paid || 0,
+                    row.balance || 0
+                ];
+                csvContent += arr.join(",") + "\n";
+            });
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `therapy_report_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         });
     }
 

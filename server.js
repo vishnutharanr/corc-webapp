@@ -12,9 +12,11 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Database Setup
+const DB_URL = process.env.DATABASE_URL || 'postgresql://postgres.gctpepwprlraxzttnhtd:Pro%40Vision%40123@aws-0-ap-northeast-2.pooler.supabase.com:5432/postgres';
+
 const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false }
+    connectionString: DB_URL,
+    ssl: DB_URL.includes('localhost') ? false : { rejectUnauthorized: false }
 });
 
 pool.connect((err, client, release) => {
@@ -22,7 +24,7 @@ pool.connect((err, client, release) => {
         console.error('Error acquiring client (Make sure DATABASE_URL is set)', err.stack);
     } else {
         console.log('Connected to PostgreSQL database.');
-        
+
         const initSql = `
             CREATE TABLE IF NOT EXISTS children (
                 id SERIAL PRIMARY KEY,
@@ -56,8 +58,11 @@ pool.connect((err, client, release) => {
                 paid REAL,
                 balance REAL,
                 notes TEXT,
+                status TEXT DEFAULT 'Present',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
+
+            ALTER TABLE therapy_attendance ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'Present';
 
             CREATE TABLE IF NOT EXISTS therapists (
                 id SERIAL PRIMARY KEY,
@@ -124,8 +129,11 @@ app.get('/api/init-db', async (req, res) => {
             paid REAL,
             balance REAL,
             notes TEXT,
+            status TEXT DEFAULT 'Present',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
+
+        ALTER TABLE therapy_attendance ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'Present';
 
         CREATE TABLE IF NOT EXISTS therapists (
             id SERIAL PRIMARY KEY,
@@ -189,15 +197,15 @@ app.get('/api/children', async (req, res) => {
         if (children.length === 0) return res.json([]);
 
         const childIds = children.map(c => c.id);
-        
+
         // Construct IN clause dynamically
         const placeholders = childIds.map((_, i) => `$${i + 1}`).join(',');
-        
+
         const assessmentsResult = await pool.query(
             `SELECT id, child_id, form_type, created_at FROM assessments WHERE child_id IN (${placeholders}) ORDER BY created_at DESC`,
             childIds
         );
-        
+
         const assessments = assessmentsResult.rows;
         const aMap = {};
         assessments.forEach(a => {
@@ -217,15 +225,15 @@ app.get('/api/children/:id', async (req, res) => {
     try {
         const childResult = await pool.query(`SELECT * FROM children WHERE id = $1`, [req.params.id]);
         if (childResult.rows.length === 0) return res.status(404).json({ error: 'Child not found' });
-        
+
         const child = childResult.rows[0];
         const assessmentsResult = await pool.query(`SELECT * FROM assessments WHERE child_id = $1 ORDER BY created_at DESC`, [req.params.id]);
-        
+
         const assessments = assessmentsResult.rows.map(a => {
-            try { a.data = JSON.parse(a.data); } catch(e) {}
+            try { a.data = JSON.parse(a.data); } catch (e) { }
             return a;
         });
-        
+
         res.json({ ...child, assessments });
     } catch (err) {
         console.error(err);
@@ -239,12 +247,12 @@ app.delete('/api/children/:id', async (req, res) => {
         await client.query('BEGIN');
         await client.query(`DELETE FROM assessments WHERE child_id = $1`, [req.params.id]);
         const result = await client.query(`DELETE FROM children WHERE id = $1`, [req.params.id]);
-        
+
         if (result.rowCount === 0) {
             await client.query('ROLLBACK');
             return res.status(404).json({ error: 'Child not found' });
         }
-        
+
         await client.query('COMMIT');
         res.json({ message: 'Child profile and assessments deleted successfully' });
     } catch (err) {
@@ -297,9 +305,9 @@ app.get('/api/assessments/:id', async (req, res) => {
     try {
         const result = await pool.query(`SELECT * FROM assessments WHERE id = $1`, [req.params.id]);
         if (result.rows.length === 0) return res.status(404).json({ error: 'Assessment not found' });
-        
+
         const row = result.rows[0];
-        try { row.data = JSON.parse(row.data); } catch (e) {}
+        try { row.data = JSON.parse(row.data); } catch (e) { }
         res.json(row);
     } catch (err) {
         console.error(err);
@@ -338,17 +346,17 @@ app.delete('/api/assessments/:id', async (req, res) => {
 // ─── Therapy Attendance API ─────────────────────────────────────────────────────
 
 app.post('/api/attendance', async (req, res) => {
-    const { child_id, therapy_type, date, time_slot, therapist_name, sub_therapy, fee, concession, to_be_paid, paid, balance, notes } = req.body;
+    const { child_id, therapy_type, date, time_slot, therapist_name, sub_therapy, fee, concession, to_be_paid, paid, balance, notes, status } = req.body;
     if (!child_id || !therapy_type || !date) return res.status(400).json({ error: 'Missing required fields' });
 
     try {
         const result = await pool.query(
             `INSERT INTO therapy_attendance (
-                child_id, therapy_type, date, time_slot, therapist_name, sub_therapy, fee, concession, to_be_paid, paid, balance, notes
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id`,
+                child_id, therapy_type, date, time_slot, therapist_name, sub_therapy, fee, concession, to_be_paid, paid, balance, notes, status
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING id`,
             [
                 child_id, therapy_type, date, time_slot || null, therapist_name || null, sub_therapy || null,
-                fee || 0, concession || 0, to_be_paid || 0, paid || 0, balance || 0, notes || null
+                fee || 0, concession || 0, to_be_paid || 0, paid || 0, balance || 0, notes || null, status || 'Present'
             ]
         );
         res.status(201).json({ message: 'Attendance logged', id: result.rows[0].id });
@@ -431,7 +439,7 @@ app.get('/api/therapists', async (req, res) => {
 app.post('/api/therapists', async (req, res) => {
     const { name, therapy_type, fee } = req.body;
     if (!name || !therapy_type) return res.status(400).json({ error: 'Name and therapy type are required' });
-    
+
     try {
         const result = await pool.query(
             `INSERT INTO therapists (name, therapy_type, fee) VALUES ($1, $2, $3) RETURNING id, name, therapy_type, fee`,
@@ -459,7 +467,7 @@ app.delete('/api/therapists/:id', async (req, res) => {
 app.get('/api/schedules', async (req, res) => {
     const date = req.query.date;
     if (!date) return res.status(400).json({ error: 'Date is required' });
-    
+
     try {
         const result = await pool.query(`
             SELECT s.*, c.name as child_name 
@@ -477,13 +485,13 @@ app.get('/api/schedules', async (req, res) => {
 app.post('/api/schedules', async (req, res) => {
     const { date, child_id, time_slot, therapy_type, therapist_name } = req.body;
     if (!date || !child_id || !time_slot || !therapy_type) return res.status(400).json({ error: 'Missing required fields' });
-    
+
     try {
         const checkResult = await pool.query(
             `SELECT id FROM schedules WHERE date = $1 AND child_id = $2 AND time_slot = $3`,
             [date, child_id, time_slot]
         );
-        
+
         if (checkResult.rows.length > 0) {
             const rowId = checkResult.rows[0].id;
             await pool.query(
