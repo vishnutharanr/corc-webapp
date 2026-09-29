@@ -1195,7 +1195,7 @@ button {
 /* ── Print Styles ────────────────────────────────────────── */
 @media print {
     @page {
-        size: landscape;
+        size: A4 landscape;
         margin: 1cm;
     }
     body * {
