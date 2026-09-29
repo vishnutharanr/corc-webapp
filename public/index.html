@@ -1873,8 +1873,21 @@
                     <button id="btn-view-graph" class="btn-secondary">Graphical View</button>
                 </div>
 
-                <div id="graph-area" style="display: none; padding: 30px; background: white; border: 1px solid #e2e8f0; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); height: 400px; margin-bottom: 20px;">
-                    <canvas id="attendanceChart"></canvas>
+                <div id="graph-area" style="display: none; margin-bottom: 20px;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px;">
+                        <div style="background: white; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0; height: 350px; display: flex; flex-direction: column;">
+                            <h4 style="margin: 0 0 15px 0; color: var(--text-dark); text-align: center;">Sessions per Child</h4>
+                            <div style="flex: 1; position: relative;">
+                                <canvas id="attendanceChart"></canvas>
+                            </div>
+                        </div>
+                        <div style="background: white; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0; height: 350px; display: flex; flex-direction: column;">
+                            <h4 style="margin: 0 0 15px 0; color: var(--text-dark); text-align: center;">Attendance Status Breakdown</h4>
+                            <div style="flex: 1; position: relative;">
+                                <canvas id="statusPieChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div id="print-area">

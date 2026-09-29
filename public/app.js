@@ -1451,9 +1451,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     let attendanceChartInstance = null;
+    let statusPieChartInstance = null;
 
     function updateAttendanceGraph(data) {
         const ctx = document.getElementById('attendanceChart');
+        const pieCtx = document.getElementById('statusPieChart');
         if (!ctx) return;
 
         const childCounts = {};
@@ -1553,6 +1555,60 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
             });
+            
+            if (pieCtx) {
+                if (statusPieChartInstance) {
+                    statusPieChartInstance.destroy();
+                }
+                
+                const statusCounts = { 'Present': 0, 'Absent / No-Show': 0, 'Cancelled by Parent': 0, 'Cancelled by Clinic': 0 };
+                data.forEach(row => {
+                    let s = row.status || 'Present';
+                    if (s === 'Absent') s = 'Absent / No-Show';
+                    if (statusCounts[s] !== undefined) statusCounts[s]++;
+                    else statusCounts[s] = 1;
+                });
+
+                const pieLabels = Object.keys(statusCounts).filter(k => statusCounts[k] > 0);
+                const pieData = pieLabels.map(k => statusCounts[k]);
+
+                const pieColors = pieLabels.map(label => {
+                    if (label === 'Present') return '#22c55e';
+                    if (label.includes('Absent')) return '#ef4444';
+                    return '#f59e0b';
+                });
+
+                statusPieChartInstance = new Chart(pieCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: pieLabels,
+                        datasets: [{
+                            data: pieData,
+                            backgroundColor: pieColors,
+                            borderWidth: 2,
+                            borderColor: '#ffffff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '65%',
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: { padding: 20, usePointStyle: true, font: { family: "'Inter', sans-serif" } }
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                                titleFont: { size: 14, weight: 'bold' },
+                                bodyFont: { size: 13 },
+                                padding: 12,
+                                cornerRadius: 8
+                            }
+                        }
+                    }
+                });
+            }
         }
     }
 
