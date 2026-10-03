@@ -1048,6 +1048,7 @@ document.addEventListener('DOMContentLoaded', () => {
         balanceInput.value = 0;
         document.getElementById('log-therapy-status').value = 'Present';
         document.getElementById('log-therapy-time-slot').value = '';
+        document.getElementById('log-therapy-payment-mode').value = '';
         document.getElementById('log-therapy-notes').value = '';
         logModal.classList.add('show');
     };
@@ -1067,6 +1068,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 to_be_paid: parseFloat(toBePaidInput.value) || 0,
                 paid: parseFloat(paidInput.value) || 0,
                 balance: parseFloat(balanceInput.value) || 0,
+                payment_mode: document.getElementById('log-therapy-payment-mode').value,
                 notes: document.getElementById('log-therapy-notes').value,
                 status: document.getElementById('log-therapy-status').value
             };
@@ -1343,6 +1345,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td class="header-fee"><strong>${group.sumFee}</strong></td>
                     <td class="header-concession"><strong>${group.sumConcession}</strong></td>
                     <td class="header-paid"><strong>${group.sumPaid}</strong></td>
+                    <td></td>
                     <td class="header-balance" style="${group.sumBalance > 0 ? 'color: var(--danger);' : ''}"><strong>${group.sumBalance}</strong></td>
                     <td></td>
                 </tr>`;
@@ -1367,6 +1370,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <td><input type="number" class="edit-attendance" data-field="fee" value="${row.fee || 0}" style="width: 70px; padding: 2px 5px; border: 1px solid #ccc; border-radius: 4px;"></td>
                         <td><input type="number" class="edit-attendance" data-field="concession" value="${row.concession || 0}" style="width: 70px; padding: 2px 5px; border: 1px solid #ccc; border-radius: 4px;"></td>
                         <td><input type="number" class="edit-attendance" data-field="paid" value="${row.paid || 0}" style="width: 70px; padding: 2px 5px; border: 1px solid #ccc; border-radius: 4px;"></td>
+                        <td>${row.payment_mode || '-'}</td>
                         <td><input type="number" class="edit-attendance" data-field="balance" value="${row.balance || 0}" style="width: 70px; padding: 2px 5px; border: 1px solid #ccc; border-radius: 4px; ${row.balance > 0 ? 'border-color:var(--danger);color:var(--danger);font-weight:bold;background:#fef2f2;' : ''}"></td>
                         <td style="text-align: center;"><button type="button" class="btn-delete-attendance" data-id="${row.id}" style="background: none; border: none; color: var(--danger); cursor: pointer; font-size: 1.1rem;" title="Delete Session">🗑️</button></td>
                     </tr>`;
@@ -1378,6 +1382,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td class="footer-fee">${group.sumFee}</td>
                     <td class="footer-concession">${group.sumConcession}</td>
                     <td class="footer-paid">${group.sumPaid}</td>
+                    <td></td>
                     <td class="footer-balance" style="${group.sumBalance > 0 ? 'color: var(--danger);' : ''}">${group.sumBalance}</td>
                     <td></td>
                 </tr>`;
@@ -1627,7 +1632,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             let csvContent = "data:text/csv;charset=utf-8,";
-            csvContent += "Date,Child Name,Time Slot,Therapy,Therapist,Status,Fee,Concession,Paid,Balance\n";
+            csvContent += "Date,Child Name,Time Slot,Therapy,Therapist,Status,Fee,Concession,Paid,Payment Mode,Balance\n";
             window.currentReportData.forEach(row => {
                 const arr = [
                     row.date,
@@ -1639,6 +1644,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     row.fee || 0,
                     row.concession || 0,
                     row.paid || 0,
+                    `"${row.payment_mode || ''}"`,
                     row.balance || 0
                 ];
                 csvContent += arr.join(",") + "\n";
@@ -2010,7 +2016,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         blocks.forEach(block => {
             message += `⏰ ${block.time_slot}\n`;
-            message += `🔹 ${block.therapy_type} (${block.therapist_name || 'TBD'})\n\n`;
+            message += `🔹 ${block.therapy_type}\n\n`;
         });
 
         return { message: message.trim(), child };

@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
 const path = require('path');
+require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -12,7 +13,12 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Database Setup
-const DB_URL = process.env.DATABASE_URL || 'postgresql://postgres.gctpepwprlraxzttnhtd:Pro%40Vision%40123@aws-0-ap-northeast-2.pooler.supabase.com:5432/postgres';
+const DB_URL = process.env.DATABASE_URL;
+
+if (!DB_URL) {
+    console.error('DATABASE_URL environment variable is not set.');
+    process.exit(1);
+}
 
 const pool = new Pool({
     connectionString: DB_URL,
@@ -63,6 +69,7 @@ pool.connect((err, client, release) => {
             );
 
             ALTER TABLE therapy_attendance ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'Present';
+            ALTER TABLE therapy_attendance ADD COLUMN IF NOT EXISTS payment_mode TEXT;
 
             CREATE TABLE IF NOT EXISTS therapists (
                 id SERIAL PRIMARY KEY,
@@ -134,6 +141,7 @@ app.get('/api/init-db', async (req, res) => {
         );
 
         ALTER TABLE therapy_attendance ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'Present';
+        ALTER TABLE therapy_attendance ADD COLUMN IF NOT EXISTS payment_mode TEXT;
 
         CREATE TABLE IF NOT EXISTS therapists (
             id SERIAL PRIMARY KEY,
@@ -346,17 +354,17 @@ app.delete('/api/assessments/:id', async (req, res) => {
 // ─── Therapy Attendance API ─────────────────────────────────────────────────────
 
 app.post('/api/attendance', async (req, res) => {
-    const { child_id, therapy_type, date, time_slot, therapist_name, sub_therapy, fee, concession, to_be_paid, paid, balance, notes, status } = req.body;
+    const { child_id, therapy_type, date, time_slot, therapist_name, sub_therapy, fee, concession, to_be_paid, paid, balance, notes, status, payment_mode } = req.body;
     if (!child_id || !therapy_type || !date) return res.status(400).json({ error: 'Missing required fields' });
 
     try {
         const result = await pool.query(
             `INSERT INTO therapy_attendance (
-                child_id, therapy_type, date, time_slot, therapist_name, sub_therapy, fee, concession, to_be_paid, paid, balance, notes, status
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING id`,
+                child_id, therapy_type, date, time_slot, therapist_name, sub_therapy, fee, concession, to_be_paid, paid, balance, notes, status, payment_mode
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14) RETURNING id`,
             [
                 child_id, therapy_type, date, time_slot || null, therapist_name || null, sub_therapy || null,
-                fee || 0, concession || 0, to_be_paid || 0, paid || 0, balance || 0, notes || null, status || 'Present'
+                fee || 0, concession || 0, to_be_paid || 0, paid || 0, balance || 0, notes || null, status || 'Present', payment_mode || null
             ]
         );
         res.status(201).json({ message: 'Attendance logged', id: result.rows[0].id });

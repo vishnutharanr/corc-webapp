@@ -1903,12 +1903,13 @@
                                 <th>Fee (₹)</th>
                                 <th>Concession (₹)</th>
                                 <th>Paid (₹)</th>
+                                <th>Payment Mode</th>
                                 <th>Balance (₹)</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody id="reports-table-body">
-                            <tr><td colspan="11" style="text-align: center;">Generate a report to see data</td></tr>
+                            <tr><td colspan="12" style="text-align: center;">Generate a report to see data</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -2077,6 +2078,15 @@
                             <div class="input-group">
                                 <label>Amount Paid (₹)</label>
                                 <input type="number" id="log-therapy-paid" value="0">
+                            </div>
+                            <div class="input-group">
+                                <label>Payment Mode</label>
+                                <select id="log-therapy-payment-mode">
+                                    <option value="">Select Mode...</option>
+                                    <option value="Cash">Cash</option>
+                                    <option value="UPI">UPI</option>
+                                    <option value="Card">Card</option>
+                                </select>
                             </div>
                             <div class="input-group full-width">
                                 <label>Balance (₹)</label>
