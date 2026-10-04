@@ -170,6 +170,23 @@ app.get('/api/init-db', async (req, res) => {
     }
 });
 
+// ─── Login API ─────────────────────────────────────────────────────────────
+app.post('/api/login', (req, res) => {
+    const { username, password } = req.body;
+    
+    if (username === 'admin' && password === 'admin') {
+        return res.json({ success: true, role: 'admin' });
+    }
+    if (username === 'staff' && password === 'staff') {
+        return res.json({ success: true, role: 'staff' });
+    }
+    if (username === 'staff8' && password === 'staff8') {
+        return res.json({ success: true, role: 'staff8' });
+    }
+    
+    return res.status(401).json({ error: 'Invalid credentials' });
+});
+
 // ─── Children API ─────────────────────────────────────────────────────────────
 
 app.post('/api/children', async (req, res) => {

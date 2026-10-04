@@ -2,6 +2,104 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ── State ────────────────────────────────────────────────
     let activeChild = JSON.parse(localStorage.getItem('activeChild') || 'null');
+    let userRole = localStorage.getItem('userRole');
+
+    // ── Auth ─────────────────────────────────────────────────
+    function checkAuth() {
+        const loginScreen = document.getElementById('login-screen');
+        const appContainer = document.getElementById('app-container');
+        if (!userRole) {
+            if (loginScreen) loginScreen.style.display = 'flex';
+            if (appContainer) appContainer.style.display = 'none';
+        } else {
+            if (loginScreen) loginScreen.style.display = 'none';
+            if (appContainer) appContainer.style.display = 'flex';
+            applyRoleRestrictions();
+        }
+    }
+
+    function applyRoleRestrictions() {
+        const isStaff = userRole === 'staff' || userRole === 'staff8';
+        
+        let styleEl = document.getElementById('role-styles');
+        if (!styleEl) {
+            styleEl = document.createElement('style');
+            styleEl.id = 'role-styles';
+            document.head.appendChild(styleEl);
+        }
+        
+        if (isStaff) {
+            styleEl.textContent = `
+                .btn-edit-sm, .btn-delete-sm, .btn-delete-folder, .btn-notice-edit, .btn-notice-delete {
+                    display: none !important;
+                }
+                li[data-target="therapists-settings"] {
+                    display: none !important;
+                }
+                .edit-attendance {
+                    pointer-events: none !important;
+                    border: none !important;
+                    background: transparent !important;
+                    -moz-appearance: textfield;
+                }
+                .edit-attendance::-webkit-outer-spin-button,
+                .edit-attendance::-webkit-inner-spin-button {
+                    -webkit-appearance: none;
+                    margin: 0;
+                }
+                .btn-delete-attendance {
+                    display: none !important;
+                }
+            `;
+        } else {
+            styleEl.textContent = '';
+        }
+    }
+
+    const loginForm = document.getElementById('login-form');
+    if (loginForm) {
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const u = document.getElementById('login-username').value;
+            const p = document.getElementById('login-password').value;
+            const err = document.getElementById('login-error');
+            err.style.display = 'none';
+
+            try {
+                const res = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: u, password: p })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    userRole = data.role;
+                    localStorage.setItem('userRole', userRole);
+                    checkAuth();
+                    if (document.getElementById('records').classList.contains('active')) fetchChildFolders();
+                } else {
+                    err.textContent = data.error || 'Login failed';
+                    err.style.display = 'block';
+                }
+            } catch (error) {
+                err.textContent = 'Server error';
+                err.style.display = 'block';
+            }
+        });
+    }
+
+    const logoutBtn = document.getElementById('nav-logout');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', () => {
+            localStorage.removeItem('userRole');
+            userRole = null;
+            document.getElementById('login-username').value = '';
+            document.getElementById('login-password').value = '';
+            checkAuth();
+        });
+    }
+
+    checkAuth();
 
     // ── Navigation ───────────────────────────────────────────
     const navItems = document.querySelectorAll('.nav-item');
@@ -9,18 +107,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
     navItems.forEach(item => {
         item.addEventListener('click', () => {
-            navItems.forEach(n => n.classList.remove('active'));
+            if (item.id === 'nav-logout') return; // Handled by logout listener
+
+            navItems.forEach(n => { if (n.id !== 'nav-logout') n.classList.remove('active'); });
             tabContents.forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.assessment-pane').forEach(p => p.classList.remove('active'));
             item.classList.add('active');
             const tid = item.getAttribute('data-target');
-            document.getElementById(tid).classList.add('active');
+            if (tid) {
+                const tEl = document.getElementById(tid);
+                if (tEl) tEl.classList.add('active');
+            }
             if (tid === 'records') fetchChildFolders();
         });
     });
 
     function switchTab(targetId) {
-        navItems.forEach(n => n.classList.toggle('active', n.getAttribute('data-target') === targetId));
+        navItems.forEach(n => {
+            if (n.id !== 'nav-logout') {
+                n.classList.toggle('active', n.getAttribute('data-target') === targetId);
+            }
+        });
         tabContents.forEach(t => t.classList.toggle('active', t.id === targetId));
         document.querySelectorAll('.assessment-pane').forEach(p => p.classList.toggle('active', p.id === targetId));
         if (targetId === 'records') fetchChildFolders();
@@ -414,6 +521,23 @@ document.addEventListener('DOMContentLoaded', () => {
     async function handleRapid(data, el) {
         const name = data.child_name;
         if (!name) { showToast('Child name is required.', true); return; }
+        let ageNum = 0;
+        if (data.age) {
+            ageNum = parseInt(data.age);
+        } else if (data.dob) {
+            const b = new Date(data.dob);
+            ageNum = new Date().getFullYear() - b.getFullYear();
+        }
+
+        if (userRole === 'staff8' && ageNum < 8) {
+            showToast('Staff for older children can only enter details for children aged 8 or above.', true);
+            return;
+        }
+
+        if (userRole === 'staff' && ageNum >= 8) {
+            alert("More than 8 years");
+            return;
+        }
         try {
             // 1. Create child profile
             const cr = await fetch('/api/children', {
@@ -445,6 +569,26 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function saveAssessment(childId, childName, formType, data, el) {
+        if ((userRole === 'staff8' || userRole === 'staff') && activeChild) {
+            let ageNum = 0;
+            const rd = activeChild._rapidData || {};
+            const ageStr = rd.age;
+            if (ageStr) {
+                ageNum = parseInt(ageStr);
+            } else if (activeChild.dob || rd.dob) {
+                const b = new Date(activeChild.dob || rd.dob);
+                ageNum = new Date().getFullYear() - b.getFullYear();
+            }
+            
+            if (userRole === 'staff8' && ageNum < 8) {
+                showToast('Staff for older children can only enter details for children aged 8 or above.', true);
+                return;
+            }
+            if (userRole === 'staff' && ageNum >= 8) {
+                alert("More than 8 years");
+                return;
+            }
+        }
         try {
             const r = await fetch('/api/assessments', {
                 method: 'POST',
@@ -546,13 +690,30 @@ document.addEventListener('DOMContentLoaded', () => {
             const url = q ? '/api/children?search=' + encodeURIComponent(q) : '/api/children';
             const children = await (await fetch(url)).json();
             foldersEl.innerHTML = '';
+            
+            let filteredChildren = children;
+            if (userRole === 'staff' || userRole === 'staff8') {
+                filteredChildren = children.filter(child => {
+                    let ageNum = 0;
+                    if (child.dob) {
+                        const b = new Date(child.dob);
+                        ageNum = new Date().getFullYear() - b.getFullYear();
+                    } else if (child.assessments) {
+                        const rapid = child.assessments.find(a => a.form_type === 'Rapid Assessment');
+                        if (rapid && rapid.data && rapid.data.age) ageNum = parseInt(rapid.data.age);
+                    }
+                    if (userRole === 'staff') return ageNum < 8;
+                    if (userRole === 'staff8') return ageNum >= 8;
+                    return true;
+                });
+            }
 
-            if (!children.length) {
-                foldersEl.innerHTML = '<div class="empty-folders"><span style="font-size:3rem">\ud83d\udcc2</span><p>No child profiles found. Submit a Rapid Assessment to create one.</p></div>';
+            if (!filteredChildren.length) {
+                foldersEl.innerHTML = '<div class="empty-folders"><span style="font-size:3rem">\ud83d\udcc2</span><p>No child profiles found.</p></div>';
                 return;
             }
 
-            children.forEach(child => {
+            filteredChildren.forEach(child => {
                 const isActive = activeChild && activeChild.id === child.id;
                 const rows = child.assessments.length
                     ? child.assessments.map(a =>

@@ -14,7 +14,30 @@
 </head>
 
 <body>
-    <div class="app-container">
+    <!-- Login Screen -->
+    <div id="login-screen" class="login-screen">
+        <div class="login-box">
+            <div style="text-align: center; margin-bottom: 20px;">
+                <img src="logo.jpg" alt="ProVision" style="max-width: 150px; height: auto;">
+                <h2>Welcome Back</h2>
+                <p>Please login to your account</p>
+            </div>
+            <form id="login-form">
+                <div class="input-group">
+                    <label for="login-username">Username</label>
+                    <input type="text" id="login-username" required>
+                </div>
+                <div class="input-group">
+                    <label for="login-password">Password</label>
+                    <input type="password" id="login-password" required>
+                </div>
+                <button type="submit" class="btn-primary" style="width: 100%;">Login</button>
+                <div id="login-error" style="color: var(--danger); margin-top: 10px; text-align: center; display: none;"></div>
+            </form>
+        </div>
+    </div>
+
+    <div class="app-container" id="app-container" style="display: none;">
         <!-- Sidebar Navigation -->
         <nav class="sidebar">
             <div class="logo-container"
@@ -33,6 +56,9 @@
                 </li>
                 <li class="nav-item" data-target="therapists-settings">
                     <span class="nav-icon">🧑‍⚕️</span> Therapists Settings
+                </li>
+                <li class="nav-item" id="nav-logout" style="margin-top: auto; color: var(--danger);">
+                    <span class="nav-icon">🚪</span> Logout
                 </li>
             </ul>
         </nav>
