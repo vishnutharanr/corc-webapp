@@ -21,6 +21,14 @@ document.addEventListener('DOMContentLoaded', () => {
     function applyRoleRestrictions() {
         const isStaff = userRole === 'staff' || userRole === 'staff8';
         
+        document.querySelectorAll('.admin-only-filter').forEach(el => {
+            if (userRole === 'admin') {
+                el.style.display = (el.tagName === 'DIV') ? 'flex' : 'inline-block';
+            } else {
+                el.style.display = 'none';
+            }
+        });
+
         let styleEl = document.getElementById('role-styles');
         if (!styleEl) {
             styleEl = document.createElement('style');
@@ -675,6 +683,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     searchBtn   && searchBtn.addEventListener('click',  () => fetchChildFolders(searchInput.value));
     searchInput && searchInput.addEventListener('keyup', e => { if (e.key === 'Enter') fetchChildFolders(searchInput.value); });
+    
+    const recordsAgeFilter = document.getElementById('records-age-filter');
+    recordsAgeFilter && recordsAgeFilter.addEventListener('change', () => fetchChildFolders(searchInput.value));
 
     const ICONS = {
         'Rapid Assessment':         '\u26a1',
@@ -691,8 +702,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const children = await (await fetch(url)).json();
             foldersEl.innerHTML = '';
             
+            const ageFilter = document.getElementById('records-age-filter')?.value || 'all';
             let filteredChildren = children;
-            if (userRole === 'staff' || userRole === 'staff8') {
+            
+            if (userRole === 'staff' || userRole === 'staff8' || (userRole === 'admin' && ageFilter !== 'all')) {
                 filteredChildren = children.filter(child => {
                     let ageNum = 0;
                     if (child.dob) {
@@ -704,6 +717,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     if (userRole === 'staff') return ageNum < 8;
                     if (userRole === 'staff8') return ageNum >= 8;
+                    if (userRole === 'admin') {
+                        if (ageFilter === 'under8') return ageNum < 8;
+                        if (ageFilter === '8plus') return ageNum >= 8;
+                    }
                     return true;
                 });
             }
@@ -1268,7 +1285,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             let children = await (await fetch('/api/children')).json();
-            if (userRole === 'staff' || userRole === 'staff8') {
+            const ageFilter = document.getElementById('report-age-filter')?.value || 'all';
+
+            if (userRole === 'staff' || userRole === 'staff8' || (userRole === 'admin' && ageFilter !== 'all')) {
                 children = children.filter(child => {
                     let ageNum = 0;
                     if (child.dob) {
@@ -1280,6 +1299,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     if (userRole === 'staff') return ageNum < 8;
                     if (userRole === 'staff8') return ageNum >= 8;
+                    if (userRole === 'admin') {
+                        if (ageFilter === 'under8') return ageNum < 8;
+                        if (ageFilter === '8plus') return ageNum >= 8;
+                    }
                     return true;
                 });
             }
@@ -1333,6 +1356,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const reportTherapistSelect = document.getElementById('report-therapist-select');
     if (reportTherapistSelect) {
         reportTherapistSelect.addEventListener('change', fetchReports);
+    }
+    const reportAgeFilter = document.getElementById('report-age-filter');
+    if (reportAgeFilter) {
+        reportAgeFilter.addEventListener('change', () => {
+            populateReportChildSelect();
+            fetchReports();
+        });
     }
     const reportPendingBalance = document.getElementById('report-pending-balance');
     if (reportPendingBalance) {
@@ -1471,13 +1501,14 @@ document.addEventListener('DOMContentLoaded', () => {
             // Client-side filtering for Therapist and Pending Balance
             const therapistFilter = document.getElementById('report-therapist-select')?.value;
             const pendingBalanceOnly = document.getElementById('report-pending-balance')?.checked;
+            const ageFilter = document.getElementById('report-age-filter')?.value || 'all';
             
             const filteredData = data.filter(row => {
                 let match = true;
                 if (therapistFilter && row.therapist_name !== therapistFilter) match = false;
                 if (pendingBalanceOnly && (row.balance || 0) <= 0) match = false;
                 
-                if (userRole === 'staff' || userRole === 'staff8') {
+                if (userRole === 'staff' || userRole === 'staff8' || (userRole === 'admin' && ageFilter !== 'all')) {
                     let ageNum = 0;
                     if (row.child_dob) {
                         const b = new Date(row.child_dob);
@@ -1485,6 +1516,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     if (userRole === 'staff' && ageNum >= 8) match = false;
                     if (userRole === 'staff8' && ageNum < 8) match = false;
+                    if (userRole === 'admin') {
+                        if (ageFilter === 'under8' && ageNum >= 8) match = false;
+                        if (ageFilter === '8plus' && ageNum < 8) match = false;
+                    }
                 }
                 
                 return match;

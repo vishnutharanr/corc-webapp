@@ -1768,6 +1768,11 @@
 
                 <div class="records-toolbar">
                     <input type="text" id="search-input" placeholder="Search by child name..." class="search-box">
+                    <select id="records-age-filter" class="admin-only-filter" style="display: none; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0; background: white;">
+                        <option value="all">All Ages</option>
+                        <option value="under8">Less than 8</option>
+                        <option value="8plus">8 or more</option>
+                    </select>
                     <button id="search-btn" class="btn-primary">Search</button>
                     <button id="btn-new-assessment" class="btn-new-assessment">⚡ New Assessment</button>
                 </div>
@@ -1876,6 +1881,14 @@
                         <label>Child</label>
                         <select id="report-child-select">
                             <option value="">All Children</option>
+                        </select>
+                    </div>
+                    <div class="input-group admin-only-filter" style="display: none; margin-bottom: 0; min-width: 120px;">
+                        <label>Age Filter</label>
+                        <select id="report-age-filter">
+                            <option value="all">All Ages</option>
+                            <option value="under8">Less than 8</option>
+                            <option value="8plus">8 or more</option>
                         </select>
                     </div>
                     <div class="input-group" style="margin-bottom: 0; min-width: 150px;">
