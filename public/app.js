@@ -1267,7 +1267,22 @@ document.addEventListener('DOMContentLoaded', () => {
         const currentActive = select.value;
 
         try {
-            const children = await (await fetch('/api/children')).json();
+            let children = await (await fetch('/api/children')).json();
+            if (userRole === 'staff' || userRole === 'staff8') {
+                children = children.filter(child => {
+                    let ageNum = 0;
+                    if (child.dob) {
+                        const b = new Date(child.dob);
+                        ageNum = new Date().getFullYear() - b.getFullYear();
+                    } else if (child.assessments) {
+                        const rapid = child.assessments.find(a => a.form_type === 'Rapid Assessment');
+                        if (rapid && rapid.data && rapid.data.age) ageNum = parseInt(rapid.data.age);
+                    }
+                    if (userRole === 'staff') return ageNum < 8;
+                    if (userRole === 'staff8') return ageNum >= 8;
+                    return true;
+                });
+            }
             
             select.innerHTML = '<option value="">All Children</option>';
             children.forEach(c => {
@@ -1461,6 +1476,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 let match = true;
                 if (therapistFilter && row.therapist_name !== therapistFilter) match = false;
                 if (pendingBalanceOnly && (row.balance || 0) <= 0) match = false;
+                
+                if (userRole === 'staff' || userRole === 'staff8') {
+                    let ageNum = 0;
+                    if (row.child_dob) {
+                        const b = new Date(row.child_dob);
+                        ageNum = new Date().getFullYear() - b.getFullYear();
+                    }
+                    if (userRole === 'staff' && ageNum >= 8) match = false;
+                    if (userRole === 'staff8' && ageNum < 8) match = false;
+                }
+                
                 return match;
             });
 
@@ -1960,31 +1986,51 @@ document.addEventListener('DOMContentLoaded', () => {
             if (scheduleChildrenList.length === 0) {
                 const respChild = await fetch('/api/children');
                 scheduleChildrenList = await respChild.json();
-                
-                // Populate filter dropdown
-                if (scheduleFilterInput) {
-                    scheduleChildrenList.forEach(child => {
-                        const opt = document.createElement('option');
-                        opt.value = child.id;
-                        opt.textContent = child.name;
-                        scheduleFilterInput.appendChild(opt);
-                    });
-                }
+            }
+
+            let permittedChildren = scheduleChildrenList;
+            if (userRole === 'staff' || userRole === 'staff8') {
+                permittedChildren = scheduleChildrenList.filter(child => {
+                    let ageNum = 0;
+                    if (child.dob) {
+                        const b = new Date(child.dob);
+                        ageNum = new Date().getFullYear() - b.getFullYear();
+                    } else if (child.assessments) {
+                        const rapid = child.assessments.find(a => a.form_type === 'Rapid Assessment');
+                        if (rapid && rapid.data && rapid.data.age) ageNum = parseInt(rapid.data.age);
+                    }
+                    if (userRole === 'staff') return ageNum < 8;
+                    if (userRole === 'staff8') return ageNum >= 8;
+                    return true;
+                });
+            }
+
+            // Populate filter dropdown
+            if (scheduleFilterInput) {
+                const currentVal = scheduleFilterInput.value;
+                scheduleFilterInput.innerHTML = '<option value="">All Children</option>';
+                permittedChildren.forEach(child => {
+                    const opt = document.createElement('option');
+                    opt.value = child.id;
+                    opt.textContent = child.name;
+                    scheduleFilterInput.appendChild(opt);
+                });
+                scheduleFilterInput.value = currentVal;
             }
 
             // Fetch schedules for the date
             const respSched = await fetch(`/api/schedules?date=${encodeURIComponent(date)}`);
             currentScheduleData = await respSched.json();
 
-            if (scheduleChildrenList.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="13" style="text-align: center;">No children registered.</td></tr>';
+            if (permittedChildren.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="13" style="text-align: center;">No permitted children registered.</td></tr>';
                 return;
             }
 
             const filterChildId = scheduleFilterInput ? scheduleFilterInput.value : '';
             const filteredChildren = filterChildId 
-                ? scheduleChildrenList.filter(c => c.id == filterChildId)
-                : scheduleChildrenList;
+                ? permittedChildren.filter(c => c.id == filterChildId)
+                : permittedChildren;
 
             let html = '';
             filteredChildren.forEach((child, index) => {

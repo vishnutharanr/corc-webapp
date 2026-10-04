@@ -395,7 +395,7 @@ app.get('/api/reports/attendance', async (req, res) => {
     const { start_date, end_date, child_id } = req.query;
     try {
         let sql = `
-            SELECT t.*, c.name as child_name 
+            SELECT t.*, c.name as child_name, c.dob as child_dob 
             FROM therapy_attendance t 
             JOIN children c ON t.child_id = c.id 
             WHERE 1=1
@@ -495,7 +495,7 @@ app.get('/api/schedules', async (req, res) => {
 
     try {
         const result = await pool.query(`
-            SELECT s.*, c.name as child_name 
+            SELECT s.*, c.name as child_name, c.dob as child_dob 
             FROM schedules s 
             JOIN children c ON s.child_id = c.id 
             WHERE s.date = $1
