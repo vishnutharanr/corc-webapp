@@ -2662,8 +2662,8 @@ document.addEventListener('DOMContentLoaded', () => {
             doc.text('Signature & Seal', pageWidth - margin - 60, sigY + 16);
 
             const safeFilename = `${childName.replace(/[^a-zA-Z0-9]/g, '_')}_${formType.replace(/[^a-zA-Z0-9]/g, '_')}_Report.pdf`;
-            doc.save(safeFilename);
-            showToast('Clinical Assessment PDF generated & downloaded!');
+            saveAndOpenPdf(doc, safeFilename);
+            showToast('Clinical Assessment PDF opened & downloaded!');
         } catch (err) {
             console.error('PDF error:', err);
             showToast('Error generating assessment PDF', true);
@@ -2706,14 +2706,14 @@ document.addEventListener('DOMContentLoaded', () => {
             doc.setFontSize(9);
             doc.text('Official Statement of Therapy Attendance & Financial Account', pageWidth / 2, 16, { align: 'center' });
 
-            const startDate = document.getElementById('report-start-date')?.value || 'All Time';
+            const startDate = document.getElementById('report-start-date')?.value || 'All_Time';
             const endDate = document.getElementById('report-end-date')?.value || 'Present';
             const childSelect = document.getElementById('report-child-select');
-            const childName = childSelect && childSelect.selectedIndex > 0 ? childSelect.options[childSelect.selectedIndex].text : 'All Children';
+            const childName = childSelect && childSelect.selectedIndex > 0 ? childSelect.options[childSelect.selectedIndex].text : 'All_Children';
 
             doc.setFontSize(8.5);
             doc.setTextColor(51, 65, 85);
-            doc.text(`Target Child / Group: ${childName}   |   Period: ${startDate} to ${endDate}   |   Generated: ${new Date().toLocaleDateString('en-IN')}`, margin, 30);
+            doc.text(`Target Child / Group: ${childName.replace(/_/g, ' ')}   |   Period: ${startDate.replace(/_/g, ' ')} to ${endDate}   |   Generated: ${new Date().toLocaleDateString('en-IN')}`, margin, 30);
 
             let totalFee = 0, totalPaid = 0, totalBal = 0;
             const tableBody = data.map((row, idx) => {
@@ -2768,9 +2768,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
 
-            const filename = `Statement_${childName.replace(/[^a-zA-Z0-9]/g, '_')}_${startDate}_${endDate}.pdf`;
-            doc.save(filename);
-            showToast('Statement PDF downloaded successfully!');
+            const safeChild = childName.replace(/[^a-zA-Z0-9]/g, '_');
+            const safeStart = startDate.replace(/[^a-zA-Z0-9]/g, '_');
+            const safeEnd = endDate.replace(/[^a-zA-Z0-9]/g, '_');
+            const filename = `Statement_${safeChild}_${safeStart}_to_${safeEnd}.pdf`;
+            saveAndOpenPdf(doc, filename);
+            showToast('Statement PDF opened & downloaded!');
         } catch (err) {
             console.error('Statement PDF error:', err);
             showToast('Error generating Statement PDF', true);
@@ -2850,11 +2853,43 @@ document.addEventListener('DOMContentLoaded', () => {
             doc.line(w - 60, sigY + 11, w - 14, sigY + 11);
             doc.text('Signature', w - 60, sigY + 15);
 
-            doc.save(`Receipt_${(row.child_name || 'Session').replace(/[^a-zA-Z0-9]/g, '_')}_${row.date}.pdf`);
-            showToast('Receipt PDF downloaded!');
+            const safeChild = (row.child_name || 'Session').replace(/[^a-zA-Z0-9]/g, '_');
+            const safeDate = (row.date || 'Record').replace(/[^a-zA-Z0-9]/g, '_');
+            const filename = `Receipt_${safeChild}_${safeDate}.pdf`;
+            saveAndOpenPdf(doc, filename);
+            showToast('Receipt PDF opened & downloaded!');
         } catch (err) {
             console.error('Receipt PDF error:', err);
             showToast('Error generating receipt PDF', true);
+        }
+    }
+
+    // Helper to both open PDF in a new browser tab and save to disk cleanly
+    function saveAndOpenPdf(doc, filename) {
+        const cleanFilename = (filename || 'Document.pdf')
+            .replace(/\s+/g, '_')
+            .replace(/[^a-zA-Z0-9._-]/g, '');
+
+        try {
+            const blob = doc.output('blob');
+            const blobUrl = URL.createObjectURL(blob);
+
+            // 1. Open immediately in a new tab (bypasses any local file:/// security errors)
+            window.open(blobUrl, '_blank');
+
+            // 2. Also trigger a clean download with no spaces in the filename
+            const a = document.createElement('a');
+            a.href = blobUrl;
+            a.download = cleanFilename;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+                document.body.removeChild(a);
+                setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+            }, 100);
+        } catch (e) {
+            console.warn('Fallback to standard doc.save', e);
+            doc.save(cleanFilename);
         }
     }
 
