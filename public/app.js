@@ -414,10 +414,125 @@ document.addEventListener('DOMContentLoaded', () => {
     window.setupBmiAutoCalc(devForm);
 
     // ── Age Auto-calculate from DOB ──────────────────────────
+    function calcAgeYearsFromDob(dobValue) {
+        if (!dobValue) return null;
+        const parts = String(dobValue).split('T')[0].split('-');
+        let birth;
+        if (parts.length === 3 && parts[0].length === 4) {
+            birth = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+        } else {
+            birth = new Date(dobValue);
+        }
+        if (isNaN(birth.getTime())) return null;
+        const today = new Date();
+        let years = today.getFullYear() - birth.getFullYear();
+        const months = today.getMonth() - birth.getMonth();
+        if (months < 0 || (months === 0 && today.getDate() < birth.getDate())) {
+            years--;
+        }
+        return Math.max(0, years);
+    }
+
+    function parseAgeStringToYears(ageStr) {
+        if (!ageStr) return 0;
+        const str = String(ageStr).trim().toLowerCase();
+        // If string only has months (e.g. "9 months", "less than 1 month"), they are under 1 year old (0 years)
+        if (str.includes('month') && !str.includes('yr') && !str.includes('year')) {
+            return 0;
+        }
+        const match = str.match(/(\d+)\s*(yr|year)?/);
+        if (match) {
+            return parseInt(match[1], 10) || 0;
+        }
+        const val = parseInt(str, 10);
+        return isNaN(val) ? 0 : val;
+    }
+
+    function extractChildAge(childOrRow) {
+        if (!childOrRow) return 0;
+
+        // 1. Try DOB from child or attendance row
+        const dob = childOrRow.dob || childOrRow.child_dob;
+        const yearsFromDob = calcAgeYearsFromDob(dob);
+        if (yearsFromDob !== null) return yearsFromDob;
+
+        // 2. Try rapid_data (from attendance report query)
+        if (childOrRow.rapid_data) {
+            try {
+                const rd = typeof childOrRow.rapid_data === 'string' ? JSON.parse(childOrRow.rapid_data) : childOrRow.rapid_data;
+                if (rd) {
+                    const yDob = calcAgeYearsFromDob(rd.dob);
+                    if (yDob !== null) return yDob;
+                    if (rd.age) return parseAgeStringToYears(rd.age);
+                }
+            } catch (e) {}
+        }
+
+        // 3. Try assessments array (from /api/children)
+        if (Array.isArray(childOrRow.assessments)) {
+            const rapid = childOrRow.assessments.find(a => a.form_type === 'Rapid Assessment');
+            if (rapid && rapid.data) {
+                try {
+                    const rd = typeof rapid.data === 'string' ? JSON.parse(rapid.data) : rapid.data;
+                    if (rd) {
+                        const yDob = calcAgeYearsFromDob(rd.dob);
+                        if (yDob !== null) return yDob;
+                        if (rd.age) return parseAgeStringToYears(rd.age);
+                    }
+                } catch (e) {}
+            }
+        }
+
+        // 4. Try _rapidData on activeChild
+        if (childOrRow._rapidData) {
+            const rd = childOrRow._rapidData;
+            const yDob = calcAgeYearsFromDob(rd.dob);
+            if (yDob !== null) return yDob;
+            if (rd.age) return parseAgeStringToYears(rd.age);
+        }
+
+        return 0;
+    }
+
+    function matchesAgeFilter(childOrRow, ageFilterVal = 'all') {
+        const ageNum = extractChildAge(childOrRow);
+        if (userRole === 'staff') return ageNum < 8;
+        if (userRole === 'staff8') return ageNum >= 8;
+        if (userRole === 'admin') {
+            if (ageFilterVal === 'under8') return ageNum < 8;
+            if (ageFilterVal === '8plus') return ageNum >= 8;
+        }
+        return true;
+    }
+
+    function formatDisplayDate(dateStr) {
+        if (!dateStr) return '-';
+        const parts = String(dateStr).split('T')[0].split('-');
+        if (parts.length === 3 && parts[0].length === 4) {
+            const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+            return d.toLocaleDateString();
+        }
+        return new Date(dateStr).toLocaleDateString();
+    }
+
+    function getLocalTodayDateString() {
+        const d = new Date();
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+
     function calcAge(dobValue) {
         if (!dobValue) return '';
-        const birth = new Date(dobValue);
-        if (isNaN(birth)) return '';
+        const parts = String(dobValue).split('T')[0].split('-');
+        let birth;
+        if (parts.length === 3 && parts[0].length === 4) {
+            birth = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+        } else {
+            birth = new Date(dobValue);
+        }
+        if (isNaN(birth.getTime())) return '';
         const today = new Date();
         let years  = today.getFullYear() - birth.getFullYear();
         let months = today.getMonth()    - birth.getMonth();
@@ -529,13 +644,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function handleRapid(data, el) {
         const name = data.child_name;
         if (!name) { showToast('Child name is required.', true); return; }
-        let ageNum = 0;
-        if (data.age) {
-            ageNum = parseInt(data.age);
-        } else if (data.dob) {
-            const b = new Date(data.dob);
-            ageNum = new Date().getFullYear() - b.getFullYear();
-        }
+        const ageNum = extractChildAge({ dob: data.dob, _rapidData: data });
 
         if (userRole === 'staff8' && ageNum < 8) {
             showToast('Staff for older children can only enter details for children aged 8 or above.', true);
@@ -578,15 +687,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function saveAssessment(childId, childName, formType, data, el) {
         if ((userRole === 'staff8' || userRole === 'staff') && activeChild) {
-            let ageNum = 0;
-            const rd = activeChild._rapidData || {};
-            const ageStr = rd.age;
-            if (ageStr) {
-                ageNum = parseInt(ageStr);
-            } else if (activeChild.dob || rd.dob) {
-                const b = new Date(activeChild.dob || rd.dob);
-                ageNum = new Date().getFullYear() - b.getFullYear();
-            }
+            const ageNum = extractChildAge(activeChild);
             
             if (userRole === 'staff8' && ageNum < 8) {
                 showToast('Staff for older children can only enter details for children aged 8 or above.', true);
@@ -706,28 +807,7 @@ document.addEventListener('DOMContentLoaded', () => {
             let filteredChildren = children;
             
             if (userRole === 'staff' || userRole === 'staff8' || (userRole === 'admin' && ageFilter !== 'all')) {
-                filteredChildren = children.filter(child => {
-                    let ageNum = 0;
-                    if (child.dob) {
-                        const b = new Date(child.dob);
-                        ageNum = new Date().getFullYear() - b.getFullYear();
-                    } else if (child.assessments) {
-                        const rapid = child.assessments.find(a => a.form_type === 'Rapid Assessment');
-                        if (rapid && rapid.data) {
-                            try {
-                                const rd = typeof rapid.data === 'string' ? JSON.parse(rapid.data) : rapid.data;
-                                if (rd.age) ageNum = parseInt(rd.age);
-                            } catch (e) {}
-                        }
-                    }
-                    if (userRole === 'staff') return ageNum < 8;
-                    if (userRole === 'staff8') return ageNum >= 8;
-                    if (userRole === 'admin') {
-                        if (ageFilter === 'under8') return ageNum < 8;
-                        if (ageFilter === '8plus') return ageNum >= 8;
-                    }
-                    return true;
-                });
+                filteredChildren = children.filter(child => matchesAgeFilter(child, ageFilter));
             }
 
             if (!filteredChildren.length) {
@@ -1219,7 +1299,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.openLogTherapyModal = function(child) {
         document.getElementById('log-therapy-child-id').value = child.id;
         document.getElementById('log-therapy-child-name').value = child.name;
-        document.getElementById('log-therapy-date').value = new Date().toISOString().split('T')[0];
+        document.getElementById('log-therapy-date').value = getLocalTodayDateString();
         typeSelect.value = '';
         document.getElementById('log-therapy-sub-therapy').value = '';
         orthoticGroup.style.display = 'none';
@@ -1293,23 +1373,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const ageFilter = document.getElementById('report-age-filter')?.value || 'all';
 
             if (userRole === 'staff' || userRole === 'staff8' || (userRole === 'admin' && ageFilter !== 'all')) {
-                children = children.filter(child => {
-                    let ageNum = 0;
-                    if (child.dob) {
-                        const b = new Date(child.dob);
-                        ageNum = new Date().getFullYear() - b.getFullYear();
-                    } else if (child.assessments) {
-                        const rapid = child.assessments.find(a => a.form_type === 'Rapid Assessment');
-                        if (rapid && rapid.data && rapid.data.age) ageNum = parseInt(rapid.data.age);
-                    }
-                    if (userRole === 'staff') return ageNum < 8;
-                    if (userRole === 'staff8') return ageNum >= 8;
-                    if (userRole === 'admin') {
-                        if (ageFilter === 'under8') return ageNum < 8;
-                        if (ageFilter === '8plus') return ageNum >= 8;
-                    }
-                    return true;
-                });
+                children = children.filter(child => matchesAgeFilter(child, ageFilter));
             }
             
             select.innerHTML = '<option value="">All Children</option>';
@@ -1389,7 +1453,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (e.target.dataset.field !== 'balance') {
                     balance = fee - concession - paid;
-                    tr.querySelector('[data-field="balance"]').value = balance;
+                    const balInput = tr.querySelector('[data-field="balance"]');
+                    balInput.value = balance;
+                    if (balance > 0) {
+                        balInput.style.borderColor = 'var(--danger)';
+                        balInput.style.color = 'var(--danger)';
+                        balInput.style.fontWeight = 'bold';
+                        balInput.style.background = '#fef2f2';
+                    } else {
+                        balInput.style.borderColor = '#ccc';
+                        balInput.style.color = '';
+                        balInput.style.fontWeight = '';
+                        balInput.style.background = '';
+                    }
                 }
 
                 // Update totals dynamically
@@ -1430,7 +1506,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const res = await fetch(`/api/reports/attendance/${id}`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ fee, concession, paid, balance })
+                        body: JSON.stringify({ fee, concession, paid, balance, to_be_paid: Math.max(0, fee - concession) })
                     });
                     if (res.ok) {
                         showToast('Record updated successfully');
@@ -1511,25 +1587,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const filteredData = data.filter(row => {
                 let match = true;
                 if (therapistFilter && row.therapist_name !== therapistFilter) match = false;
-                if (pendingBalanceOnly && (row.balance || 0) <= 0) match = false;
+                if (pendingBalanceOnly && (parseFloat(row.balance) || 0) <= 0) match = false;
                 
                 if (userRole === 'staff' || userRole === 'staff8' || (userRole === 'admin' && ageFilter !== 'all')) {
-                    let ageNum = 0;
-                    if (row.child_dob) {
-                        const b = new Date(row.child_dob);
-                        ageNum = new Date().getFullYear() - b.getFullYear();
-                    } else if (row.rapid_data) {
-                        try {
-                            const rd = JSON.parse(row.rapid_data);
-                            if (rd.age) ageNum = parseInt(rd.age);
-                        } catch (e) {}
-                    }
-                    if (userRole === 'staff' && ageNum >= 8) match = false;
-                    if (userRole === 'staff8' && ageNum < 8) match = false;
-                    if (userRole === 'admin') {
-                        if (ageFilter === 'under8' && ageNum >= 8) match = false;
-                        if (ageFilter === '8plus' && ageNum < 8) match = false;
-                    }
+                    if (!matchesAgeFilter(row, ageFilter)) match = false;
                 }
                 
                 return match;
@@ -1589,7 +1650,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         : row.therapy_type;
 
                     html += `<tr class="accordion-content accordion-child-${index}" style="display: none; background: #fff;" data-attendance-id="${row.id}">
-                        <td>${new Date(row.date).toLocaleDateString()}</td>
+                        <td>${formatDisplayDate(row.date)}</td>
                         <td style="color: #cbd5e1; text-align: center;">&#8627;</td>
                         <td>${row.time_slot || '-'}</td>
                         <td>${therapyDisplay}</td>
@@ -1863,31 +1924,32 @@ document.addEventListener('DOMContentLoaded', () => {
                 showToast('No data to export', true);
                 return;
             }
-            let csvContent = "data:text/csv;charset=utf-8,";
-            csvContent += "Date,Child Name,Time Slot,Therapy,Therapist,Status,Fee,Concession,Paid,Payment Mode,Balance\n";
+            let csvContent = "\uFEFFDate,Child Name,Time Slot,Therapy,Therapist,Status,Fee,Concession,Paid,Payment Mode,Balance\n";
             window.currentReportData.forEach(row => {
                 const arr = [
-                    row.date,
-                    `"${row.child_name || ''}"`,
+                    row.date || '',
+                    `"${(row.child_name || '').replace(/"/g, '""')}"`,
                     row.time_slot || '',
-                    `"${row.therapy_type || ''}"`,
-                    `"${row.therapist_name || ''}"`,
+                    `"${(row.therapy_type || '').replace(/"/g, '""')}"`,
+                    `"${(row.therapist_name || '').replace(/"/g, '""')}"`,
                     row.status || 'Present',
                     row.fee || 0,
                     row.concession || 0,
                     row.paid || 0,
-                    `"${row.payment_mode || ''}"`,
+                    `"${(row.payment_mode || '').replace(/"/g, '""')}"`,
                     row.balance || 0
                 ];
                 csvContent += arr.join(",") + "\n";
             });
-            const encodedUri = encodeURI(csvContent);
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
             const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `therapy_report_${new Date().toISOString().split('T')[0]}.csv`);
+            link.setAttribute("href", url);
+            link.setAttribute("download", `therapy_report_${getLocalTodayDateString()}.csv`);
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
         });
     }
 
@@ -2027,27 +2089,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         tbody.innerHTML = '<tr><td colspan="13" style="text-align: center;">Loading...</td></tr>';
         try {
-            // Fetch children if not already loaded
-            if (scheduleChildrenList.length === 0) {
-                const respChild = await fetch('/api/children');
-                scheduleChildrenList = await respChild.json();
-            }
+            // Always fetch fresh children list so newly added/updated children appear immediately
+            const respChild = await fetch('/api/children');
+            scheduleChildrenList = await respChild.json();
 
             let permittedChildren = scheduleChildrenList;
             if (userRole === 'staff' || userRole === 'staff8') {
-                permittedChildren = scheduleChildrenList.filter(child => {
-                    let ageNum = 0;
-                    if (child.dob) {
-                        const b = new Date(child.dob);
-                        ageNum = new Date().getFullYear() - b.getFullYear();
-                    } else if (child.assessments) {
-                        const rapid = child.assessments.find(a => a.form_type === 'Rapid Assessment');
-                        if (rapid && rapid.data && rapid.data.age) ageNum = parseInt(rapid.data.age);
-                    }
-                    if (userRole === 'staff') return ageNum < 8;
-                    if (userRole === 'staff8') return ageNum >= 8;
-                    return true;
-                });
+                permittedChildren = scheduleChildrenList.filter(child => matchesAgeFilter(child));
             }
 
             // Populate filter dropdown
@@ -2262,7 +2310,7 @@ document.addEventListener('DOMContentLoaded', () => {
         TIME_SLOTS.forEach((slot, index) => timeOrder[slot] = index);
         blocks.sort((a, b) => timeOrder[a.time_slot] - timeOrder[b.time_slot]);
 
-        const formattedDate = new Date(date).toLocaleDateString('en-GB');
+        const formattedDate = formatDisplayDate(date);
         let message = `📅 Therapy Schedule for ${child.name}\n`;
         message += `🗓 Date: ${formattedDate}\n\n`;
 
@@ -2278,11 +2326,36 @@ document.addEventListener('DOMContentLoaded', () => {
         const data = getScheduleMessageAndChild();
         if (!data) return;
 
-        navigator.clipboard.writeText(data.message).then(() => {
-            showToast('Schedule copied to clipboard! You can now paste it.');
-        }).catch(() => {
-            showToast('Failed to copy. Please try again.', true);
-        });
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(data.message).then(() => {
+                showToast('Schedule copied to clipboard! You can now paste it.');
+            }).catch(() => {
+                copyViaFallback(data.message);
+            });
+        } else {
+            copyViaFallback(data.message);
+        }
+
+        function copyViaFallback(text) {
+            try {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.opacity = '0';
+                document.body.appendChild(ta);
+                ta.focus();
+                ta.select();
+                const successful = document.execCommand('copy');
+                document.body.removeChild(ta);
+                if (successful) {
+                    showToast('Schedule copied to clipboard! You can now paste it.');
+                } else {
+                    showToast('Failed to copy. Please try again.', true);
+                }
+            } catch (err) {
+                showToast('Failed to copy. Please try again.', true);
+            }
+        }
     });
 
     // ── Initial load ─────────────────────────────────────────
