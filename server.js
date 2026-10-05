@@ -455,18 +455,29 @@ app.post('/api/assessments', async (req, res) => {
 });
 
 app.get('/api/assessments', async (req, res) => {
-    const { search } = req.query;
+    const { search, child_id } = req.query;
     try {
-        let sql = `SELECT id, child_id, child_name, form_type, created_at FROM assessments`;
+        let sql = `SELECT id, child_id, child_name, form_type, created_at, data FROM assessments`;
         let params = [];
+        let conditions = [];
         if (search) {
-            sql += ` WHERE child_name ILIKE $1`;
             params.push(`%${search}%`);
+            conditions.push(`child_name ILIKE $${params.length}`);
+        }
+        if (child_id) {
+            params.push(child_id);
+            conditions.push(`child_id = $${params.length}`);
+        }
+        if (conditions.length > 0) {
+            sql += ` WHERE ` + conditions.join(' AND ');
         }
         sql += ` ORDER BY created_at DESC`;
 
         const result = await pool.query(sql, params);
-        res.json(result.rows);
+        res.json(result.rows.map(r => {
+            try { r.data = typeof r.data === 'string' ? JSON.parse(r.data) : r.data; } catch (e) { }
+            return r;
+        }));
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Failed to retrieve assessments' });
