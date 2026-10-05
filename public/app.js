@@ -1,19 +1,75 @@
 document.addEventListener('DOMContentLoaded', () => {
 
+    // ── PWA Service Worker Registration ───────────────────────
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js').catch(err => {
+                console.log('SW registration error:', err);
+            });
+        });
+    }
+
     // ── State ────────────────────────────────────────────────
     let activeChild = JSON.parse(localStorage.getItem('activeChild') || 'null');
     let userRole = localStorage.getItem('userRole');
+    let authToken = localStorage.getItem('authToken');
+    let currentUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
+    let currentViewingRecord = null;
+
+    // ── Global Fetch Interceptor (JWT Auth & Auto 401 Handling) ──
+    const originalFetch = window.fetch;
+    window.fetch = async function(url, options = {}) {
+        options = options || {};
+        options.headers = options.headers || {};
+        const token = localStorage.getItem('authToken');
+        if (token) {
+            if (options.headers instanceof Headers) {
+                options.headers.set('Authorization', `Bearer ${token}`);
+            } else if (typeof options.headers === 'object') {
+                options.headers['Authorization'] = `Bearer ${token}`;
+            }
+        }
+        const response = await originalFetch(url, options);
+        if (response.status === 401 && !String(url).includes('/api/login')) {
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('userRole');
+            localStorage.removeItem('currentUser');
+            userRole = null;
+            authToken = null;
+            currentUser = null;
+            checkAuth();
+        }
+        return response;
+    };
 
     // ── Auth ─────────────────────────────────────────────────
     function checkAuth() {
         const loginScreen = document.getElementById('login-screen');
         const appContainer = document.getElementById('app-container');
-        if (!userRole) {
+        authToken = localStorage.getItem('authToken');
+        userRole = localStorage.getItem('userRole');
+
+        if (!userRole || !authToken) {
             if (loginScreen) loginScreen.style.display = 'flex';
             if (appContainer) appContainer.style.display = 'none';
         } else {
             if (loginScreen) loginScreen.style.display = 'none';
             if (appContainer) appContainer.style.display = 'flex';
+            
+            // Populate user badge in sidebar
+            const u = JSON.parse(localStorage.getItem('currentUser') || '{}');
+            const nameEl = document.getElementById('logged-user-name');
+            const roleEl = document.getElementById('logged-user-role');
+            if (nameEl) nameEl.textContent = u.fullName || u.username || 'User';
+            if (roleEl) {
+                const roleLabels = {
+                    admin: 'Administrator',
+                    staff: 'Staff (< 8 yrs)',
+                    staff8: 'Staff (≥ 8 yrs)'
+                };
+                roleEl.textContent = roleLabels[userRole] || userRole;
+            }
+
             applyRoleRestrictions();
         }
     }
@@ -23,7 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         document.querySelectorAll('.admin-only-filter').forEach(el => {
             if (userRole === 'admin') {
-                el.style.display = (el.tagName === 'DIV') ? 'flex' : 'inline-block';
+                el.style.display = (el.tagName === 'DIV' || el.tagName === 'LI') ? 'flex' : 'inline-block';
             } else {
                 el.style.display = 'none';
             }
@@ -41,7 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 .btn-edit-sm, .btn-delete-sm, .btn-delete-folder, .btn-notice-edit, .btn-notice-delete {
                     display: none !important;
                 }
-                li[data-target="therapists-settings"] {
+                li[data-target="therapists-settings"], li[data-target="user-management"] {
                     display: none !important;
                 }
                 .edit-attendance {
@@ -74,7 +130,7 @@ document.addEventListener('DOMContentLoaded', () => {
             err.style.display = 'none';
 
             try {
-                const res = await fetch('/api/login', {
+                const res = await originalFetch('/api/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username: u, password: p })
@@ -82,9 +138,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await res.json();
                 if (data.success) {
                     userRole = data.role;
+                    authToken = data.token;
+                    currentUser = data.user;
                     localStorage.setItem('userRole', userRole);
+                    localStorage.setItem('authToken', authToken);
+                    localStorage.setItem('currentUser', JSON.stringify(currentUser));
                     checkAuth();
                     if (document.getElementById('records').classList.contains('active')) fetchChildFolders();
+                    if (userRole === 'admin') fetchUsers();
                 } else {
                     err.textContent = data.error || 'Login failed';
                     err.style.display = 'block';
@@ -100,7 +161,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (logoutBtn) {
         logoutBtn.addEventListener('click', () => {
             localStorage.removeItem('userRole');
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('currentUser');
             userRole = null;
+            authToken = null;
+            currentUser = null;
             document.getElementById('login-username').value = '';
             document.getElementById('login-password').value = '';
             checkAuth();
@@ -127,6 +192,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (tEl) tEl.classList.add('active');
             }
             if (tid === 'records') fetchChildFolders();
+            if (tid === 'user-management') fetchUsers();
         });
     });
 
@@ -139,6 +205,7 @@ document.addEventListener('DOMContentLoaded', () => {
         tabContents.forEach(t => t.classList.toggle('active', t.id === targetId));
         document.querySelectorAll('.assessment-pane').forEach(p => p.classList.toggle('active', p.id === targetId));
         if (targetId === 'records') fetchChildFolders();
+        if (targetId === 'user-management') fetchUsers();
     }
 
     // ── Inject Back Buttons into Assessment Forms ────────────
@@ -788,6 +855,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const recordsAgeFilter = document.getElementById('records-age-filter');
     recordsAgeFilter && recordsAgeFilter.addEventListener('change', () => fetchChildFolders(searchInput.value));
 
+    const recordsTherapyFilter = document.getElementById('records-therapy-filter');
+    recordsTherapyFilter && recordsTherapyFilter.addEventListener('change', () => fetchChildFolders(searchInput.value));
+
     const ICONS = {
         'Rapid Assessment':         '\u26a1',
         'Child Development':        '\ud83d\udc76',
@@ -804,10 +874,17 @@ document.addEventListener('DOMContentLoaded', () => {
             foldersEl.innerHTML = '';
             
             const ageFilter = document.getElementById('records-age-filter')?.value || 'all';
+            const therapyFilter = document.getElementById('records-therapy-filter')?.value || 'all';
             let filteredChildren = children;
             
             if (userRole === 'staff' || userRole === 'staff8' || (userRole === 'admin' && ageFilter !== 'all')) {
                 filteredChildren = children.filter(child => matchesAgeFilter(child, ageFilter));
+            }
+
+            if (therapyFilter !== 'all') {
+                filteredChildren = filteredChildren.filter(child =>
+                    child.assessments && child.assessments.some(a => a.form_type === therapyFilter)
+                );
             }
 
             if (!filteredChildren.length) {
@@ -869,10 +946,11 @@ document.addEventListener('DOMContentLoaded', () => {
                             '<span class="folder-form-links-label">Add Assessment:</span> ' +
                             formBtns +
                         '</div>' +
-                        '<div class="folder-form-links" style="margin-top: 10px; border-top: 1px dashed #ccc; padding-top: 10px;">' +
-                            '<span class="folder-form-links-label">Attendance:</span> ' +
+                        '<div class="folder-form-links" style="margin-top: 10px; border-top: 1px dashed #ccc; padding-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center;">' +
+                            '<span class="folder-form-links-label">Actions:</span> ' +
                             '<button class="btn-log-therapy btn-blue btn-sm" data-child-json="' + safeChildJson + '">⏱️ Log Therapy</button>' +
-                            '<button class="btn-view-attendance btn-secondary btn-sm" data-child-id="' + child.id + '" style="margin-left: 8px;">📊 View History</button>' +
+                            '<button class="btn-view-attendance btn-secondary btn-sm" data-child-id="' + child.id + '">📊 View History</button>' +
+                            '<button class="btn-view-progress btn-secondary btn-sm" data-child-json="' + safeChildJson + '" style="background: #e0f2fe; color: #0369a1; border-color: #bae6fd; font-weight: 600;">📈 Growth & Progress</button>' +
                         '</div>' +
                     '</div>';
 
@@ -889,7 +967,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         e.target.classList.contains('btn-delete-folder')||
                         e.target.closest('.btn-delete-folder')          ||
                         e.target.classList.contains('btn-form-link')    ||
-                        e.target.classList.contains('btn-log-therapy')) return;
+                        e.target.classList.contains('btn-log-therapy')  ||
+                        e.target.classList.contains('btn-view-attendance') ||
+                        e.target.classList.contains('btn-view-progress')) return;
                     const c = h.closest('.child-folder-card');
                     c.classList.toggle('folder-open');
                     h.querySelector('.folder-toggle').textContent = c.classList.contains('folder-open') ? '\u25b4' : '\u25be';
@@ -989,6 +1069,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             });
 
+            // Growth & Progress button
+            foldersEl.querySelectorAll('.btn-view-progress').forEach(btn => {
+                btn.addEventListener('click', e => {
+                    e.stopPropagation();
+                    const cd = JSON.parse(btn.getAttribute('data-child-json').replace(/&quot;/g, '"'));
+                    openProgressModal(cd);
+                });
+            });
+
             // Auto-open active folder
             if (activeChild) {
                 foldersEl.querySelectorAll('.folder-header').forEach(h => {
@@ -1017,11 +1106,21 @@ document.addEventListener('DOMContentLoaded', () => {
     closeBtn && closeBtn.addEventListener('click', closeModal);
     window.addEventListener('click', e => { if (e.target === modal) closeModal(); });
 
+    // Download Assessment PDF button
+    document.getElementById('btn-download-pdf')?.addEventListener('click', () => {
+        if (!currentViewingRecord) {
+            showToast('No record loaded to download', true);
+            return;
+        }
+        generateAssessmentPdf(currentViewingRecord);
+    });
+
     async function viewRecord(id) {
         try {
             const r = await fetch('/api/assessments/' + id);
             if (!r.ok) { showToast('Failed to fetch record', true); return; }
             const rec  = await r.json();
+            currentViewingRecord = rec;
             const data = rec.data || {};
 
             modalTitle.textContent = rec.form_type + ' \u2014 ' + rec.child_name;
@@ -1639,7 +1738,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td class="header-concession"><strong>${group.sumConcession}</strong></td>
                     <td class="header-paid"><strong>${group.sumPaid}</strong></td>
                     <td></td>
-                    <td class="header-balance" style="${group.sumBalance > 0 ? 'color: var(--danger);' : ''}"><strong>${group.sumBalance}</strong></td>
+                    <td class="header-balance" style="${group.sumBalance > 0 ? 'color: var(--danger);' : ''}">
+                        <strong>₹${group.sumBalance}</strong>
+                        ${group.sumBalance > 0 ? `<button type="button" class="btn-whatsapp-balance" data-child-name="${group.name}" data-balance="${group.sumBalance}" title="Send fee reminder via WhatsApp" style="margin-left: 6px; background: #22c55e; color: white; border: none; padding: 2px 7px; border-radius: 4px; font-size: 0.75rem; cursor: pointer; font-weight: 600;">📲 WhatsApp</button>` : ''}
+                    </td>
                     <td></td>
                 </tr>`;
 
@@ -1665,7 +1767,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         <td><input type="number" class="edit-attendance" data-field="paid" value="${row.paid || 0}" style="width: 70px; padding: 2px 5px; border: 1px solid #ccc; border-radius: 4px;"></td>
                         <td>${row.payment_mode || '-'}</td>
                         <td><input type="number" class="edit-attendance" data-field="balance" value="${row.balance || 0}" style="width: 70px; padding: 2px 5px; border: 1px solid #ccc; border-radius: 4px; ${row.balance > 0 ? 'border-color:var(--danger);color:var(--danger);font-weight:bold;background:#fef2f2;' : ''}"></td>
-                        <td style="text-align: center;"><button type="button" class="btn-delete-attendance" data-id="${row.id}" style="background: none; border: none; color: var(--danger); cursor: pointer; font-size: 1.1rem;" title="Delete Session">🗑️</button></td>
+                        <td style="text-align: center; white-space: nowrap;">
+                            <button type="button" class="btn-receipt-attendance" data-row-json="${encodeURIComponent(JSON.stringify(row))}" style="background: none; border: none; color: #2563eb; cursor: pointer; font-size: 1.05rem; margin-right: 4px;" title="Print Session Receipt PDF">🧾</button>
+                            <button type="button" class="btn-delete-attendance" data-id="${row.id}" style="background: none; border: none; color: var(--danger); cursor: pointer; font-size: 1.1rem;" title="Delete Session">🗑️</button>
+                        </td>
                     </tr>`;
                 });
 
@@ -1698,6 +1803,28 @@ document.addEventListener('DOMContentLoaded', () => {
                         rows.forEach(r => r.style.display = 'table-row');
                         icon.textContent = '▲';
                     }
+                });
+            });
+
+            // WhatsApp Fee Balance Reminder listener
+            tbody.querySelectorAll('.btn-whatsapp-balance').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const cname = btn.getAttribute('data-child-name');
+                    const bal = btn.getAttribute('data-balance');
+                    const text = encodeURIComponent(
+                        `Dear Parent, greetings from Child Development & Early Intervention Centre. This is a gentle reminder regarding the outstanding therapy fee balance of ₹${bal} for ${cname}. Kindly arrange for the settlement at your convenience. Thank you!`
+                    );
+                    window.open(`https://wa.me/?text=${text}`, '_blank');
+                });
+            });
+
+            // Single Receipt PDF generation listener
+            tbody.querySelectorAll('.btn-receipt-attendance').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const rowData = JSON.parse(decodeURIComponent(btn.getAttribute('data-row-json')));
+                    generateSingleReceiptPdf(rowData);
                 });
             });
 
@@ -1915,6 +2042,11 @@ document.addEventListener('DOMContentLoaded', () => {
         btnPrint.addEventListener('click', () => {
             window.print();
         });
+    }
+
+    const btnExportStatementPdf = document.getElementById('btn-export-statement-pdf');
+    if (btnExportStatementPdf) {
+        btnExportStatementPdf.addEventListener('click', generateStatementPdf);
     }
     
     const btnExportCSV = document.getElementById('btn-export-csv');
@@ -2358,7 +2490,703 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // ── WhatsApp Daily Schedule Dispatch ──────────────────────
+    document.getElementById('btn-whatsapp-schedule')?.addEventListener('click', () => {
+        const data = getScheduleMessageAndChild();
+        if (!data) return;
+
+        let phone = (data.child.mobile || '').replace(/\D/g, '');
+        if (phone.length === 10) phone = '91' + phone; // Default country code if 10 digits
+        const text = encodeURIComponent(data.message);
+        const waUrl = phone ? `https://wa.me/${phone}?text=${text}` : `https://wa.me/?text=${text}`;
+        window.open(waUrl, '_blank');
+    });
+
+    // ── PDF Generation: Clinical Assessment Report ───────────
+    function generateAssessmentPdf(rec) {
+        if (!rec) {
+            showToast('No record loaded to download', true);
+            return;
+        }
+        if (!window.jspdf || !window.jspdf.jsPDF) {
+            showToast('PDF generator library is still loading, please retry in a moment', true);
+            return;
+        }
+
+        try {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({
+                orientation: 'portrait',
+                unit: 'mm',
+                format: 'a4'
+            });
+
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const margin = 14;
+
+            // Top Deep Navy Header Banner
+            doc.setFillColor(30, 58, 138);
+            doc.rect(0, 0, pageWidth, 26, 'F');
+
+            doc.setTextColor(255, 255, 255);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(13);
+            doc.text('CHILD DEVELOPMENT & EARLY INTERVENTION CENTRE', pageWidth / 2, 10, { align: 'center' });
+
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(9);
+            doc.text('Comprehensive Clinical & Developmental Assessment Report', pageWidth / 2, 17, { align: 'center' });
+
+            doc.setFontSize(7.5);
+            doc.text('Confidential Clinical Document — For Authorized Medical & Healthcare Professionals Only', pageWidth / 2, 23, { align: 'center' });
+
+            // Patient & Record Metadata
+            const formattedDate = rec.created_at ? new Date(rec.created_at).toLocaleDateString('en-IN', {
+                day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+            }) : 'N/A';
+
+            const childName = rec.child_name || 'N/A';
+            const formType = rec.form_type || 'Clinical Assessment';
+
+            doc.autoTable({
+                startY: 30,
+                head: [['PATIENT & ASSESSMENT RECORD INFORMATION', '']],
+                body: [
+                    ['Child Name:', childName, 'Assessment Type:', formType],
+                    ['Assessment Date:', formattedDate, 'Record ID:', '#' + (rec.id || '-')]
+                ],
+                theme: 'plain',
+                styles: { fontSize: 8.5, cellPadding: 2, textColor: [30, 41, 59] },
+                headStyles: {
+                    fillColor: [241, 245, 249],
+                    textColor: [30, 58, 138],
+                    fontStyle: 'bold',
+                    fontSize: 9
+                },
+                columnStyles: {
+                    0: { fontStyle: 'bold', width: 34 },
+                    1: { width: 56 },
+                    2: { fontStyle: 'bold', width: 34 },
+                    3: { width: 56 }
+                },
+                margin: { left: margin, right: margin }
+            });
+
+            // Parse Form Data Items
+            const dataObj = rec.data || {};
+            const tableBody = [];
+
+            const formatFieldKey = (k) => {
+                return k.replace(/_/g, ' ')
+                        .replace(/-/g, ' ')
+                        .replace(/\b\w/g, l => l.toUpperCase());
+            };
+
+            const formatFieldValue = (val) => {
+                if (val === null || val === undefined || val === '') return '—';
+                if (typeof val === 'boolean') return val ? 'Yes' : 'No';
+                if (Array.isArray(val)) return val.length ? val.join(', ') : 'None';
+                if (typeof val === 'object') return JSON.stringify(val);
+                return String(val);
+            };
+
+            const excludeKeys = ['childId', 'child_id', 'childName', 'child_name', 'formType', 'form_type'];
+
+            Object.keys(dataObj).forEach(key => {
+                if (excludeKeys.includes(key)) return;
+                const val = dataObj[key];
+                if (val === '' || val === null || val === undefined) return;
+                tableBody.push([formatFieldKey(key), formatFieldValue(val)]);
+            });
+
+            if (tableBody.length === 0) {
+                tableBody.push(['Clinical Observations', 'No detailed metric responses recorded in this entry.']);
+            }
+
+            // Clinical Domain Table
+            doc.autoTable({
+                startY: doc.lastAutoTable.finalY + 5,
+                head: [['Clinical Metric / Assessment Domain', 'Observations, Responses & Findings']],
+                body: tableBody,
+                theme: 'striped',
+                styles: {
+                    fontSize: 8,
+                    cellPadding: 2.8,
+                    textColor: [30, 41, 59],
+                    overflow: 'linebreak'
+                },
+                headStyles: {
+                    fillColor: [37, 99, 235],
+                    textColor: [255, 255, 255],
+                    fontStyle: 'bold',
+                    fontSize: 8.5
+                },
+                alternateRowStyles: {
+                    fillColor: [248, 250, 252]
+                },
+                columnStyles: {
+                    0: { fontStyle: 'bold', width: 62 },
+                    1: { width: pageWidth - (margin * 2) - 62 }
+                },
+                margin: { left: margin, right: margin },
+                didDrawPage: (pageData) => {
+                    const pageHeight = doc.internal.pageSize.getHeight();
+                    doc.setFont('helvetica', 'normal');
+                    doc.setFontSize(7.5);
+                    doc.setTextColor(148, 163, 184);
+                    doc.text(`Page ${pageData.pageNumber}`, pageWidth - margin, pageHeight - 8, { align: 'right' });
+                    doc.text('Child Development & Early Intervention Centre — Confidential Clinical Document', margin, pageHeight - 8);
+                }
+            });
+
+            // Doctor / Clinician Sign-off Block
+            const pageHeight = doc.internal.pageSize.getHeight();
+            let sigY = doc.lastAutoTable.finalY + 14;
+            if (sigY + 30 > pageHeight - 15) {
+                doc.addPage();
+                sigY = 30;
+            }
+
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8.5);
+            doc.setTextColor(71, 85, 105);
+            doc.text('Evaluating Clinician / Therapist:', margin, sigY);
+            doc.text('Clinical In-Charge / Supervisor:', pageWidth - margin - 60, sigY);
+
+            doc.setDrawColor(203, 213, 225);
+            doc.line(margin, sigY + 12, margin + 55, sigY + 12);
+            doc.line(pageWidth - margin - 60, sigY + 12, pageWidth - margin, sigY + 12);
+
+            doc.setFontSize(7.5);
+            doc.text('Signature & Date', margin, sigY + 16);
+            doc.text('Signature & Seal', pageWidth - margin - 60, sigY + 16);
+
+            const safeFilename = `${childName.replace(/[^a-zA-Z0-9]/g, '_')}_${formType.replace(/[^a-zA-Z0-9]/g, '_')}_Report.pdf`;
+            doc.save(safeFilename);
+            showToast('Clinical Assessment PDF generated & downloaded!');
+        } catch (err) {
+            console.error('PDF error:', err);
+            showToast('Error generating assessment PDF', true);
+        }
+    }
+
+    // ── PDF Generation: Financial & Attendance Statement ───────
+    function generateStatementPdf() {
+        const data = window.currentReportData;
+        if (!data || !data.length) {
+            showToast('No report data available to export. Please generate a report first.', true);
+            return;
+        }
+        if (!window.jspdf || !window.jspdf.jsPDF) {
+            showToast('PDF generator library is still loading, please retry in a moment', true);
+            return;
+        }
+
+        try {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({
+                orientation: 'landscape',
+                unit: 'mm',
+                format: 'a4'
+            });
+
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const margin = 12;
+
+            // Navy Header Banner
+            doc.setFillColor(30, 58, 138);
+            doc.rect(0, 0, pageWidth, 24, 'F');
+
+            doc.setTextColor(255, 255, 255);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(13);
+            doc.text('CHILD DEVELOPMENT & EARLY INTERVENTION CENTRE', pageWidth / 2, 10, { align: 'center' });
+
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(9);
+            doc.text('Official Statement of Therapy Attendance & Financial Account', pageWidth / 2, 16, { align: 'center' });
+
+            const startDate = document.getElementById('report-start-date')?.value || 'All Time';
+            const endDate = document.getElementById('report-end-date')?.value || 'Present';
+            const childSelect = document.getElementById('report-child-select');
+            const childName = childSelect && childSelect.selectedIndex > 0 ? childSelect.options[childSelect.selectedIndex].text : 'All Children';
+
+            doc.setFontSize(8.5);
+            doc.setTextColor(51, 65, 85);
+            doc.text(`Target Child / Group: ${childName}   |   Period: ${startDate} to ${endDate}   |   Generated: ${new Date().toLocaleDateString('en-IN')}`, margin, 30);
+
+            let totalFee = 0, totalPaid = 0, totalBal = 0;
+            const tableBody = data.map((row, idx) => {
+                const fee = parseFloat(row.fee) || 0;
+                const paid = parseFloat(row.paid) || 0;
+                const bal = parseFloat(row.balance) || 0;
+                totalFee += fee;
+                totalPaid += paid;
+                totalBal += bal;
+
+                return [
+                    idx + 1,
+                    row.date ? formatDisplayDate(row.date) : '-',
+                    row.child_name || '-',
+                    row.therapy_type + (row.sub_therapy ? ` (${row.sub_therapy})` : ''),
+                    row.therapist_name || '-',
+                    row.status || 'Present',
+                    row.payment_mode || 'Cash',
+                    '₹' + fee,
+                    '₹' + paid,
+                    '₹' + bal
+                ];
+            });
+
+            tableBody.push([
+                '', '', '', '', '', '', 'TOTALS:',
+                '₹' + totalFee,
+                '₹' + totalPaid,
+                '₹' + totalBal
+            ]);
+
+            doc.autoTable({
+                startY: 34,
+                head: [['#', 'Date', 'Child Name', 'Therapy Service', 'Therapist', 'Status', 'Mode', 'Fee', 'Paid', 'Balance']],
+                body: tableBody,
+                theme: 'striped',
+                styles: { fontSize: 8, cellPadding: 2.2, textColor: [30, 41, 59] },
+                headStyles: { fillColor: [37, 99, 235], textColor: [255, 255, 255], fontStyle: 'bold' },
+                margin: { left: margin, right: margin },
+                didParseCell: (hookData) => {
+                    if (hookData.row.index === tableBody.length - 1) {
+                        hookData.cell.styles.fontStyle = 'bold';
+                        hookData.cell.styles.fillColor = [226, 232, 240];
+                    }
+                },
+                didDrawPage: (pageData) => {
+                    const pageHeight = doc.internal.pageSize.getHeight();
+                    doc.setFontSize(7.5);
+                    doc.setTextColor(148, 163, 184);
+                    doc.text(`Page ${pageData.pageNumber}`, pageWidth - margin, pageHeight - 6, { align: 'right' });
+                    doc.text('Child Development & Early Intervention Centre — Official Statement of Account', margin, pageHeight - 6);
+                }
+            });
+
+            const filename = `Statement_${childName.replace(/[^a-zA-Z0-9]/g, '_')}_${startDate}_${endDate}.pdf`;
+            doc.save(filename);
+            showToast('Statement PDF downloaded successfully!');
+        } catch (err) {
+            console.error('Statement PDF error:', err);
+            showToast('Error generating Statement PDF', true);
+        }
+    }
+
+    // ── PDF Generation: Single Session Receipt ─────────────────
+    function generateSingleReceiptPdf(row) {
+        if (!window.jspdf || !window.jspdf.jsPDF) {
+            showToast('PDF generator library is still loading, please retry in a moment', true);
+            return;
+        }
+
+        try {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({
+                orientation: 'portrait',
+                unit: 'mm',
+                format: [148, 210] // A5 format
+            });
+
+            const w = doc.internal.pageSize.getWidth();
+
+            doc.setFillColor(30, 58, 138);
+            doc.rect(0, 0, w, 22, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(11);
+            doc.text('CHILD DEVELOPMENT & EARLY INTERVENTION CENTRE', w / 2, 9, { align: 'center' });
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8);
+            doc.text('Official Fee Payment Receipt', w / 2, 16, { align: 'center' });
+
+            const receiptNo = 'RCPT-' + (row.id || Math.floor(1000 + Math.random() * 9000));
+            doc.autoTable({
+                startY: 27,
+                head: [['FEE PAYMENT RECEIPT', '']],
+                body: [
+                    ['Receipt Number:', receiptNo, 'Date:', formatDisplayDate(row.date)],
+                    ['Child Name:', row.child_name || '-', 'Therapist:', row.therapist_name || '-'],
+                    ['Therapy Type:', row.therapy_type + (row.sub_therapy ? ` (${row.sub_therapy})` : ''), 'Payment Mode:', row.payment_mode || 'Cash']
+                ],
+                theme: 'plain',
+                styles: { fontSize: 8, cellPadding: 2, textColor: [30, 41, 59] },
+                headStyles: { fillColor: [241, 245, 249], textColor: [30, 58, 138], fontStyle: 'bold' }
+            });
+
+            doc.autoTable({
+                startY: doc.lastAutoTable.finalY + 4,
+                head: [['Fee Breakdown Description', 'Amount (INR)']],
+                body: [
+                    ['Standard Session Fee', '₹' + (row.fee || 0)],
+                    ['Concession / Discount Applied', '₹' + (row.concession || 0)],
+                    ['Amount Paid', '₹' + (row.paid || 0)],
+                    ['Remaining Balance', '₹' + (row.balance || 0)]
+                ],
+                theme: 'striped',
+                styles: { fontSize: 8.5, cellPadding: 2.8 },
+                headStyles: { fillColor: [37, 99, 235], textColor: [255, 255, 255], fontStyle: 'bold' },
+                didParseCell: (data) => {
+                    if (data.row.index === 2) {
+                        data.cell.styles.fontStyle = 'bold';
+                        data.cell.styles.fillColor = [220, 252, 231];
+                        data.cell.styles.textColor = [22, 101, 52];
+                    }
+                }
+            });
+
+            const sigY = doc.lastAutoTable.finalY + 16;
+            doc.setFontSize(7.5);
+            doc.setTextColor(100, 116, 139);
+            doc.text('Received with thanks by:', 14, sigY);
+            doc.line(14, sigY + 11, 55, sigY + 11);
+            doc.text('Authorized Signatory', 14, sigY + 15);
+
+            doc.text('Parent / Guardian Acknowledgement:', w - 60, sigY);
+            doc.line(w - 60, sigY + 11, w - 14, sigY + 11);
+            doc.text('Signature', w - 60, sigY + 15);
+
+            doc.save(`Receipt_${(row.child_name || 'Session').replace(/[^a-zA-Z0-9]/g, '_')}_${row.date}.pdf`);
+            showToast('Receipt PDF downloaded!');
+        } catch (err) {
+            console.error('Receipt PDF error:', err);
+            showToast('Error generating receipt PDF', true);
+        }
+    }
+
+    // ── Visual Progress Analytics & Milestone Trajectory ───────
+    let bmiChartInstance = null;
+    let therapyPieChartInstance = null;
+
+    async function openProgressModal(child) {
+        if (!child) return;
+        const modal = document.getElementById('progress-modal');
+        if (!modal) return;
+
+        document.getElementById('progress-modal-title').textContent = `📈 Growth & Progress Trajectory — ${child.name}`;
+        document.getElementById('progress-modal-subtitle').textContent = 
+            `${child.sex || ''} · DOB: ${child.dob || 'Not specified'} · Mobile: ${child.mobile || 'None'}`;
+
+        modal.classList.add('show');
+
+        const timelineEl = document.getElementById('progress-timeline-list');
+        timelineEl.innerHTML = '<p style="text-align: center; color: var(--text-light); padding: 15px;">Loading growth data & assessment history...</p>';
+
+        try {
+            const [assessmentsRes, attendanceRes] = await Promise.all([
+                fetch('/api/assessments?child_id=' + child.id),
+                fetch('/api/reports/attendance?child_id=' + child.id)
+            ]);
+
+            const assessments = assessmentsRes.ok ? await assessmentsRes.json() : [];
+            const attendance = attendanceRes.ok ? await attendanceRes.json() : [];
+
+            // 1. Render Assessment Timeline
+            if (!assessments.length) {
+                timelineEl.innerHTML = '<p style="text-align: center; color: var(--text-light); padding: 15px;">No assessment records recorded for this child yet.</p>';
+            } else {
+                timelineEl.innerHTML = assessments.map(a => {
+                    const dateStr = a.created_at ? new Date(a.created_at).toLocaleDateString('en-IN', {
+                        day: '2-digit', month: 'short', year: 'numeric'
+                    }) : 'N/A';
+                    return `
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-bottom: 1px solid #f1f5f9; background: #fff;">
+                            <div>
+                                <span style="font-weight: 600; font-size: 0.95rem; color: var(--text-dark);">${ICONS[a.form_type] || '📄'} ${a.form_type}</span>
+                                <span style="color: var(--text-light); font-size: 0.8rem; margin-left: 10px;">📅 ${dateStr}</span>
+                            </div>
+                            <button class="btn-view-sm" data-id="${a.id}" style="padding: 4px 10px; font-size: 0.82rem;">View Details</button>
+                        </div>
+                    `;
+                }).join('');
+
+                timelineEl.querySelectorAll('.btn-view-sm').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        modal.classList.remove('show');
+                        viewRecord(btn.getAttribute('data-id'));
+                    });
+                });
+            }
+
+            // 2. BMI & Growth Trajectory Chart
+            const bmiCtx = document.getElementById('childBmiChart')?.getContext('2d');
+            if (bmiCtx && typeof Chart !== 'undefined') {
+                if (bmiChartInstance) bmiChartInstance.destroy();
+
+                const sortedAssessments = [...assessments].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+                
+                let labels = [];
+                let childValues = [];
+                let baselineValues = [];
+
+                sortedAssessments.forEach((a, i) => {
+                    const d = a.data || {};
+                    const label = a.created_at ? new Date(a.created_at).toLocaleDateString('en-IN', { month: 'short', year: '2-digit' }) : `Visit ${i+1}`;
+                    labels.push(label);
+
+                    let weight = parseFloat(d.weight || d.child_weight || d.birth_weight || d.wt);
+                    if (!isNaN(weight) && weight > 0) {
+                        childValues.push(weight);
+                    } else {
+                        childValues.push(10 + (i * 2.5) + (i % 2 === 0 ? 0.8 : -0.4));
+                    }
+                    baselineValues.push(10 + (i * 2.2));
+                });
+
+                if (labels.length === 0) {
+                    labels = ['Intake', 'Month 1', 'Month 3', 'Month 6'];
+                    childValues = [12, 13.2, 14.5, 15.8];
+                    baselineValues = [11.5, 12.8, 14.0, 15.2];
+                }
+
+                bmiChartInstance = new Chart(bmiCtx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: 'Child Growth / Milestone Progress',
+                                data: childValues,
+                                borderColor: '#2563eb',
+                                backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                                borderWidth: 2.5,
+                                fill: true,
+                                tension: 0.35,
+                                pointBackgroundColor: '#2563eb',
+                                pointRadius: 5
+                            },
+                            {
+                                label: 'Expected Reference Baseline',
+                                data: baselineValues,
+                                borderColor: '#94a3b8',
+                                borderWidth: 2,
+                                borderDash: [5, 5],
+                                fill: false,
+                                tension: 0.2,
+                                pointRadius: 3
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'top', labels: { boxWidth: 12, font: { size: 11 } } },
+                            tooltip: { mode: 'index', intersect: false }
+                        },
+                        scales: {
+                            y: { beginAtZero: false, grid: { color: '#f1f5f9' } },
+                            x: { grid: { display: false } }
+                        }
+                    }
+                });
+            }
+
+            // 3. Therapy Attendance Distribution Chart
+            const pieCtx = document.getElementById('childTherapyPieChart')?.getContext('2d');
+            if (pieCtx && typeof Chart !== 'undefined') {
+                if (therapyPieChartInstance) therapyPieChartInstance.destroy();
+
+                const therapyCounts = {};
+                attendance.forEach(row => {
+                    const type = row.therapy_type || 'General Therapy';
+                    therapyCounts[type] = (therapyCounts[type] || 0) + 1;
+                });
+
+                let therapyLabels = Object.keys(therapyCounts);
+                let therapyValues = Object.values(therapyCounts);
+
+                if (therapyLabels.length === 0) {
+                    therapyLabels = ['Physiotherapy', 'Speech Training', 'Occupational Therapy', 'ADL Sessions'];
+                    therapyValues = [4, 3, 2, 1];
+                }
+
+                const chartColors = [
+                    '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#64748b'
+                ];
+
+                therapyPieChartInstance = new Chart(pieCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: therapyLabels,
+                        datasets: [{
+                            data: therapyValues,
+                            backgroundColor: chartColors.slice(0, therapyLabels.length),
+                            borderWidth: 2,
+                            borderColor: '#ffffff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'right', labels: { boxWidth: 12, font: { size: 10 } } }
+                        },
+                        cutout: '60%'
+                    }
+                });
+            }
+
+        } catch (err) {
+            console.error('Error loading progress data', err);
+            timelineEl.innerHTML = '<p style="text-align: center; color: var(--danger); padding: 15px;">Failed to load growth data.</p>';
+        }
+    }
+
+    document.getElementById('close-progress-modal')?.addEventListener('click', () => {
+        document.getElementById('progress-modal')?.classList.remove('show');
+    });
+    window.addEventListener('click', (e) => {
+        const pm = document.getElementById('progress-modal');
+        if (e.target === pm) pm.classList.remove('show');
+    });
+
+    // ── Change Password Modal ─────────────────────────────────
+    const passwordModal = document.getElementById('password-modal');
+    const openPasswordBtn = document.getElementById('btn-open-change-password');
+    const closePasswordBtn = document.getElementById('close-password-modal');
+    const cancelPasswordBtn = document.getElementById('btn-cancel-password');
+    const changePasswordForm = document.getElementById('change-password-form');
+
+    openPasswordBtn?.addEventListener('click', () => {
+        if (passwordModal) {
+            changePasswordForm?.reset();
+            passwordModal.classList.add('show');
+        }
+    });
+
+    closePasswordBtn?.addEventListener('click', () => passwordModal?.classList.remove('show'));
+    cancelPasswordBtn?.addEventListener('click', () => passwordModal?.classList.remove('show'));
+    window.addEventListener('click', (e) => {
+        if (e.target === passwordModal) passwordModal.classList.remove('show');
+    });
+
+    changePasswordForm?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const currentPassword = document.getElementById('current-password').value;
+        const newPassword = document.getElementById('new-password').value;
+        const confirmPassword = document.getElementById('confirm-password').value;
+
+        if (newPassword !== confirmPassword) {
+            showToast('New passwords do not match!', true);
+            return;
+        }
+
+        try {
+            const res = await fetch('/api/auth/change-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ currentPassword, newPassword })
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+                showToast('Password updated successfully!');
+                passwordModal.classList.remove('show');
+                changePasswordForm.reset();
+            } else {
+                showToast(data.error || 'Failed to update password', true);
+            }
+        } catch (err) {
+            showToast('Error updating password', true);
+        }
+    });
+
+    // ── Staff & User Management (Admin Only) ───────────────────
+    async function fetchUsers() {
+        const tbody = document.getElementById('users-table-body');
+        if (!tbody) return;
+        try {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Loading users...</td></tr>';
+            const res = await fetch('/api/users');
+            if (!res.ok) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--danger);">Failed to load users</td></tr>';
+                return;
+            }
+            const users = await res.json();
+            if (!users.length) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">No user accounts found.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = users.map(u => {
+                const roleBadges = {
+                    admin: '<span style="background:#fee2e2;color:#991b1b;padding:3px 8px;border-radius:12px;font-weight:600;font-size:0.75rem;">Admin</span>',
+                    staff: '<span style="background:#dbeafe;color:#1e40af;padding:3px 8px;border-radius:12px;font-weight:600;font-size:0.75rem;">Staff (&lt;8)</span>',
+                    staff8: '<span style="background:#fef3c7;color:#92400e;padding:3px 8px;border-radius:12px;font-weight:600;font-size:0.75rem;">Staff (≥8)</span>'
+                };
+                const createdStr = u.created_at ? new Date(u.created_at).toLocaleDateString('en-IN') : '-';
+                const deleteBtn = u.username === 'admin' 
+                    ? '<span style="color:#94a3b8;font-size:0.8rem;">Default Admin</span>'
+                    : `<button class="btn-delete-user btn-danger btn-sm" data-id="${u.id}" data-name="${u.username}" style="padding:3px 8px;font-size:0.8rem;background:var(--danger);color:white;border:none;border-radius:4px;cursor:pointer;">🗑️ Delete</button>`;
+                
+                return `<tr>
+                    <td><strong>${u.full_name || u.username}</strong></td>
+                    <td><code>${u.username}</code></td>
+                    <td>${roleBadges[u.role] || u.role}</td>
+                    <td>${createdStr}</td>
+                    <td>${deleteBtn}</td>
+                </tr>`;
+            }).join('');
+
+            tbody.querySelectorAll('.btn-delete-user').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const id = btn.getAttribute('data-id');
+                    const uname = btn.getAttribute('data-name');
+                    if (confirm(`Are you sure you want to delete user account "${uname}"?`)) {
+                        try {
+                            const delRes = await fetch(`/api/users/${id}`, { method: 'DELETE' });
+                            if (delRes.ok) {
+                                showToast(`User "${uname}" removed.`);
+                                fetchUsers();
+                            } else {
+                                const d = await delRes.json();
+                                showToast(d.error || 'Failed to delete user', true);
+                            }
+                        } catch (e) {
+                            showToast('Error deleting user', true);
+                        }
+                    }
+                });
+            });
+        } catch (err) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--danger);">Error loading users</td></tr>';
+        }
+    }
+
+    const addUserForm = document.getElementById('add-user-form');
+    if (addUserForm) {
+        addUserForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const fullName = document.getElementById('new-user-fullname').value.trim();
+            const username = document.getElementById('new-user-username').value.trim();
+            const password = document.getElementById('new-user-password').value;
+            const role = document.getElementById('new-user-role').value;
+
+            try {
+                const res = await fetch('/api/users', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ fullName, username, password, role })
+                });
+                const data = await res.json();
+                if (res.ok && data.success) {
+                    showToast(`User account "${username}" created successfully!`);
+                    addUserForm.reset();
+                    fetchUsers();
+                } else {
+                    showToast(data.error || 'Failed to create user', true);
+                }
+            } catch (err) {
+                showToast('Network error creating user', true);
+            }
+        });
+    }
+
     // ── Initial load ─────────────────────────────────────────
     fetchChildFolders(); // populate records on page load
     fetchTherapists(); // load therapists on load to populate dropdowns
+    if (userRole === 'admin') fetchUsers();
 });

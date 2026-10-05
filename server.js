@@ -2,10 +2,13 @@ const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
 const path = require('path');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const JWT_SECRET = process.env.JWT_SECRET || 'corc-super-secret-key-2026-provision';
 
 // Middleware
 app.use(cors());
@@ -26,6 +29,15 @@ const pool = new Pool({
 });
 
 const INIT_SQL = `
+    CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        username TEXT UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL,
+        role TEXT NOT NULL,
+        full_name TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
     CREATE TABLE IF NOT EXISTS children (
         id SERIAL PRIMARY KEY,
         name TEXT NOT NULL,
@@ -40,9 +52,23 @@ const INIT_SQL = `
         child_id INTEGER REFERENCES children(id) ON DELETE CASCADE,
         child_name TEXT NOT NULL,
         form_type TEXT NOT NULL,
-        data TEXT NOT NULL,
+        data JSONB NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
+
+    DO $$
+    BEGIN
+        IF EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_name='assessments' AND column_name='data' AND data_type='text'
+        ) THEN
+            BEGIN
+                ALTER TABLE assessments ALTER COLUMN data TYPE JSONB USING data::jsonb;
+            EXCEPTION WHEN OTHERS THEN
+                NULL;
+            END;
+        END IF;
+    END $$;
 
     CREATE TABLE IF NOT EXISTS therapy_attendance (
         id SERIAL PRIMARY KEY,
@@ -86,20 +112,66 @@ const INIT_SQL = `
 
     CREATE INDEX IF NOT EXISTS idx_assessments_child_id ON assessments(child_id);
     CREATE INDEX IF NOT EXISTS idx_assessments_form_type ON assessments(form_type);
+    CREATE INDEX IF NOT EXISTS idx_assessments_data_gin ON assessments USING gin (data);
     CREATE INDEX IF NOT EXISTS idx_therapy_attendance_child_id ON therapy_attendance(child_id);
     CREATE INDEX IF NOT EXISTS idx_therapy_attendance_date ON therapy_attendance(date);
     CREATE INDEX IF NOT EXISTS idx_schedules_date ON schedules(date);
     CREATE INDEX IF NOT EXISTS idx_schedules_child_id ON schedules(child_id);
 `;
 
+async function seedDefaultUsers() {
+    try {
+        const existing = await pool.query(`SELECT count(*) FROM users`);
+        if (parseInt(existing.rows[0].count, 10) === 0) {
+            const adminHash = await bcrypt.hash('admin', 10);
+            const staffHash = await bcrypt.hash('staff', 10);
+            const staff8Hash = await bcrypt.hash('staff8', 10);
+
+            await pool.query(`
+                INSERT INTO users (username, password_hash, role, full_name) VALUES
+                ('admin', $1, 'admin', 'Administrator'),
+                ('staff', $2, 'staff', 'Staff (Under 8)'),
+                ('staff8', $3, 'staff8', 'Staff (8 & Above)')
+            `, [adminHash, staffHash, staff8Hash]);
+            console.log('Default users seeded successfully.');
+        }
+    } catch (e) {
+        console.error('Error seeding default users:', e.message);
+    }
+}
+
 pool.query(INIT_SQL)
-    .then(() => console.log('Database tables & indexes initialized'))
+    .then(async () => {
+        console.log('Database tables & indexes initialized');
+        await seedDefaultUsers();
+    })
     .catch(err => console.error('Error executing init script:', err.stack));
+
+// ─── Authentication Middleware ──────────────────────────────────────────────
+function authenticateToken(req, res, next) {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    if (!token) return res.status(401).json({ error: 'Authentication token required' });
+
+    jwt.verify(token, JWT_SECRET, (err, user) => {
+        if (err) return res.status(403).json({ error: 'Invalid or expired session token' });
+        req.user = user;
+        next();
+    });
+}
+
+function requireAdmin(req, res, next) {
+    if (!req.user || req.user.role !== 'admin') {
+        return res.status(403).json({ error: 'Administrator access required' });
+    }
+    next();
+}
 
 // ─── DB Init API ─────────────────────────────────────────────────────────────
 app.get('/api/init-db', async (req, res) => {
     try {
         await pool.query(INIT_SQL);
+        await seedDefaultUsers();
         res.json({ message: 'Database tables and indexes initialized successfully!' });
     } catch (err) {
         console.error(err);
@@ -107,21 +179,157 @@ app.get('/api/init-db', async (req, res) => {
     }
 });
 
-// ─── Login API ─────────────────────────────────────────────────────────────
-app.post('/api/login', (req, res) => {
+// ─── Auth APIs ─────────────────────────────────────────────────────────────
+app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
-    
-    if (username === 'admin' && password === 'admin') {
-        return res.json({ success: true, role: 'admin' });
+    if (!username || !password) {
+        return res.status(400).json({ error: 'Username and password required' });
     }
-    if (username === 'staff' && password === 'staff') {
-        return res.json({ success: true, role: 'staff' });
+
+    try {
+        const u = username.trim().toLowerCase();
+        const userRes = await pool.query(`SELECT * FROM users WHERE LOWER(username) = $1`, [u]);
+        
+        let user = userRes.rows[0];
+        let passwordMatches = false;
+
+        if (user) {
+            passwordMatches = await bcrypt.compare(password, user.password_hash);
+        } else {
+            // Fallback for bootstrap
+            if ((u === 'admin' && password === 'admin') ||
+                (u === 'staff' && password === 'staff') ||
+                (u === 'staff8' && password === 'staff8')) {
+                const hash = await bcrypt.hash(password, 10);
+                const role = u;
+                const name = u === 'admin' ? 'Administrator' : (u === 'staff' ? 'Staff (Under 8)' : 'Staff (8 & Above)');
+                const inserted = await pool.query(
+                    `INSERT INTO users (username, password_hash, role, full_name) VALUES ($1, $2, $3, $4) RETURNING *`,
+                    [u, hash, role, name]
+                );
+                user = inserted.rows[0];
+                passwordMatches = true;
+            }
+        }
+
+        if (!user || !passwordMatches) {
+            return res.status(401).json({ error: 'Invalid username or password' });
+        }
+
+        const token = jwt.sign(
+            { id: user.id, username: user.username, role: user.role, full_name: user.full_name },
+            JWT_SECRET,
+            { expiresIn: '7d' }
+        );
+
+        res.json({
+            success: true,
+            token,
+            role: user.role,
+            username: user.username,
+            full_name: user.full_name,
+            user: {
+                id: user.id,
+                username: user.username,
+                fullName: user.full_name || user.username,
+                role: user.role
+            }
+        });
+    } catch (err) {
+        console.error('Login error:', err);
+        res.status(500).json({ error: 'Login service failed: ' + err.message });
     }
-    if (username === 'staff8' && password === 'staff8') {
-        return res.json({ success: true, role: 'staff8' });
+});
+
+app.get('/api/auth/me', authenticateToken, (req, res) => {
+    res.json({ user: req.user });
+});
+
+app.post('/api/auth/change-password', authenticateToken, async (req, res) => {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+        return res.status(400).json({ error: 'Current and new password required' });
     }
-    
-    return res.status(401).json({ error: 'Invalid credentials' });
+    if (newPassword.length < 4) {
+        return res.status(400).json({ error: 'Password must be at least 4 characters' });
+    }
+
+    try {
+        const userRes = await pool.query(`SELECT * FROM users WHERE id = $1`, [req.user.id]);
+        if (userRes.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+
+        const user = userRes.rows[0];
+        const match = await bcrypt.compare(currentPassword, user.password_hash);
+        if (!match) return res.status(400).json({ error: 'Current password is incorrect' });
+
+        const newHash = await bcrypt.hash(newPassword, 10);
+        await pool.query(`UPDATE users SET password_hash = $1 WHERE id = $2`, [newHash, req.user.id]);
+        res.json({ success: true, message: 'Password changed successfully' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ─── User Management (Admin Only) ──────────────────────────────────────────
+app.get('/api/users', authenticateToken, requireAdmin, async (req, res) => {
+    try {
+        const result = await pool.query(`SELECT id, username, role, full_name, created_at FROM users ORDER BY id ASC`);
+        res.json(result.rows);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/users', authenticateToken, requireAdmin, async (req, res) => {
+    const { username, password, role, full_name, fullName } = req.body;
+    const displayName = full_name || fullName;
+    if (!username || !password || !role) {
+        return res.status(400).json({ error: 'Username, password, and role are required' });
+    }
+
+    try {
+        const u = username.trim().toLowerCase();
+        const hash = await bcrypt.hash(password, 10);
+        const result = await pool.query(
+            `INSERT INTO users (username, password_hash, role, full_name) VALUES ($1, $2, $3, $4) RETURNING id, username, role, full_name, created_at`,
+            [u, hash, role, displayName || u]
+        );
+        const createdUser = result.rows[0];
+        res.status(201).json({
+            success: true,
+            user: {
+                id: createdUser.id,
+                username: createdUser.username,
+                fullName: createdUser.full_name,
+                role: createdUser.role,
+                created_at: createdUser.created_at
+            },
+            ...createdUser
+        });
+    } catch (err) {
+        console.error(err);
+        if (err.code === '23505') {
+            return res.status(400).json({ error: 'Username already exists' });
+        }
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.delete('/api/users/:id', authenticateToken, requireAdmin, async (req, res) => {
+    if (parseInt(req.params.id, 10) === req.user.id) {
+        return res.status(400).json({ error: 'Cannot delete your own account' });
+    }
+
+    try {
+        const result = await pool.query(`DELETE FROM users WHERE id = $1`, [req.params.id]);
+        if (result.rowCount === 0) return res.status(404).json({ error: 'User not found' });
+        res.json({ message: 'User deleted successfully' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // ─── Children API ─────────────────────────────────────────────────────────────

@@ -1,0 +1,18 @@
+{
+  "short_name": "CORC Provision",
+  "name": "Children Occupational Rehabilitation Centre - CORC Provision",
+  "description": "Clinical pediatric therapy management, assessment recording, and attendance tracking system",
+  "icons": [
+    {
+      "src": "/logo.jpg",
+      "type": "image/jpeg",
+      "sizes": "192x192 512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#0f172a",
+  "theme_color": "#4f46e5",
+  "display": "standalone",
+  "orientation": "any"
+}
