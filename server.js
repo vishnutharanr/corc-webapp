@@ -370,7 +370,7 @@ app.get('/api/children', async (req, res) => {
         const childIds = children.map(c => c.id);
 
         const assessmentsResult = await pool.query(
-            `SELECT id, child_id, form_type, created_at, data FROM assessments WHERE child_id = ANY($1::int[]) ORDER BY created_at DESC`,
+            `SELECT id, child_id, form_type, created_at, data FROM assessments WHERE child_id = ANY($1) ORDER BY created_at DESC`,
             [childIds]
         );
 

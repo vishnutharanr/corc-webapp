@@ -870,7 +870,17 @@ document.addEventListener('DOMContentLoaded', () => {
         q = q || '';
         try {
             const url = q ? '/api/children?search=' + encodeURIComponent(q) : '/api/children';
-            const children = await (await fetch(url)).json();
+            const res = await fetch(url);
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                showToast(errData.error || 'Failed to load children', true);
+                return;
+            }
+            const children = await res.json();
+            if (!Array.isArray(children)) {
+                showToast('Unexpected server response for child list', true);
+                return;
+            }
             foldersEl.innerHTML = '';
             
             const ageFilter = document.getElementById('records-age-filter')?.value || 'all';
@@ -982,7 +992,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const cd = JSON.parse(btn.getAttribute('data-child-json').replace(/&quot;/g, '"'));
                     setActiveChild(cd);
                     showToast('"' + cd.name + '" is now the active profile.');
-                    fetchChildFolders(q);
+                    fetchChildFolders(searchInput ? searchInput.value : '');
                 });
             });
 
@@ -1010,7 +1020,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             if (resp.ok) {
                                 showToast('Child profile "' + name + '" deleted.');
                                 if (activeChild && activeChild.id == id) setActiveChild(null);
-                                fetchChildFolders(q);
+                                fetchChildFolders(searchInput ? searchInput.value : '');
                             } else {
                                 showToast('Error: ' + (await resp.json()).error, true);
                             }
