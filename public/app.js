@@ -713,7 +713,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         ageNum = new Date().getFullYear() - b.getFullYear();
                     } else if (child.assessments) {
                         const rapid = child.assessments.find(a => a.form_type === 'Rapid Assessment');
-                        if (rapid && rapid.data && rapid.data.age) ageNum = parseInt(rapid.data.age);
+                        if (rapid && rapid.data) {
+                            try {
+                                const rd = typeof rapid.data === 'string' ? JSON.parse(rapid.data) : rapid.data;
+                                if (rd.age) ageNum = parseInt(rd.age);
+                            } catch (e) {}
+                        }
                     }
                     if (userRole === 'staff') return ageNum < 8;
                     if (userRole === 'staff8') return ageNum >= 8;
@@ -1513,6 +1518,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (row.child_dob) {
                         const b = new Date(row.child_dob);
                         ageNum = new Date().getFullYear() - b.getFullYear();
+                    } else if (row.rapid_data) {
+                        try {
+                            const rd = JSON.parse(row.rapid_data);
+                            if (rd.age) ageNum = parseInt(rd.age);
+                        } catch (e) {}
                     }
                     if (userRole === 'staff' && ageNum >= 8) match = false;
                     if (userRole === 'staff8' && ageNum < 8) match = false;

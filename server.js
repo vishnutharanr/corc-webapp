@@ -227,7 +227,7 @@ app.get('/api/children', async (req, res) => {
         const placeholders = childIds.map((_, i) => `$${i + 1}`).join(',');
 
         const assessmentsResult = await pool.query(
-            `SELECT id, child_id, form_type, created_at FROM assessments WHERE child_id IN (${placeholders}) ORDER BY created_at DESC`,
+            `SELECT id, child_id, form_type, created_at, data FROM assessments WHERE child_id IN (${placeholders}) ORDER BY created_at DESC`,
             childIds
         );
 
@@ -395,7 +395,8 @@ app.get('/api/reports/attendance', async (req, res) => {
     const { start_date, end_date, child_id } = req.query;
     try {
         let sql = `
-            SELECT t.*, c.name as child_name, c.dob as child_dob 
+            SELECT t.*, c.name as child_name, c.dob as child_dob,
+                   (SELECT data FROM assessments WHERE child_id = c.id AND form_type = 'Rapid Assessment' ORDER BY created_at DESC LIMIT 1) as rapid_data
             FROM therapy_attendance t 
             JOIN children c ON t.child_id = c.id 
             WHERE 1=1
