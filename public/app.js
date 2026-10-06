@@ -192,6 +192,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (tEl) tEl.classList.add('active');
             }
             if (tid === 'records') fetchChildFolders();
+            if (tid === 'assessment-summaries') fetchAndRenderAssessmentSummaries();
             if (tid === 'user-management') fetchUsers();
         });
     });
@@ -205,6 +206,7 @@ document.addEventListener('DOMContentLoaded', () => {
         tabContents.forEach(t => t.classList.toggle('active', t.id === targetId));
         document.querySelectorAll('.assessment-pane').forEach(p => p.classList.toggle('active', p.id === targetId));
         if (targetId === 'records') fetchChildFolders();
+        if (targetId === 'assessment-summaries') fetchAndRenderAssessmentSummaries();
         if (targetId === 'user-management') fetchUsers();
     }
 
@@ -1762,7 +1764,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td></td>
                     <td class="header-balance" style="${group.sumBalance > 0 ? 'color: var(--danger);' : ''}">
                         <strong>₹${group.sumBalance}</strong>
-                        ${group.sumBalance > 0 ? `<button type="button" class="btn-whatsapp-balance" data-child-name="${group.name}" data-balance="${group.sumBalance}" title="Send fee reminder via WhatsApp" style="margin-left: 6px; background: #22c55e; color: white; border: none; padding: 2px 7px; border-radius: 4px; font-size: 0.75rem; cursor: pointer; font-weight: 600;">📲 WhatsApp</button>` : ''}
                     </td>
                     <td></td>
                 </tr>`;
@@ -1828,18 +1829,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             });
 
-            // WhatsApp Fee Balance Reminder listener
-            tbody.querySelectorAll('.btn-whatsapp-balance').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const cname = btn.getAttribute('data-child-name');
-                    const bal = btn.getAttribute('data-balance');
-                    const text = encodeURIComponent(
-                        `Dear Parent, greetings from Child Development & Early Intervention Centre. This is a gentle reminder regarding the outstanding therapy fee balance of ₹${bal} for ${cname}. Kindly arrange for the settlement at your convenience. Thank you!`
-                    );
-                    window.open(`https://wa.me/?text=${text}`, '_blank');
-                });
-            });
+
 
             // Single Receipt PDF generation listener
             tbody.querySelectorAll('.btn-receipt-attendance').forEach(btn => {
@@ -3106,47 +3096,880 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentSummaryChild = null;
     let currentSummaryAssessments = [];
     let allSummaryChildrenList = [];
+    let childSummaryOpenedFromMatrix = false;
 
     // Modal Close Handlers
     document.getElementById('close-child-summary-modal')?.addEventListener('click', () => {
         document.getElementById('child-summary-modal')?.classList.remove('show');
+        if (childSummaryOpenedFromMatrix) {
+            document.getElementById('all-summary-modal')?.classList.add('show');
+        }
     });
     document.getElementById('close-all-summary-modal')?.addEventListener('click', () => {
         document.getElementById('all-summary-modal')?.classList.remove('show');
+        childSummaryOpenedFromMatrix = false;
+    });
+    document.getElementById('btn-back-to-matrix')?.addEventListener('click', () => {
+        document.getElementById('child-summary-modal')?.classList.remove('show');
+        document.getElementById('all-summary-modal')?.classList.add('show');
     });
     window.addEventListener('click', (e) => {
         const csm = document.getElementById('child-summary-modal');
-        if (e.target === csm) csm.classList.remove('show');
-        const asm = document.getElementById('all-summary-modal');
-        if (e.target === asm) asm.classList.remove('show');
-    });
-
-    // Toolbar button for Center-Wide All Assessments Summary
-    document.getElementById('btn-all-assessments-summary')?.addEventListener('click', () => {
-        openAllAssessmentsSummaryModal();
-    });
-
-    // Export button in Child Summary Modal
-    document.getElementById('btn-download-child-summary-pdf')?.addEventListener('click', () => {
-        if (!currentSummaryChild) {
-            showToast('No child summary profile loaded', true);
-            return;
+        if (e.target === csm) {
+            csm.classList.remove('show');
+            if (childSummaryOpenedFromMatrix) {
+                document.getElementById('all-summary-modal')?.classList.add('show');
+            }
         }
-        generateChildSummaryPdf(currentSummaryChild, currentSummaryAssessments);
+        const asm = document.getElementById('all-summary-modal');
+        if (e.target === asm) {
+            asm.classList.remove('show');
+            childSummaryOpenedFromMatrix = false;
+        }
     });
 
-    // Helper: Format field label
+    // ── Consolidated Multi-Disciplinary Assessment Summaries ────────────────
+    let currentMainSummaryView = 'cards'; // 'cards' | 'matrix'
+    let allCardsExpanded = false;
+
+    // Helper: Clean label for key-value display
     function cleanLabel(key) {
         return key.replace(/_/g, ' ')
                   .replace(/-/g, ' ')
                   .replace(/\b\w/g, l => l.toUpperCase());
     }
 
-    // Open Child Assessment Summary Modal
-    async function openChildSummaryModal(child) {
+    // Helper: Extract rich structured clinical summary across all 5 forms
+    function extractAssessmentSummaries(child, assessments = []) {
+        const rapid = assessments.find(a => a.form_type === 'Rapid Assessment');
+        const dev = assessments.find(a => a.form_type === 'Child Development');
+        const physio = assessments.find(a => a.form_type === 'Physiotherapy');
+        const speech = assessments.find(a => a.form_type === 'Speech Assessment');
+        const progressReviews = assessments.filter(a => a.form_type === 'Quarterly Progress Review');
+
+        // 1. Rapid Assessment
+        const rData = rapid?.data || {};
+        const rapidSummary = {
+            exists: !!rapid,
+            id: rapid?.id,
+            date: rapid?.created_at ? new Date(rapid.created_at).toLocaleDateString('en-IN') : null,
+            diagnosis: rData.diagnosis || 'Provisional diagnosis not specified',
+            symptoms: rData.symptoms || 'None recorded',
+            birth_history: rData.birth_history || 'Not specified',
+            medical_history: rData.medical_history || 'Not specified',
+            finalized_by: rData.finalized_by || 'Not specified',
+            teamObservations: [
+                { role: 'Physiotherapist', obs: rData.physio_observation, sug: rData.physio_suggestion },
+                { role: 'Occupational Therapist', obs: rData.occupational_observation, sug: rData.occupational_suggestion },
+                { role: 'Sensory Therapist', obs: rData.sensory_observation, sug: rData.sensory_suggestion },
+                { role: 'Speech Therapist', obs: rData.speech_observation, sug: rData.speech_suggestion },
+                { role: 'P & O Consultant', obs: rData.po_observation, sug: rData.po_suggestion }
+            ].filter(t => t.obs || t.sug)
+        };
+
+        // 2. Child Development
+        const dData = dev?.data || {};
+        const delays = [
+            dData.gross_motor_delay ? `Gross Motor: ${dData.gross_motor_delay}` : '',
+            dData.fine_motor_delay ? `Fine Motor: ${dData.fine_motor_delay}` : '',
+            dData.speech_delay ? `Speech: ${dData.speech_delay}` : '',
+            dData.cognitive_delay ? `Cognitive: ${dData.cognitive_delay}` : ''
+        ].filter(Boolean);
+
+        const conditions = [
+            dData.neuromotor_impairment ? `Neuromotor: ${dData.neuromotor_impairment}` : '',
+            dData.hearing_impairment ? `Hearing: ${dData.hearing_impairment}` : '',
+            dData.vision_impairment ? `Vision: ${dData.vision_impairment}` : '',
+            dData.adhd ? `ADHD: ${dData.adhd}` : '',
+            dData.behaviour_disorder ? `Behaviour: ${dData.behaviour_disorder}` : '',
+            dData.learning_disorder ? `Learning: ${dData.learning_disorder}` : '',
+            dData.convulsions ? `Convulsions: ${dData.convulsions} ${dData.convulsions_desc || ''}` : ''
+        ].filter(Boolean);
+
+        const deliveryList = [
+            dData.delivery_type ? `Type: ${dData.delivery_type}` : '',
+            dData.delivery_term ? `Term: ${dData.delivery_term}` : '',
+            dData.birth_weight ? `Birth Wt: ${dData.birth_weight}` : '',
+            dData.birth_cry ? `Birth Cry: ${dData.birth_cry}` : '',
+            dData.incubator_support ? `Incubator: ${dData.incubator_support}` : '',
+            dData.hospital_stay_days ? `Hospital Stay: ${dData.hospital_stay_days}d` : ''
+        ].filter(Boolean);
+
+        const anthropometryList = [
+            dData.height ? `Height: ${dData.height}cm` : '',
+            dData.weight ? `Weight: ${dData.weight}kg` : '',
+            dData.bmi ? `BMI: ${dData.bmi}` : '',
+            dData.head_circ ? `Head Circ: ${dData.head_circ}cm` : '',
+            dData.chest_circ ? `Chest: ${dData.chest_circ}cm` : ''
+        ].filter(Boolean);
+
+        const devSummary = {
+            exists: !!dev,
+            id: dev?.id,
+            date: dev?.created_at ? new Date(dev.created_at).toLocaleDateString('en-IN') : null,
+            diagnosis: dData.dev_diagnosis || dData.developmental_diagnosis || dData.clinical_impression || dData.diagnosis || 'Developmental Profile Recorded',
+            chief_complaints: dData.chief_complaints || dData.chief_complaint || 'Developmental evaluation conducted',
+            informant: dData.informant ? `${dData.informant} (${dData.relationship || 'Guardian'})` : 'Parents',
+            delivery: deliveryList.join(' · ') || 'Uneventful perinatal history',
+            anthropometry: anthropometryList.join(' · ') || '',
+            delays,
+            conditions,
+            goals: dData.treatment_goal || dData.treatment_plan || dData.parent_expectations || '',
+            assessed_by: dData.assessed_by || ''
+        };
+
+        // 3. Physiotherapy
+        const pData = physio?.data || {};
+        const deformities = [
+            pData.scoliosis ? `Scoliosis: ${pData.scoliosis}` : '',
+            pData.kyphosis ? `Kyphosis: ${pData.kyphosis}` : '',
+            pData.hyper_lordosis ? `Lordosis: ${pData.hyper_lordosis}` : '',
+            pData.equines_left || pData.equines_right ? `Equinus: L(${pData.equines_left || '-'}), R(${pData.equines_right || '-'})` : '',
+            pData.bow_legs_left || pData.bow_legs_right ? `Bow Legs: L(${pData.bow_legs_left || '-'}), R(${pData.bow_legs_right || '-'})` : '',
+            pData.knock_knees_left || pData.knock_knees_right ? `Knock Knees: L(${pData.knock_knees_left || '-'}), R(${pData.knock_knees_right || '-'})` : '',
+            pData.flat_foot_left || pData.flat_foot_right ? `Flat Foot: L(${pData.flat_foot_left || '-'}), R(${pData.flat_foot_right || '-'})` : '',
+            pData.hand_def_left || pData.hand_def_right ? `Hand Deformity: L(${pData.hand_def_left || '-'}), R(${pData.hand_def_right || '-'})` : '',
+            pData.elbow_def_left || pData.elbow_def_right ? `Elbow Deformity: L(${pData.elbow_def_left || '-'}), R(${pData.elbow_def_right || '-'})` : ''
+        ].filter(Boolean);
+
+        const milestones = [
+            pData.gm_head_control ? `Head Control: ${pData.gm_head_control}` : '',
+            pData.gm_rolling ? `Rolling: ${pData.gm_rolling}` : '',
+            pData.gm_alt_crawling ? `Crawling: ${pData.gm_alt_crawling}` : '',
+            pData.gm_sit_no_support ? `Sit (no support): ${pData.gm_sit_no_support}` : '',
+            pData.gm_stand_no_support ? `Stand (no support): ${pData.gm_stand_no_support}` : '',
+            pData.gm_stair_no_support ? `Stairs: ${pData.gm_stair_no_support}` : '',
+            pData.gm_running ? `Running: ${pData.gm_running}` : ''
+        ].filter(Boolean);
+
+        const gaitParts = [
+            pData.gait_pattern ? `Pattern: ${pData.gait_pattern}` : '',
+            pData.gait_without_support ? `Walks independently: ${pData.gait_without_support}` : '',
+            pData.gait_with_support ? `Walks with support: ${pData.gait_with_support}` : '',
+            pData.gait_no_walk ? `Unable to walk: ${pData.gait_no_walk}` : '',
+            pData.use_of_aids ? `Aids: ${pData.use_of_aids}` : ''
+        ].filter(Boolean);
+
+        const physioSummary = {
+            exists: !!physio,
+            id: physio?.id,
+            date: physio?.created_at ? new Date(physio.created_at).toLocaleDateString('en-IN') : null,
+            diagnosis: pData.physio_diagnosis || pData.diagnosis || 'Pediatric Physiotherapy Assessment',
+            gait: gaitParts.join(' · ') || 'Functional mobility evaluation completed',
+            tone: pData.muscle_tone_general || 'Evaluated',
+            clonus: pData.clonus || 'None',
+            deformities,
+            milestones,
+            plan: pData.physio_treatment_plan || pData.treatment_plan || 'Targeted physiotherapy protocol',
+            assessed_by: pData.assessed_by || ''
+        };
+
+        // 4. Speech Assessment
+        const sData = speech?.data || {};
+        const speechSummary = {
+            exists: !!speech,
+            id: speech?.id,
+            date: speech?.created_at ? new Date(speech.created_at).toLocaleDateString('en-IN') : null,
+            diagnosis: sData.speech_diagnosis || sData.diagnosis || 'Speech-Language Evaluation',
+            articulation: sData.speech_articulation ? `${sData.speech_articulation} ${sData.speech_articulation_soda ? `(SODA: ${sData.speech_articulation_soda})` : ''} ${sData.speech_articulation_nasality ? `(Nasality: ${sData.speech_articulation_nasality})` : ''}` : 'Evaluated',
+            voice: sData.speech_voice ? `${sData.speech_voice} ${sData.speech_quality ? `(${sData.speech_quality})` : ''} ${sData.speech_pitch ? `Pitch: ${sData.speech_pitch}` : ''}` : 'Normal / Evaluated',
+            rhythm: sData.speech_rhythm ? `${sData.speech_rhythm} ${sData.speech_rhythm_defective || ''}` : 'Normal',
+            intonation: sData.speech_intonation ? `${sData.speech_intonation} ${sData.speech_intonation_defective || ''}` : 'Normal',
+            intelligibility: sData.speech_intelligibility ? `${sData.speech_intelligibility} ${sData.speech_intelligibility_defective || ''}` : 'Context known intelligible',
+            plan: sData.speech_follow_up || sData.short_term_goals || sData.recommendations || 'Speech-language therapy sessions',
+            assessed_by: sData.speech_assessed_by || ''
+        };
+
+        // 5. Quarterly Progress Review(s)
+        const progressList = progressReviews.map(pr => {
+            const prData = pr.data || {};
+            const lt = Array.isArray(prData.long_term_goal) ? prData.long_term_goal.filter(Boolean).join('; ') : (prData.long_term_goal || '');
+            const st = Array.isArray(prData.short_term_goal) ? prData.short_term_goal.filter(Boolean).join('; ') : (prData.short_term_goal || '');
+            const ach = Array.isArray(prData.achievement) ? prData.achievement.filter(Boolean).join('; ') : (prData.achievement || prData.goal_achievements || prData.overall_progress || '');
+            const nxt = Array.isArray(prData.next_plan) ? prData.next_plan.filter(Boolean).join('; ') : (prData.next_plan || '');
+            return {
+                id: pr.id,
+                date: pr.created_at ? new Date(pr.created_at).toLocaleDateString('en-IN') : (prData.review_date || 'N/A'),
+                quarter: prData.quarter || 'Progress Review',
+                long_term: lt,
+                short_term: st,
+                achievement: ach || 'Goal progression tracked',
+                next_plan: nxt || 'Continue therapy plan'
+            };
+        });
+
+        const coreCount = [rapid, dev, physio, speech].filter(Boolean).length;
+        const workupStatus = coreCount === 4 ? 'complete' : (assessments.length > 0 ? 'partial' : 'none');
+
+        return {
+            rapid: rapidSummary,
+            dev: devSummary,
+            physio: physioSummary,
+            speech: speechSummary,
+            progress: progressList,
+            coreCount,
+            totalCount: assessments.length,
+            workupStatus
+        };
+    }
+
+    // Helper: Build the complete Multi-Disciplinary Dossier HTML for a child (all forms together!)
+    function renderChildConsolidatedCardHtml(child, assessments = [], isFullModal = false) {
+        const summary = extractAssessmentSummaries(child, assessments);
+        const ageYears = extractChildAge(child);
+        const ageStr = ageYears ? `${ageYears} yrs` : (child.dob ? `DOB: ${child.dob}` : 'Age not specified');
+        const safeChildJson = JSON.stringify({ id: child.id, name: child.name, dob: child.dob, sex: child.sex, mobile: child.mobile }).replace(/"/g, '&quot;');
+
+        const statusBadgeText = summary.coreCount === 4 
+            ? '✓ 4/4 Core Complete' 
+            : (summary.totalCount > 0 ? `${summary.coreCount}/4 Disciplines Done` : 'Pending Workup (0)');
+        const statusBadgeBg = summary.coreCount === 4 ? '#dcfce7' : (summary.totalCount > 0 ? '#fef9c3' : '#fee2e2');
+        const statusBadgeColor = summary.coreCount === 4 ? '#15803d' : (summary.totalCount > 0 ? '#a16207' : '#b91c1c');
+
+        // Form 1 Panel: Rapid Assessment
+        const r = summary.rapid;
+        const rapidPanelHtml = `
+            <div class="summary-form-panel ${r.exists ? 'panel-done' : 'panel-pending'}">
+                <div class="summary-panel-header">
+                    <div class="summary-panel-title">
+                        <span>⚡</span> <span>Rapid Assessment</span>
+                    </div>
+                    ${r.exists ? `
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="summary-panel-date">📅 ${r.date}</span>
+                            <button class="btn-summary-view-form btn-secondary btn-sm" data-id="${r.id}" style="padding: 2px 7px; font-size: 0.75rem;">View Form</button>
+                        </div>
+                    ` : `
+                        <button class="btn-conduct-form btn-secondary btn-sm" data-form="rapid-assessment" data-child-json="${safeChildJson}" style="padding: 2px 8px; font-size: 0.75rem; background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe;">+ Conduct</button>
+                    `}
+                </div>
+                ${r.exists ? `
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <div class="summary-field-box" style="background: #eff6ff; border-color: #bfdbfe;">
+                            <div class="field-label" style="color: #1e40af;">Clinical Diagnosis</div>
+                            <div class="field-val" style="font-weight: 700; color: #1e3a8a;">${r.diagnosis}</div>
+                        </div>
+                        <div class="summary-field-box">
+                            <div class="field-label">Reported Symptoms</div>
+                            <div class="field-val">${r.symptoms}</div>
+                        </div>
+                        <div class="summary-field-box">
+                            <div class="field-label">Birth & Medical History</div>
+                            <div class="field-val"><strong>Birth:</strong> ${r.birth_history} | <strong>Med:</strong> ${r.medical_history}</div>
+                        </div>
+                        ${r.teamObservations.length ? `
+                            <div class="summary-field-box">
+                                <div class="field-label">Multi-disciplinary Observations</div>
+                                <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px;">
+                                    ${r.teamObservations.map(t => `
+                                        <div style="font-size: 0.8rem; border-left: 2px solid #3b82f6; padding-left: 6px;">
+                                            <strong style="color: #2563eb;">${t.role}:</strong> ${t.obs ? `Obs: ${t.obs}` : ''} ${t.sug ? `| Sug: ${t.sug}` : ''}
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
+                        <div style="font-size: 0.78rem; color: #64748b; margin-top: 2px;">
+                            <strong>Finalized by:</strong> ${r.finalized_by}
+                        </div>
+                    </div>
+                ` : `
+                    <div style="text-align: center; padding: 20px 10px; color: #94a3b8; font-size: 0.85rem;">
+                        <span>⏳ Initial triage assessment not conducted yet</span>
+                    </div>
+                `}
+            </div>
+        `;
+
+        // Form 2 Panel: Child Development
+        const d = summary.dev;
+        const devPanelHtml = `
+            <div class="summary-form-panel ${d.exists ? 'panel-done' : 'panel-pending'}">
+                <div class="summary-panel-header">
+                    <div class="summary-panel-title">
+                        <span>👶</span> <span>Child Development Assessment</span>
+                    </div>
+                    ${d.exists ? `
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="summary-panel-date">📅 ${d.date}</span>
+                            <button class="btn-summary-view-form btn-secondary btn-sm" data-id="${d.id}" style="padding: 2px 7px; font-size: 0.75rem;">View Form</button>
+                        </div>
+                    ` : `
+                        <button class="btn-conduct-form btn-secondary btn-sm" data-form="child-development" data-child-json="${safeChildJson}" style="padding: 2px 8px; font-size: 0.75rem; background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe;">+ Conduct</button>
+                    `}
+                </div>
+                ${d.exists ? `
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <div class="summary-field-box" style="background: #fdf2f8; border-color: #fbcfe8;">
+                            <div class="field-label" style="color: #9d174d;">Developmental Impression & Diagnosis</div>
+                            <div class="field-val" style="font-weight: 700; color: #831843;">${d.diagnosis}</div>
+                        </div>
+                        <div class="summary-field-box">
+                            <div class="field-label">Chief Complaints & Informant</div>
+                            <div class="field-val">${d.chief_complaints} <span style="color: #64748b;">(Informant: ${d.informant})</span></div>
+                        </div>
+                        <div class="summary-field-box">
+                            <div class="field-label">Perinatal & Birth Profile</div>
+                            <div class="field-val">${d.delivery}</div>
+                        </div>
+                        ${d.anthropometry ? `
+                            <div class="summary-field-box">
+                                <div class="field-label">Anthropometry & Growth</div>
+                                <div class="field-val">${d.anthropometry}</div>
+                            </div>
+                        ` : ''}
+                        ${d.delays.length ? `
+                            <div class="summary-field-box" style="background: #fef2f2; border-color: #fecaca;">
+                                <div class="field-label" style="color: #991b1b;">Identified Developmental Delays</div>
+                                <div class="field-val" style="color: #b91c1c; font-weight: 600;">${d.delays.join(' · ')}</div>
+                            </div>
+                        ` : ''}
+                        ${d.conditions.length ? `
+                            <div class="summary-field-box" style="background: #fffbeb; border-color: #fde68a;">
+                                <div class="field-label" style="color: #92400e;">Impairments & Associated Conditions</div>
+                                <div class="field-val" style="color: #78350f;">${d.conditions.join(' · ')}</div>
+                            </div>
+                        ` : ''}
+                        ${d.goals ? `
+                            <div class="summary-field-box">
+                                <div class="field-label">Treatment Goals & Expectations</div>
+                                <div class="field-val">${d.goals}</div>
+                            </div>
+                        ` : ''}
+                        ${d.assessed_by ? `<div style="font-size: 0.78rem; color: #64748b;"><strong>Assessed by:</strong> ${d.assessed_by}</div>` : ''}
+                    </div>
+                ` : `
+                    <div style="text-align: center; padding: 20px 10px; color: #94a3b8; font-size: 0.85rem;">
+                        <span>⏳ Comprehensive developmental evaluation pending</span>
+                    </div>
+                `}
+            </div>
+        `;
+
+        // Form 3 Panel: Physiotherapy
+        const p = summary.physio;
+        const physioPanelHtml = `
+            <div class="summary-form-panel ${p.exists ? 'panel-done' : 'panel-pending'}">
+                <div class="summary-panel-header">
+                    <div class="summary-panel-title">
+                        <span>💪</span> <span>Physiotherapy Assessment</span>
+                    </div>
+                    ${p.exists ? `
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="summary-panel-date">📅 ${p.date}</span>
+                            <button class="btn-summary-view-form btn-secondary btn-sm" data-id="${p.id}" style="padding: 2px 7px; font-size: 0.75rem;">View Form</button>
+                        </div>
+                    ` : `
+                        <button class="btn-conduct-form btn-secondary btn-sm" data-form="physiotherapy" data-child-json="${safeChildJson}" style="padding: 2px 8px; font-size: 0.75rem; background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe;">+ Conduct</button>
+                    `}
+                </div>
+                ${p.exists ? `
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <div class="summary-field-box" style="background: #f0fdf4; border-color: #bbf7d0;">
+                            <div class="field-label" style="color: #166534;">Physiotherapy Diagnosis</div>
+                            <div class="field-val" style="font-weight: 700; color: #14532d;">${p.diagnosis}</div>
+                        </div>
+                        <div class="summary-field-box">
+                            <div class="field-label">Gait & Mobility</div>
+                            <div class="field-val">${p.gait}</div>
+                        </div>
+                        <div class="summary-field-box">
+                            <div class="field-label">Muscle Tone & Clonus</div>
+                            <div class="field-val"><strong>Tone:</strong> ${p.tone} | <strong>Clonus:</strong> ${p.clonus}</div>
+                        </div>
+                        ${p.deformities.length ? `
+                            <div class="summary-field-box" style="background: #fff7ed; border-color: #fed7aa;">
+                                <div class="field-label" style="color: #9a3412;">Observed Deformities / Structural Findings</div>
+                                <div class="field-val" style="color: #7c2d12;">${p.deformities.join(' · ')}</div>
+                            </div>
+                        ` : ''}
+                        ${p.milestones.length ? `
+                            <div class="summary-field-box">
+                                <div class="field-label">Key Gross Motor Milestones</div>
+                                <div class="field-val">${p.milestones.join(' · ')}</div>
+                            </div>
+                        ` : ''}
+                        <div class="summary-field-box" style="background: #f8fafc;">
+                            <div class="field-label">Rehabilitation Treatment Plan</div>
+                            <div class="field-val">${p.plan}</div>
+                        </div>
+                        ${p.assessed_by ? `<div style="font-size: 0.78rem; color: #64748b;"><strong>Assessed by:</strong> ${p.assessed_by}</div>` : ''}
+                    </div>
+                ` : `
+                    <div style="text-align: center; padding: 20px 10px; color: #94a3b8; font-size: 0.85rem;">
+                        <span>⏳ Functional physiotherapy assessment pending</span>
+                    </div>
+                `}
+            </div>
+        `;
+
+        // Form 4 Panel: Speech Assessment
+        const s = summary.speech;
+        const speechPanelHtml = `
+            <div class="summary-form-panel ${s.exists ? 'panel-done' : 'panel-pending'}">
+                <div class="summary-panel-header">
+                    <div class="summary-panel-title">
+                        <span>🗣️</span> <span>Speech & Language Assessment</span>
+                    </div>
+                    ${s.exists ? `
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="summary-panel-date">📅 ${s.date}</span>
+                            <button class="btn-summary-view-form btn-secondary btn-sm" data-id="${s.id}" style="padding: 2px 7px; font-size: 0.75rem;">View Form</button>
+                        </div>
+                    ` : `
+                        <button class="btn-conduct-form btn-secondary btn-sm" data-form="speech" data-child-json="${safeChildJson}" style="padding: 2px 8px; font-size: 0.75rem; background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe;">+ Conduct</button>
+                    `}
+                </div>
+                ${s.exists ? `
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <div class="summary-field-box" style="background: #faf5ff; border-color: #e9d5ff;">
+                            <div class="field-label" style="color: #6b21a8;">Speech & Language Diagnosis</div>
+                            <div class="field-val" style="font-weight: 700; color: #581c87;">${s.diagnosis}</div>
+                        </div>
+                        <div class="summary-field-box">
+                            <div class="field-label">Articulation & Voice</div>
+                            <div class="field-val"><strong>Articulation:</strong> ${s.articulation} | <strong>Voice:</strong> ${s.voice}</div>
+                        </div>
+                        <div class="summary-field-box">
+                            <div class="field-label">Speech Parameters</div>
+                            <div class="field-val"><strong>Rhythm:</strong> ${s.rhythm} | <strong>Intonation:</strong> ${s.intonation} | <strong>Intelligibility:</strong> ${s.intelligibility}</div>
+                        </div>
+                        <div class="summary-field-box" style="background: #eff6ff; border-color: #bfdbfe;">
+                            <div class="field-label" style="color: #1e40af;">Therapy Goals & Follow-Up Plan</div>
+                            <div class="field-val" style="color: #1e3a8a;">${s.plan}</div>
+                        </div>
+                        ${s.assessed_by ? `<div style="font-size: 0.78rem; color: #64748b;"><strong>Assessed by:</strong> ${s.assessed_by}</div>` : ''}
+                    </div>
+                ` : `
+                    <div style="text-align: center; padding: 20px 10px; color: #94a3b8; font-size: 0.85rem;">
+                        <span>⏳ Speech and communication assessment pending</span>
+                    </div>
+                `}
+            </div>
+        `;
+
+        // Form 5 Panel: Quarterly Progress Review(s)
+        const prog = summary.progress;
+        const progressPanelHtml = `
+            <div class="summary-form-panel ${prog.length ? 'panel-done' : 'panel-pending'}">
+                <div class="summary-panel-header">
+                    <div class="summary-panel-title">
+                        <span>📈</span> <span>Quarterly Progress Reviews (${prog.length})</span>
+                    </div>
+                    <button class="btn-conduct-form btn-secondary btn-sm" data-form="progress-review" data-child-json="${safeChildJson}" style="padding: 2px 8px; font-size: 0.75rem; background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe;">+ Add Review</button>
+                </div>
+                ${prog.length ? `
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        ${prog.slice(0, 3).map((pr, idx) => `
+                            <div class="summary-field-box" style="border-left: 3px solid #6366f1;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                                    <strong style="color: #4338ca; font-size: 0.83rem;">${pr.quarter}</strong>
+                                    <span style="font-size: 0.75rem; color: #64748b;">📅 ${pr.date}</span>
+                                </div>
+                                ${pr.long_term ? `<div style="font-size: 0.8rem; margin-top: 2px;"><strong>Long Term:</strong> ${pr.long_term}</div>` : ''}
+                                ${pr.short_term ? `<div style="font-size: 0.8rem; margin-top: 2px;"><strong>Short Term:</strong> ${pr.short_term}</div>` : ''}
+                                <div style="font-size: 0.8rem; margin-top: 3px; color: #15803d;"><strong>Quarter Achievement:</strong> ${pr.achievement}</div>
+                                <div style="font-size: 0.8rem; margin-top: 2px; color: #1e3a8a;"><strong>Next Quarter Plan:</strong> ${pr.next_plan}</div>
+                            </div>
+                        `).join('')}
+                        ${prog.length > 3 ? `<div style="font-size: 0.78rem; color: #64748b; text-align: center;">+ ${prog.length - 3} more review(s) in record</div>` : ''}
+                    </div>
+                ` : `
+                    <div style="text-align: center; padding: 20px 10px; color: #94a3b8; font-size: 0.85rem;">
+                        <span>⏳ No quarterly progress reviews logged yet</span>
+                    </div>
+                `}
+            </div>
+        `;
+
+        if (isFullModal) {
+            return `
+                <div class="summary-forms-grid" style="grid-template-columns: 1fr;">
+                    ${rapidPanelHtml}
+                    ${devPanelHtml}
+                    ${physioPanelHtml}
+                    ${speechPanelHtml}
+                    ${progressPanelHtml}
+                </div>
+            `;
+        }
+
+        return `
+            <div class="summary-child-card status-${summary.workupStatus}" id="summary-child-card-${child.id}">
+                <!-- Header -->
+                <div class="summary-card-header" data-child-id="${child.id}">
+                    <div class="summary-card-header-main">
+                        <div class="summary-child-avatar">${(child.name || 'C').charAt(0).toUpperCase()}</div>
+                        <div class="summary-child-info">
+                            <strong>${child.name}</strong>
+                            <div class="summary-child-meta">${ageStr} / ${child.sex || '-'} · 📱 ${child.mobile || 'None'} · ID: #${child.id}</div>
+                        </div>
+                    </div>
+
+                    <!-- Discipline Status Badges -->
+                    <div class="summary-card-disciplines-bar">
+                        <span class="discipline-pill ${summary.rapid.exists ? 'done' : 'pending'}">⚡ Rapid: ${summary.rapid.exists ? '✓ ' + summary.rapid.date : 'Pending'}</span>
+                        <span class="discipline-pill ${summary.dev.exists ? 'done' : 'pending'}">👶 Dev: ${summary.dev.exists ? '✓ ' + summary.dev.date : 'Pending'}</span>
+                        <span class="discipline-pill ${summary.physio.exists ? 'done' : 'pending'}">💪 Physio: ${summary.physio.exists ? '✓ ' + summary.physio.date : 'Pending'}</span>
+                        <span class="discipline-pill ${summary.speech.exists ? 'done' : 'pending'}">🗣️ Speech: ${summary.speech.exists ? '✓ ' + summary.speech.date : 'Pending'}</span>
+                        <span class="discipline-pill ${summary.progress.length ? 'done' : 'pending'}">📈 Reviews: ${summary.progress.length ? summary.progress.length + ' done' : 'None'}</span>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="summary-card-actions">
+                        <span class="discipline-pill" style="background: ${statusBadgeBg}; color: ${statusBadgeColor}; font-weight: 700;">${statusBadgeText}</span>
+                        <button class="btn-card-export-pdf btn-secondary btn-sm" data-child-json="${safeChildJson}" style="background: #fff; font-weight: 600;">📄 PDF</button>
+                        <button class="btn-card-open-folder btn-secondary btn-sm" data-child-json="${safeChildJson}" style="background: #fff;">📁 Folder</button>
+                        <span class="folder-toggle" style="font-size: 1.1rem; color: #64748b;">▾</span>
+                    </div>
+                </div>
+
+                <!-- Body (All 5 forms together) -->
+                <div class="summary-card-body" id="summary-card-body-${child.id}">
+                    <div class="summary-forms-grid">
+                        ${rapidPanelHtml}
+                        ${devPanelHtml}
+                        ${physioPanelHtml}
+                        ${speechPanelHtml}
+                        ${progressPanelHtml}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    // Helper: Build Matrix Table Row HTML for a child
+    function renderMatrixTableRowHtml(child, assessments = [], index = 0) {
+        const summary = extractAssessmentSummaries(child, assessments);
+        const ageYears = extractChildAge(child);
+        const ageStr = ageYears ? `${ageYears}y` : (child.dob || '-');
+        const safeChildJson = JSON.stringify({ id: child.id, name: child.name, dob: child.dob, sex: child.sex, mobile: child.mobile }).replace(/"/g, '&quot;');
+
+        const r = summary.rapid;
+        const d = summary.dev;
+        const p = summary.physio;
+        const s = summary.speech;
+        const prog = summary.progress;
+
+        const statusPill = summary.coreCount === 4 
+            ? '<span class="discipline-pill done">✓ Complete (4/4)</span>'
+            : (summary.totalCount > 0 ? `<span class="discipline-pill" style="background:#fef9c3; color:#854d0e;">Partial (${summary.coreCount}/4)</span>` : '<span class="discipline-pill pending">Pending (0)</span>');
+
+        return `
+            <tr style="border-bottom: 1px solid #f1f5f9;">
+                <td style="padding: 12px 14px; text-align: center; color: #64748b; font-weight: 600;">${index + 1}</td>
+                <td style="padding: 12px 14px;">
+                    <strong style="color: #0f172a; font-size: 0.92rem; display: block;">${child.name}</strong>
+                    <div style="font-size: 0.78rem; color: #64748b;">${ageStr} / ${child.sex || '-'} · 📱 ${child.mobile || 'None'}</div>
+                </td>
+                <td style="padding: 12px 14px;">
+                    ${r.exists ? `
+                        <div class="matrix-snippet-box">
+                            <strong>${r.diagnosis}</strong>
+                            <div style="color: #475569; font-size: 0.76rem;">📅 ${r.date}</div>
+                            <div style="color: #64748b; font-size: 0.76rem; margin-top: 2px;">Symptoms: ${r.symptoms}</div>
+                        </div>
+                    ` : '<span style="color: #cbd5e1;">—</span>'}
+                </td>
+                <td style="padding: 12px 14px;">
+                    ${d.exists ? `
+                        <div class="matrix-snippet-box">
+                            <strong>${d.diagnosis}</strong>
+                            <div style="color: #475569; font-size: 0.76rem;">📅 ${d.date}</div>
+                            ${d.delays.length ? `<div style="color: #b91c1c; font-size: 0.75rem; margin-top: 2px;">${d.delays.slice(0, 2).join(', ')}</div>` : ''}
+                        </div>
+                    ` : '<span style="color: #cbd5e1;">—</span>'}
+                </td>
+                <td style="padding: 12px 14px;">
+                    ${p.exists ? `
+                        <div class="matrix-snippet-box">
+                            <strong>${p.diagnosis}</strong>
+                            <div style="color: #475569; font-size: 0.76rem;">📅 ${p.date}</div>
+                            <div style="color: #64748b; font-size: 0.76rem; margin-top: 2px;">Tone: ${p.tone} | ${p.gait.slice(0, 35)}</div>
+                        </div>
+                    ` : '<span style="color: #cbd5e1;">—</span>'}
+                </td>
+                <td style="padding: 12px 14px;">
+                    ${s.exists ? `
+                        <div class="matrix-snippet-box">
+                            <strong>${s.diagnosis}</strong>
+                            <div style="color: #475569; font-size: 0.76rem;">📅 ${s.date}</div>
+                            <div style="color: #64748b; font-size: 0.76rem; margin-top: 2px;">${s.articulation}</div>
+                        </div>
+                    ` : '<span style="color: #cbd5e1;">—</span>'}
+                </td>
+                <td style="padding: 12px 14px;">
+                    ${prog.length ? `
+                        <div class="matrix-snippet-box">
+                            <strong>${prog[0].quarter} (${prog.length})</strong>
+                            <div style="color: #475569; font-size: 0.76rem;">📅 ${prog[0].date}</div>
+                            <div style="color: #15803d; font-size: 0.76rem; margin-top: 2px;">${prog[0].achievement.slice(0, 45)}</div>
+                        </div>
+                    ` : '<span style="color: #cbd5e1;">—</span>'}
+                </td>
+                <td style="padding: 12px 14px; text-align: center;">${statusPill}</td>
+                <td style="padding: 12px 14px; text-align: center;">
+                    <div style="display: flex; gap: 4px; justify-content: center;">
+                        <button class="btn-matrix-view-dossier btn-secondary btn-sm" data-child-json="${safeChildJson}" style="padding: 3px 8px; font-size: 0.78rem; font-weight: 600; background: #eff6ff; color: #1e40af; border-color: #bfdbfe;">📋 Dossier</button>
+                        <button class="btn-matrix-export-pdf btn-secondary btn-sm" data-child-json="${safeChildJson}" style="padding: 3px 8px; font-size: 0.78rem; font-weight: 600;">📄</button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }
+
+    // ── Dedicated Assessment Summaries Hub: Fetch & Render ─────────────────
+    async function fetchAndRenderAssessmentSummaries() {
+        const kpisEl = document.getElementById('main-summary-kpis');
+        const cardsContainer = document.getElementById('summary-cards-container');
+        const matrixTbody = document.getElementById('summary-matrix-tbody');
+        if (!cardsContainer || !matrixTbody) return;
+
+        cardsContainer.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--text-light);"><span style="font-size: 2rem; display: block; margin-bottom: 8px;">⏳</span>Loading consolidated assessment summaries for all children...</div>';
+        matrixTbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 30px; color: var(--text-light);">Loading assessment matrix...</td></tr>';
+
+        try {
+            const res = await fetch('/api/children');
+            if (!res.ok) {
+                cardsContainer.innerHTML = '<div style="color: var(--danger); text-align: center; padding: 30px;">Failed to load children assessment records.</div>';
+                return;
+            }
+            const allChildren = await res.json();
+            
+            // Respect staff role restrictions
+            allSummaryChildrenList = allChildren.filter(c => matchesAgeFilter(c));
+
+            renderMainAssessmentSummariesView();
+
+            // Set up search and filter inputs
+            const searchInput = document.getElementById('main-summary-search');
+            const statusFilter = document.getElementById('main-summary-status-filter');
+            const ageFilter = document.getElementById('main-summary-age-filter');
+
+            const handleFilter = () => renderMainAssessmentSummariesView();
+
+            if (searchInput) searchInput.oninput = handleFilter;
+            if (statusFilter) statusFilter.onchange = handleFilter;
+            if (ageFilter) ageFilter.onchange = handleFilter;
+
+        } catch (err) {
+            console.error('Error in fetchAndRenderAssessmentSummaries:', err);
+            cardsContainer.innerHTML = '<div style="color: var(--danger); text-align: center; padding: 30px;">Error connecting to assessment server.</div>';
+        }
+    }
+
+    // Render Main Assessment Summaries View with current filters
+    function renderMainAssessmentSummariesView() {
+        const kpisEl = document.getElementById('main-summary-kpis');
+        const cardsContainer = document.getElementById('summary-cards-container');
+        const matrixTbody = document.getElementById('summary-matrix-tbody');
+        const searchInput = document.getElementById('main-summary-search');
+        const statusFilter = document.getElementById('main-summary-status-filter');
+        const ageFilter = document.getElementById('main-summary-age-filter');
+
+        const q = (searchInput?.value || '').toLowerCase().trim();
+        const sf = statusFilter?.value || 'all';
+        const af = ageFilter?.value || 'all';
+
+        let list = allSummaryChildrenList.filter(c => matchesAgeFilter(c, af));
+
+        if (q) {
+            list = list.filter(c => {
+                const nameMatch = c.name && c.name.toLowerCase().includes(q);
+                const mobileMatch = c.mobile && c.mobile.includes(q);
+                const aList = c.assessments || [];
+                const diagMatch = aList.some(a => {
+                    const d = a.data || {};
+                    const txt = JSON.stringify(d).toLowerCase();
+                    return txt.includes(q);
+                });
+                return nameMatch || mobileMatch || diagMatch;
+            });
+        }
+
+        if (sf === 'completed') {
+            list = list.filter(c => {
+                const aList = c.assessments || [];
+                return ['Rapid Assessment', 'Child Development', 'Physiotherapy', 'Speech Assessment'].every(t => aList.some(a => a.form_type === t));
+            });
+        } else if (sf === 'partial') {
+            list = list.filter(c => {
+                const aList = c.assessments || [];
+                const majorDone = ['Rapid Assessment', 'Child Development', 'Physiotherapy', 'Speech Assessment'].filter(t => aList.some(a => a.form_type === t)).length;
+                return majorDone > 0 && majorDone < 4;
+            });
+        } else if (sf === 'none') {
+            list = list.filter(c => !c.assessments || c.assessments.length === 0);
+        } else if (sf === 'missing-rapid') {
+            list = list.filter(c => !((c.assessments || []).some(a => a.form_type === 'Rapid Assessment')));
+        } else if (sf === 'missing-dev') {
+            list = list.filter(c => !((c.assessments || []).some(a => a.form_type === 'Child Development')));
+        } else if (sf === 'missing-physio') {
+            list = list.filter(c => !((c.assessments || []).some(a => a.form_type === 'Physiotherapy')));
+        } else if (sf === 'missing-speech') {
+            list = list.filter(c => !((c.assessments || []).some(a => a.form_type === 'Speech Assessment')));
+        }
+
+        // Compute KPIs
+        const totalChildren = list.length;
+        let fullyAssessed = 0;
+        let partiallyAssessed = 0;
+        let noneAssessed = 0;
+        let totalAssessments = 0;
+
+        list.forEach(c => {
+            const aList = c.assessments || [];
+            totalAssessments += aList.length;
+            const hasRapid = aList.some(a => a.form_type === 'Rapid Assessment');
+            const hasDev = aList.some(a => a.form_type === 'Child Development');
+            const hasPhysio = aList.some(a => a.form_type === 'Physiotherapy');
+            const hasSpeech = aList.some(a => a.form_type === 'Speech Assessment');
+            const majorDone = [hasRapid, hasDev, hasPhysio, hasSpeech].filter(Boolean).length;
+
+            if (majorDone === 4) fullyAssessed++;
+            else if (aList.length > 0) partiallyAssessed++;
+            else noneAssessed++;
+        });
+
+        if (kpisEl) {
+            kpisEl.innerHTML = `
+                <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; text-align: center; box-shadow: 0 1px 2px rgba(0,0,0,0.04);">
+                    <div style="font-size: 0.75rem; font-weight: 600; color: #475569; text-transform: uppercase;">Total Registered Children</div>
+                    <div style="font-size: 1.5rem; font-weight: 700; color: #1e293b; margin-top: 3px;">${totalChildren}</div>
+                    <div style="font-size: 0.75rem; color: #64748b; margin-top: 2px;">In selected filter</div>
+                </div>
+                <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 14px; text-align: center; box-shadow: 0 1px 2px rgba(0,0,0,0.04);">
+                    <div style="font-size: 0.75rem; font-weight: 600; color: #166534; text-transform: uppercase;">Fully Assessed (4/4 Core)</div>
+                    <div style="font-size: 1.5rem; font-weight: 700; color: #15803d; margin-top: 3px;">${fullyAssessed}</div>
+                    <div style="font-size: 0.75rem; color: #166534; margin-top: 2px;">Complete Multi-Disciplinary</div>
+                </div>
+                <div style="background: #fefce8; border: 1px solid #fef08a; border-radius: 8px; padding: 14px; text-align: center; box-shadow: 0 1px 2px rgba(0,0,0,0.04);">
+                    <div style="font-size: 0.75rem; font-weight: 600; color: #854d0e; text-transform: uppercase;">Partially Assessed (1-3)</div>
+                    <div style="font-size: 1.5rem; font-weight: 700; color: #a16207; margin-top: 3px;">${partiallyAssessed}</div>
+                    <div style="font-size: 0.75rem; color: #854d0e; margin-top: 2px;">In-Progress Workups</div>
+                </div>
+                <div style="background: #fee2e2; border: 1px solid #fecaca; border-radius: 8px; padding: 14px; text-align: center; box-shadow: 0 1px 2px rgba(0,0,0,0.04);">
+                    <div style="font-size: 0.75rem; font-weight: 600; color: #991b1b; text-transform: uppercase;">Awaiting Assessment (0)</div>
+                    <div style="font-size: 1.5rem; font-weight: 700; color: #b91c1c; margin-top: 3px;">${noneAssessed}</div>
+                    <div style="font-size: 0.75rem; color: #991b1b; margin-top: 2px;">Needs Initial Triage</div>
+                </div>
+                <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 14px; text-align: center; box-shadow: 0 1px 2px rgba(0,0,0,0.04);">
+                    <div style="font-size: 0.75rem; font-weight: 600; color: #1e40af; text-transform: uppercase;">Total Completed Forms</div>
+                    <div style="font-size: 1.5rem; font-weight: 700; color: #1d4ed8; margin-top: 3px;">${totalAssessments}</div>
+                    <div style="font-size: 0.75rem; color: #1e40af; margin-top: 2px;">Clinical records stored</div>
+                </div>
+            `;
+        }
+
+        // Render Cards View
+        if (!list.length) {
+            cardsContainer.innerHTML = `
+                <div style="text-align: center; padding: 45px 20px; background: white; border-radius: 8px; border: 1px dashed #cbd5e1;">
+                    <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">📭</span>
+                    <strong style="color: #334155; font-size: 1.05rem;">No child profiles match current search or filters.</strong>
+                    <p style="color: #64748b; font-size: 0.85rem; margin-top: 4px;">Try adjusting the status or age filters above.</p>
+                </div>
+            `;
+            matrixTbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 30px; color: var(--text-light);">No matching children found.</td></tr>';
+            return;
+        }
+
+        cardsContainer.innerHTML = list.map(c => renderChildConsolidatedCardHtml(c, c.assessments || [])).join('');
+        matrixTbody.innerHTML = list.map((c, idx) => renderMatrixTableRowHtml(c, c.assessments || [], idx)).join('');
+
+        // Wire Cards View events
+        cardsContainer.querySelectorAll('.summary-card-header').forEach(header => {
+            header.addEventListener('click', (e) => {
+                if (e.target.closest('button')) return;
+                const childId = header.getAttribute('data-child-id');
+                const body = document.getElementById(`summary-card-body-${childId}`);
+                const toggle = header.querySelector('.folder-toggle');
+                if (body) {
+                    const isHidden = body.style.display === 'none';
+                    body.style.display = isHidden ? 'flex' : 'none';
+                    if (toggle) toggle.textContent = isHidden ? '▾' : '▸';
+                }
+            });
+        });
+
+        // Wire Export PDF buttons on individual cards
+        cardsContainer.querySelectorAll('.btn-card-export-pdf').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const child = JSON.parse(btn.getAttribute('data-child-json'));
+                const fullChild = allSummaryChildrenList.find(c => c.id === child.id) || child;
+                generateChildSummaryPdf(fullChild, fullChild.assessments || []);
+            });
+        });
+
+        // Wire Open Folder buttons on individual cards
+        cardsContainer.querySelectorAll('.btn-card-open-folder').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const child = JSON.parse(btn.getAttribute('data-child-json'));
+                setActiveChild(child);
+                switchTab('records');
+                showToast(`Opened folder for "${child.name}"`);
+            });
+        });
+
+        // Wire Conduct Assessment buttons on individual cards
+        cardsContainer.querySelectorAll('.btn-conduct-form').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const formId = btn.getAttribute('data-form');
+                const child = JSON.parse(btn.getAttribute('data-child-json'));
+                setActiveChild(child);
+                switchTab(formId);
+                showToast(`Starting ${cleanLabel(formId)} for "${child.name}"`);
+            });
+        });
+
+        // Wire View Form buttons
+        cardsContainer.querySelectorAll('.btn-summary-view-form').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const id = btn.getAttribute('data-id');
+                viewRecord(id);
+            });
+        });
+
+        // Wire Matrix table actions
+        matrixTbody.querySelectorAll('.btn-matrix-view-dossier').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const child = JSON.parse(btn.getAttribute('data-child-json'));
+                const fullChild = allSummaryChildrenList.find(c => c.id === child.id) || child;
+                openChildSummaryModal(fullChild);
+            });
+        });
+
+        matrixTbody.querySelectorAll('.btn-matrix-export-pdf').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const child = JSON.parse(btn.getAttribute('data-child-json'));
+                const fullChild = allSummaryChildrenList.find(c => c.id === child.id) || child;
+                generateChildSummaryPdf(fullChild, fullChild.assessments || []);
+            });
+        });
+    }
+
+    // ── Open Child Assessment Summary Modal (Full Multi-Disciplinary Dossier) ───
+    async function openChildSummaryModal(child, fromMatrix = false) {
         if (!child) return;
+        childSummaryOpenedFromMatrix = !!fromMatrix;
         const modal = document.getElementById('child-summary-modal');
         if (!modal) return;
+
+        // AUTOMATICALLY CLOSE the Center-Wide Matrix Modal if open so summary is shown cleanly in front
+        const allModal = document.getElementById('all-summary-modal');
+        if (allModal) {
+            allModal.classList.remove('show');
+        }
+
+        // Show/hide "← Back to Matrix" button depending on whether opened from matrix
+        const backBtn = document.getElementById('btn-back-to-matrix');
+        if (backBtn) {
+            backBtn.style.display = fromMatrix ? 'inline-flex' : 'none';
+        }
 
         const nameEl = document.getElementById('child-summary-name');
         const subEl = document.getElementById('child-summary-subtitle');
@@ -3166,7 +3989,6 @@ document.addEventListener('DOMContentLoaded', () => {
         modal.classList.add('show');
 
         try {
-            // Fetch complete child data including assessments
             const res = await fetch(`/api/children/${child.id}`);
             let childData = child;
             let assessments = [];
@@ -3174,7 +3996,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 childData = await res.json();
                 assessments = childData.assessments || [];
             } else {
-                // Fallback to assessments endpoint
                 const aRes = await fetch(`/api/assessments?child_id=${child.id}`);
                 if (aRes.ok) assessments = await aRes.json();
             }
@@ -3182,480 +4003,100 @@ document.addEventListener('DOMContentLoaded', () => {
             currentSummaryChild = childData;
             currentSummaryAssessments = assessments;
 
-            // Compute Disciplines
-            const hasRapid = assessments.find(a => a.form_type === 'Rapid Assessment');
-            const hasDev = assessments.find(a => a.form_type === 'Child Development');
-            const hasPhysio = assessments.find(a => a.form_type === 'Physiotherapy');
-            const hasSpeech = assessments.find(a => a.form_type === 'Speech Assessment');
-            const progressReviews = assessments.filter(a => a.form_type === 'Quarterly Progress Review');
+            const summary = extractAssessmentSummaries(childData, assessments);
 
-            const majorCompletedCount = [hasRapid, hasDev, hasPhysio, hasSpeech].filter(Boolean).length;
-            const totalCount = assessments.length;
-
-            const dates = assessments.map(a => new Date(a.created_at)).filter(d => !isNaN(d)).sort((a,b) => a - b);
-            const firstDateStr = dates.length ? dates[0].toLocaleDateString('en-IN') : 'None';
-            const latestDateStr = dates.length ? dates[dates.length - 1].toLocaleDateString('en-IN') : 'None';
-
-            // 1. Render KPI Cards
+            // 1. Render Top KPI Badges
             kpisEl.innerHTML = `
                 <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 12px; text-align: center;">
-                    <div style="font-size: 0.78rem; font-weight: 600; color: #1e40af; text-transform: uppercase;">Total Assessments</div>
-                    <div style="font-size: 1.5rem; font-weight: 700; color: #1d4ed8; margin-top: 4px;">${totalCount}</div>
-                    <div style="font-size: 0.75rem; color: #64748b; margin-top: 2px;">Records in folder</div>
+                    <div style="font-size: 0.75rem; font-weight: 600; color: #1e40af; text-transform: uppercase;">Total Assessments</div>
+                    <div style="font-size: 1.5rem; font-weight: 700; color: #1d4ed8; margin-top: 3px;">${summary.totalCount}</div>
+                    <div style="font-size: 0.75rem; color: #64748b; margin-top: 2px;">Records in dossier</div>
                 </div>
-                <div style="background: ${majorCompletedCount === 4 ? '#f0fdf4' : '#fefce8'}; border: 1px solid ${majorCompletedCount === 4 ? '#bbf7d0' : '#fef08a'}; border-radius: 8px; padding: 12px; text-align: center;">
-                    <div style="font-size: 0.78rem; font-weight: 600; color: ${majorCompletedCount === 4 ? '#166534' : '#854d0e'}; text-transform: uppercase;">Workup Status</div>
-                    <div style="font-size: 1.15rem; font-weight: 700; color: ${majorCompletedCount === 4 ? '#15803d' : '#a16207'}; margin-top: 4px;">${majorCompletedCount === 4 ? 'Fully Assessed' : `${majorCompletedCount}/4 Disciplines`}</div>
-                    <div style="font-size: 0.75rem; color: #64748b; margin-top: 2px;">${majorCompletedCount === 4 ? 'All Core Forms Done' : 'Pending Evaluations'}</div>
-                </div>
-                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; text-align: center;">
-                    <div style="font-size: 0.78rem; font-weight: 600; color: #475569; text-transform: uppercase;">Initial Assessment</div>
-                    <div style="font-size: 1rem; font-weight: 700; color: #1e293b; margin-top: 6px;">${firstDateStr}</div>
-                    <div style="font-size: 0.75rem; color: #64748b; margin-top: 2px;">First entry date</div>
+                <div style="background: ${summary.coreCount === 4 ? '#f0fdf4' : '#fefce8'}; border: 1px solid ${summary.coreCount === 4 ? '#bbf7d0' : '#fef08a'}; border-radius: 8px; padding: 12px; text-align: center;">
+                    <div style="font-size: 0.75rem; font-weight: 600; color: ${summary.coreCount === 4 ? '#166534' : '#854d0e'}; text-transform: uppercase;">Workup Status</div>
+                    <div style="font-size: 1.15rem; font-weight: 700; color: ${summary.coreCount === 4 ? '#15803d' : '#a16207'}; margin-top: 4px;">${summary.coreCount === 4 ? 'Fully Assessed' : `${summary.coreCount}/4 Disciplines`}</div>
+                    <div style="font-size: 0.75rem; color: #64748b; margin-top: 2px;">${summary.coreCount === 4 ? 'All Core Forms Done' : 'Pending Evaluations'}</div>
                 </div>
                 <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; text-align: center;">
-                    <div style="font-size: 0.78rem; font-weight: 600; color: #475569; text-transform: uppercase;">Latest Assessment</div>
-                    <div style="font-size: 1rem; font-weight: 700; color: #1e293b; margin-top: 6px;">${latestDateStr}</div>
-                    <div style="font-size: 0.75rem; color: #64748b; margin-top: 2px;">Most recent update</div>
+                    <div style="font-size: 0.75rem; font-weight: 600; color: #475569; text-transform: uppercase;">Primary Diagnosis</div>
+                    <div style="font-size: 0.88rem; font-weight: 700; color: #1e3a8a; margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${summary.rapid.diagnosis}">
+                        ${summary.rapid.diagnosis || summary.dev.diagnosis || 'Provisional'}
+                    </div>
+                    <div style="font-size: 0.75rem; color: #64748b; margin-top: 2px;">Clinical impression</div>
+                </div>
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; text-align: center;">
+                    <div style="font-size: 0.75rem; font-weight: 600; color: #475569; text-transform: uppercase;">Quarterly Reviews</div>
+                    <div style="font-size: 1.15rem; font-weight: 700; color: #1e293b; margin-top: 4px;">${summary.progress.length} Review(s)</div>
+                    <div style="font-size: 0.75rem; color: #64748b; margin-top: 2px;">Goal progression</div>
                 </div>
             `;
 
-            // 2. Render Disciplines Badges
+            // 2. Render Discipline Pills
             const domainDefinitions = [
-                { type: 'Rapid Assessment', label: 'Rapid Assessment', icon: '⚡', record: hasRapid },
-                { type: 'Child Development', label: 'Child Development', icon: '👶', record: hasDev },
-                { type: 'Physiotherapy', label: 'Physiotherapy', icon: '💪', record: hasPhysio },
-                { type: 'Speech Assessment', label: 'Speech Assessment', icon: '🗣️', record: hasSpeech },
-                { type: 'Quarterly Progress Review', label: `Quarterly Reviews (${progressReviews.length})`, icon: '📈', record: progressReviews.length ? progressReviews[0] : null }
+                { type: 'Rapid Assessment', label: 'Rapid Assessment', icon: '⚡', record: summary.rapid.exists ? summary.rapid : null },
+                { type: 'Child Development', label: 'Child Development', icon: '👶', record: summary.dev.exists ? summary.dev : null },
+                { type: 'Physiotherapy', label: 'Physiotherapy', icon: '💪', record: summary.physio.exists ? summary.physio : null },
+                { type: 'Speech Assessment', label: 'Speech Assessment', icon: '🗣️', record: summary.speech.exists ? summary.speech : null },
+                { type: 'Quarterly Progress Review', label: `Quarterly Reviews (${summary.progress.length})`, icon: '📈', record: summary.progress.length ? summary.progress[0] : null }
             ];
 
             domainsEl.innerHTML = domainDefinitions.map(d => {
                 if (d.record) {
-                    const dt = d.record.created_at ? new Date(d.record.created_at).toLocaleDateString('en-IN') : 'Done';
-                    return `<span style="background: #dcfce7; color: #166534; border: 1px solid #86efac; padding: 5px 12px; border-radius: 20px; font-size: 0.82rem; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;">
-                        ${d.icon} <span>${d.label}</span> <span style="font-size: 0.75rem; background: #bbf7d0; padding: 1px 6px; border-radius: 10px;">✓ ${dt}</span>
+                    return `<span class="discipline-pill done" style="font-size: 0.82rem; padding: 4px 10px;">
+                        ${d.icon} <span>${d.label}</span> <span style="font-size: 0.75rem; background: #bbf7d0; padding: 1px 6px; border-radius: 10px;">✓ ${d.record.date || 'Done'}</span>
                     </span>`;
                 } else {
-                    return `<span style="background: #f1f5f9; color: #94a3b8; border: 1px dashed #cbd5e1; padding: 5px 12px; border-radius: 20px; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 6px;">
+                    return `<span class="discipline-pill pending" style="font-size: 0.82rem; padding: 4px 10px;">
                         ${d.icon} <span>${d.label}</span> <span style="font-size: 0.75rem;">(Pending)</span>
                     </span>`;
                 }
             }).join('');
 
-            // 3. Render Detailed Assessment Summaries
-            if (!assessments.length) {
-                detailsEl.innerHTML = `
-                    <div style="text-align: center; padding: 35px 20px; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1;">
-                        <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">📭</span>
-                        <strong style="color: #334155; font-size: 1rem;">No Assessments Recorded Yet</strong>
-                        <p style="color: #64748b; font-size: 0.85rem; margin: 6px 0 0 0;">
-                            No clinical assessments have been conducted for ${child.name}. Open the child folder in Records to add an assessment.
-                        </p>
-                    </div>
-                `;
-                return;
-            }
+            // 3. Render Every Assessment Form Together!
+            detailsEl.innerHTML = renderChildConsolidatedCardHtml(childData, assessments, true);
 
-            detailsEl.innerHTML = assessments.map(a => {
-                const dateStr = a.created_at ? new Date(a.created_at).toLocaleDateString('en-IN', {
-                    day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
-                }) : 'N/A';
-                const d = a.data || {};
-
-                let contentHtml = '';
-
-                if (a.form_type === 'Rapid Assessment') {
-                    const symptoms = d.symptoms || 'None recorded';
-                    const diagnosis = d.diagnosis || 'Provisional diagnosis not specified';
-                    const birthHist = d.birth_history || 'Not specified';
-                    const medHist = d.medical_history || 'Not specified';
-                    const finalized = d.finalized_by || 'Not specified';
-
-                    const multidisciplinary = [
-                        { label: 'Physiotherapist', obs: d.physio_observation, sug: d.physio_suggestion },
-                        { label: 'Occupational Therapist', obs: d.occupational_observation, sug: d.occupational_suggestion },
-                        { label: 'Sensory Therapist', obs: d.sensory_observation, sug: d.sensory_suggestion },
-                        { label: 'Speech Therapist', obs: d.speech_observation, sug: d.speech_suggestion },
-                        { label: 'P & O Consultant', obs: d.po_observation, sug: d.po_suggestion },
-                    ].filter(m => m.obs || m.sug);
-
-                    contentHtml = `
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-bottom: 12px;">
-                            <div style="background: #fff; padding: 10px 12px; border-radius: 6px; border: 1px solid #e2e8f0;">
-                                <div style="font-size: 0.75rem; color: #64748b; font-weight: 600;">CLINICAL DIAGNOSIS</div>
-                                <div style="font-size: 0.95rem; font-weight: 700; color: #1e3a8a; margin-top: 2px;">${diagnosis}</div>
-                            </div>
-                            <div style="background: #fff; padding: 10px 12px; border-radius: 6px; border: 1px solid #e2e8f0;">
-                                <div style="font-size: 0.75rem; color: #64748b; font-weight: 600;">REPORTED SYMPTOMS</div>
-                                <div style="font-size: 0.88rem; color: #334155; margin-top: 2px;">${symptoms}</div>
-                            </div>
-                            <div style="background: #fff; padding: 10px 12px; border-radius: 6px; border: 1px solid #e2e8f0;">
-                                <div style="font-size: 0.75rem; color: #64748b; font-weight: 600;">BIRTH & MEDICAL HISTORY</div>
-                                <div style="font-size: 0.85rem; color: #334155; margin-top: 2px;">Birth: ${birthHist} | Med: ${medHist}</div>
-                            </div>
-                            <div style="background: #fff; padding: 10px 12px; border-radius: 6px; border: 1px solid #e2e8f0;">
-                                <div style="font-size: 0.75rem; color: #64748b; font-weight: 600;">FINALIZED BY</div>
-                                <div style="font-size: 0.88rem; font-weight: 600; color: #334155; margin-top: 2px;">${finalized}</div>
-                            </div>
-                        </div>
-                        ${multidisciplinary.length ? `
-                            <div style="margin-top: 8px;">
-                                <strong style="font-size: 0.8rem; color: #475569; text-transform: uppercase;">Multidisciplinary Team Observations & Recommendations:</strong>
-                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 8px; margin-top: 6px;">
-                                    ${multidisciplinary.map(m => `
-                                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px; font-size: 0.82rem;">
-                                            <div style="font-weight: 700; color: #2563eb;">${m.label}</div>
-                                            ${m.obs ? `<div style="color: #334155; margin-top: 2px;"><strong>Obs:</strong> ${m.obs}</div>` : ''}
-                                            ${m.sug ? `<div style="color: #047857; margin-top: 2px;"><strong>Sug:</strong> ${m.sug}</div>` : ''}
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            </div>
-                        ` : ''}
-                    `;
-                } else if (a.form_type === 'Child Development') {
-                    const complaint = d.chief_complaints || d.chief_complaint || 'General developmental evaluation';
-                    const informant = d.informant || 'Parents';
-                    const diagnosis = d.developmental_diagnosis || d.clinical_impression || d.diagnosis || 'Developmental Delay Profile Recorded';
-                    const natal = [
-                        d.delivery_type ? `Delivery: ${d.delivery_type}` : '',
-                        d.birth_weight ? `Weight: ${d.birth_weight}` : '',
-                        d.cried_immediately ? `Cried: ${d.cried_immediately}` : ''
-                    ].filter(Boolean).join(' · ') || 'Uneventful perinatal history';
-
-                    const delays = [
-                        d.gross_motor_delay ? `Gross Motor: ${d.gross_motor_delay}` : '',
-                        d.fine_motor_delay ? `Fine Motor: ${d.fine_motor_delay}` : '',
-                        d.speech_delay ? `Speech: ${d.speech_delay}` : '',
-                        d.cognitive_delay ? `Cognitive: ${d.cognitive_delay}` : ''
-                    ].filter(Boolean);
-
-                    contentHtml = `
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-bottom: 12px;">
-                            <div style="background: #fff; padding: 10px 12px; border-radius: 6px; border: 1px solid #e2e8f0;">
-                                <div style="font-size: 0.75rem; color: #64748b; font-weight: 600;">CHIEF COMPLAINT</div>
-                                <div style="font-size: 0.88rem; color: #334155; margin-top: 2px;">${complaint} (Informant: ${informant})</div>
-                            </div>
-                            <div style="background: #fff; padding: 10px 12px; border-radius: 6px; border: 1px solid #e2e8f0;">
-                                <div style="font-size: 0.75rem; color: #64748b; font-weight: 600;">PERINATAL PROFILE</div>
-                                <div style="font-size: 0.85rem; color: #334155; margin-top: 2px;">${natal}</div>
-                            </div>
-                            <div style="background: #fff; padding: 10px 12px; border-radius: 6px; border: 1px solid #e2e8f0;">
-                                <div style="font-size: 0.75rem; color: #64748b; font-weight: 600;">DEVELOPMENTAL IMPRESSION</div>
-                                <div style="font-size: 0.95rem; font-weight: 700; color: #1e3a8a; margin-top: 2px;">${diagnosis}</div>
-                            </div>
-                        </div>
-                        ${delays.length ? `
-                            <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 8px 12px; font-size: 0.82rem; color: #991b1b;">
-                                <strong>Identified Delays:</strong> ${delays.join(' | ')}
-                            </div>
-                        ` : ''}
-                    `;
-                } else if (a.form_type === 'Physiotherapy') {
-                    const diagnosis = d.physio_diagnosis || d.diagnosis || 'Pediatric Physiotherapy Assessment';
-                    const tone = d.muscle_tone || 'Evaluated';
-                    const gait = d.gait || 'Functional assessment conducted';
-                    const rom = d.rom || d.rom_findings || 'Evaluated within limits';
-                    const plan = d.treatment_plan || d.physio_goals || 'Targeted physical therapy intervention';
-
-                    contentHtml = `
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 12px;">
-                            <div style="background: #fff; padding: 10px 12px; border-radius: 6px; border: 1px solid #e2e8f0;">
-                                <div style="font-size: 0.75rem; color: #64748b; font-weight: 600;">PHYSIOTHERAPY DIAGNOSIS</div>
-                                <div style="font-size: 0.95rem; font-weight: 700; color: #1e3a8a; margin-top: 2px;">${diagnosis}</div>
-                            </div>
-                            <div style="background: #fff; padding: 10px 12px; border-radius: 6px; border: 1px solid #e2e8f0;">
-                                <div style="font-size: 0.75rem; color: #64748b; font-weight: 600;">GAIT & MOBILITY</div>
-                                <div style="font-size: 0.85rem; color: #334155; margin-top: 2px;">${gait}</div>
-                            </div>
-                            <div style="background: #fff; padding: 10px 12px; border-radius: 6px; border: 1px solid #e2e8f0;">
-                                <div style="font-size: 0.75rem; color: #64748b; font-weight: 600;">MUSCLE TONE & ROM</div>
-                                <div style="font-size: 0.85rem; color: #334155; margin-top: 2px;">Tone: ${tone} | ROM: ${rom}</div>
-                            </div>
-                        </div>
-                        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 8px 12px; font-size: 0.84rem; color: #166534;">
-                            <strong>Treatment Plan:</strong> ${plan}
-                        </div>
-                    `;
-                } else if (a.form_type === 'Speech Assessment') {
-                    const diagnosis = d.speech_diagnosis || d.diagnosis || 'Speech & Communication Evaluation';
-                    const receptive = d.receptive_language || 'Assessed';
-                    const expressive = d.expressive_language || 'Assessed';
-                    const articulation = d.articulation || 'Clear / Intelligible';
-                    const plan = d.short_term_goals || d.recommendations || 'Speech-language therapy sessions';
-
-                    contentHtml = `
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 12px;">
-                            <div style="background: #fff; padding: 10px 12px; border-radius: 6px; border: 1px solid #e2e8f0;">
-                                <div style="font-size: 0.75rem; color: #64748b; font-weight: 600;">SPEECH & LANGUAGE DIAGNOSIS</div>
-                                <div style="font-size: 0.95rem; font-weight: 700; color: #1e3a8a; margin-top: 2px;">${diagnosis}</div>
-                            </div>
-                            <div style="background: #fff; padding: 10px 12px; border-radius: 6px; border: 1px solid #e2e8f0;">
-                                <div style="font-size: 0.75rem; color: #64748b; font-weight: 600;">LANGUAGE LEVELS</div>
-                                <div style="font-size: 0.85rem; color: #334155; margin-top: 2px;">Receptive: ${receptive} | Expressive: ${expressive}</div>
-                            </div>
-                            <div style="background: #fff; padding: 10px 12px; border-radius: 6px; border: 1px solid #e2e8f0;">
-                                <div style="font-size: 0.75rem; color: #64748b; font-weight: 600;">ARTICULATION & SPEECH</div>
-                                <div style="font-size: 0.85rem; color: #334155; margin-top: 2px;">${articulation}</div>
-                            </div>
-                        </div>
-                        <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 8px 12px; font-size: 0.84rem; color: #1e40af;">
-                            <strong>Therapy Recommendations & Goals:</strong> ${plan}
-                        </div>
-                    `;
-                } else if (a.form_type === 'Quarterly Progress Review') {
-                    const quarter = d.quarter || 'Quarterly Progress Review';
-                    const achievements = d.goal_achievements || d.overall_progress || 'Progress measured against baseline targets';
-                    const nextPlan = d.next_plan || 'Continue therapy protocol';
-
-                    contentHtml = `
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 12px;">
-                            <div style="background: #fff; padding: 10px 12px; border-radius: 6px; border: 1px solid #e2e8f0;">
-                                <div style="font-size: 0.75rem; color: #64748b; font-weight: 600;">REVIEW PERIOD</div>
-                                <div style="font-size: 0.95rem; font-weight: 700; color: #1e3a8a; margin-top: 2px;">${quarter}</div>
-                            </div>
-                            <div style="background: #fff; padding: 10px 12px; border-radius: 6px; border: 1px solid #e2e8f0;">
-                                <div style="font-size: 0.75rem; color: #64748b; font-weight: 600;">GOAL ACHIEVEMENTS & PROGRESS</div>
-                                <div style="font-size: 0.85rem; color: #334155; margin-top: 2px;">${achievements}</div>
-                            </div>
-                        </div>
-                        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px; font-size: 0.84rem; color: #334155;">
-                            <strong>Action Plan for Next Quarter:</strong> ${nextPlan}
-                        </div>
-                    `;
-                } else {
-                    const keys = Object.keys(d).filter(k => !['childId', 'child_id', 'childName', 'child_name', 'formType', 'form_type'].includes(k)).slice(0, 6);
-                    contentHtml = `
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px;">
-                            ${keys.map(k => `
-                                <div style="background: #fff; padding: 8px 10px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 0.82rem;">
-                                    <span style="color: #64748b; font-weight: 600;">${cleanLabel(k)}:</span>
-                                    <span style="color: #1e293b;">${String(d[k] || '—')}</span>
-                                </div>
-                            `).join('')}
-                        </div>
-                    `;
-                }
-
-                return `
-                    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
-                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
-                            <div style="display: flex; align-items: center; gap: 8px;">
-                                <span style="font-size: 1.25rem;">${ICONS[a.form_type] || '📄'}</span>
-                                <strong style="font-size: 0.98rem; color: #1e293b;">${a.form_type}</strong>
-                                <span style="font-size: 0.78rem; background: #f1f5f9; color: #64748b; padding: 2px 8px; border-radius: 10px;">ID: #${a.id}</span>
-                            </div>
-                            <div style="display: flex; align-items: center; gap: 10px;">
-                                <span style="font-size: 0.82rem; color: #64748b;">📅 ${dateStr}</span>
-                                <button class="btn-summary-view-record btn-secondary btn-sm" data-id="${a.id}" style="padding: 3px 8px; font-size: 0.78rem; font-weight: 600;">🔍 View Full Form</button>
-                            </div>
-                        </div>
-                        <div>
-                            ${contentHtml}
-                        </div>
-                    </div>
-                `;
-            }).join('');
-
-            // Wire "View Full Form" buttons inside summary modal
-            detailsEl.querySelectorAll('.btn-summary-view-record').forEach(b => {
-                b.addEventListener('click', (e) => {
-                    const id = b.getAttribute('data-id');
+            // Wire view form buttons
+            detailsEl.querySelectorAll('.btn-summary-view-form').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const id = btn.getAttribute('data-id');
                     viewRecord(id);
                 });
             });
 
-        } catch (err) {
-            console.error('Error opening child summary:', err);
-            detailsEl.innerHTML = '<div style="color: var(--danger); text-align: center; padding: 20px;">Failed to load child assessment summary.</div>';
-        }
-    }
-
-    // Generate Comprehensive Child Assessment Summary PDF
-    function generateChildSummaryPdf(child, assessments) {
-        if (!window.jspdf || !window.jspdf.jsPDF) {
-            showToast('PDF library is loading, please try again in a moment', true);
-            return;
-        }
-
-        try {
-            const doc = new window.jspdf.jsPDF('portrait', 'mm', 'a4');
-            const pageWidth = doc.internal.pageSize.getWidth();
-            const pageHeight = doc.internal.pageSize.getHeight();
-            const margin = 14;
-
-            // Brand Header Banner
-            doc.setFillColor(30, 58, 138); // Deep Navy
-            doc.rect(margin, 10, pageWidth - (margin * 2), 2.5, 'F');
-
-            doc.setFont('helvetica', 'bold');
-            doc.setFontSize(14);
-            doc.setTextColor(30, 58, 138);
-            doc.text('CHITRA ORTHO & REHAB CLINIC', pageWidth / 2, 17, { align: 'center' });
-
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(8.5);
-            doc.setTextColor(71, 85, 105);
-            doc.text('CHILD DEVELOPMENT & EARLY INTERVENTION CENTRE', pageWidth / 2, 21.5, { align: 'center' });
-            doc.setFontSize(7.5);
-            doc.text('Comprehensive Multidisciplinary Clinical Assessment Summary', pageWidth / 2, 25.5, { align: 'center' });
-
-            // Child Demographics Table
-            const ageYears = extractChildAge(child);
-            const ageStr = ageYears ? `${ageYears} yrs` : (child.dob ? `DOB: ${child.dob}` : 'N/A');
-            const summaryDate = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-
-            doc.autoTable({
-                startY: 29,
-                head: [['PATIENT CLINICAL SUMMARY RECORD', '']],
-                body: [
-                    ['Child Name:', child.name || 'N/A', 'Patient ID:', '#' + (child.id || '-')],
-                    ['Date of Birth:', child.dob || 'Not specified', 'Age / Sex:', `${ageStr} / ${child.sex || '-'}`],
-                    ['Contact Phone:', child.mobile || 'None', 'Summary Generated:', summaryDate],
-                    ['Total Assessments:', `${assessments.length} Record(s)`, 'Clinical Status:', assessments.length >= 4 ? 'Complete Multidisciplinary Workup' : 'Evaluations In Progress']
-                ],
-                theme: 'plain',
-                styles: { fontSize: 8, cellPadding: 2, textColor: [30, 41, 59] },
-                headStyles: {
-                    fillColor: [241, 245, 249],
-                    textColor: [30, 58, 138],
-                    fontStyle: 'bold',
-                    fontSize: 8.5
-                },
-                columnStyles: {
-                    0: { fontStyle: 'bold', width: 32 },
-                    1: { width: 58 },
-                    2: { fontStyle: 'bold', width: 34 },
-                    3: { width: 58 }
-                },
-                margin: { left: margin, right: margin }
-            });
-
-            // Executive Assessment Matrix Table
-            const matrixRows = assessments.map((a, idx) => {
-                const dt = a.created_at ? new Date(a.created_at).toLocaleDateString('en-IN') : '-';
-                const d = a.data || {};
-                let diag = 'Clinical evaluation documented';
-                if (a.form_type === 'Rapid Assessment') diag = d.diagnosis || d.symptoms || 'Provisional diagnosis';
-                else if (a.form_type === 'Child Development') diag = d.developmental_diagnosis || d.clinical_impression || d.chief_complaints || 'Developmental profile';
-                else if (a.form_type === 'Physiotherapy') diag = d.physio_diagnosis || d.diagnosis || 'Functional mobility evaluation';
-                else if (a.form_type === 'Speech Assessment') diag = d.speech_diagnosis || d.diagnosis || 'Speech-language parameters';
-                else if (a.form_type === 'Quarterly Progress Review') diag = `${d.quarter || 'Review'} - ${d.goal_achievements || 'Goal evaluation'}`;
-                return [(idx + 1).toString(), a.form_type, dt, diag, 'Completed'];
-            });
-
-            if (matrixRows.length === 0) {
-                matrixRows.push(['1', 'No assessments recorded', '-', 'Pending initial evaluation', 'Pending']);
-            }
-
-            doc.autoTable({
-                startY: doc.lastAutoTable.finalY + 4,
-                head: [['#', 'Assessment Discipline', 'Date', 'Primary Clinical Finding / Impression', 'Status']],
-                body: matrixRows,
-                theme: 'striped',
-                styles: { fontSize: 7.5, cellPadding: 2.2, textColor: [30, 41, 59] },
-                headStyles: { fillColor: [37, 99, 235], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
-                columnStyles: {
-                    0: { width: 10, halign: 'center' },
-                    1: { width: 45, fontStyle: 'bold' },
-                    2: { width: 25 },
-                    3: { width: 82 },
-                    4: { width: 20, halign: 'center' }
-                },
-                margin: { left: margin, right: margin }
-            });
-
-            // Detailed Findings Breakdown Table
-            const domainFindings = [];
-            assessments.forEach(a => {
-                const d = a.data || {};
-                const dt = a.created_at ? new Date(a.created_at).toLocaleDateString('en-IN') : '-';
-                
-                if (a.form_type === 'Rapid Assessment') {
-                    domainFindings.push(['Rapid Assessment (' + dt + ')', 'Diagnosis: ' + (d.diagnosis || '—') + '\nSymptoms: ' + (d.symptoms || '—') + '\nBirth & Medical: ' + (d.birth_history || '—') + ' / ' + (d.medical_history || '—') + '\nFinalized By: ' + (d.finalized_by || '—')]);
-                } else if (a.form_type === 'Child Development') {
-                    domainFindings.push(['Child Development (' + dt + ')', 'Impression: ' + (d.developmental_diagnosis || d.clinical_impression || d.diagnosis || '—') + '\nChief Complaint: ' + (d.chief_complaints || '—') + '\nPerinatal: ' + (d.delivery_type || '') + ' ' + (d.birth_weight || '') + '\nDelays: Gross Motor: ' + (d.gross_motor_delay || '—') + ', Speech: ' + (d.speech_delay || '—')]);
-                } else if (a.form_type === 'Physiotherapy') {
-                    domainFindings.push(['Physiotherapy (' + dt + ')', 'Diagnosis: ' + (d.physio_diagnosis || d.diagnosis || '—') + '\nGait & Posture: ' + (d.gait || '—') + '\nMuscle Tone & ROM: ' + (d.muscle_tone || '—') + ' / ' + (d.rom || '—') + '\nTreatment Plan: ' + (d.treatment_plan || '—')]);
-                } else if (a.form_type === 'Speech Assessment') {
-                    domainFindings.push(['Speech Assessment (' + dt + ')', 'Diagnosis: ' + (d.speech_diagnosis || d.diagnosis || '—') + '\nLanguage: Receptive (' + (d.receptive_language || '—') + '), Expressive (' + (d.expressive_language || '—') + ')\nArticulation: ' + (d.articulation || '—') + '\nGoals: ' + (d.short_term_goals || d.recommendations || '—')]);
-                } else if (a.form_type === 'Quarterly Progress Review') {
-                    domainFindings.push(['Quarterly Review (' + dt + ')', 'Period: ' + (d.quarter || 'Review') + '\nGoal Achievements: ' + (d.goal_achievements || d.overall_progress || '—') + '\nNext Plan: ' + (d.next_plan || '—')]);
-                }
-            });
-
-            if (domainFindings.length > 0) {
-                doc.autoTable({
-                    startY: doc.lastAutoTable.finalY + 4,
-                    head: [['Clinical Discipline & Assessment Date', 'Multidisciplinary Clinical Summary & Plan']],
-                    body: domainFindings,
-                    theme: 'grid',
-                    styles: { fontSize: 7.5, cellPadding: 2.5, textColor: [30, 41, 59], overflow: 'linebreak' },
-                    headStyles: { fillColor: [71, 85, 105], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
-                    columnStyles: {
-                        0: { width: 55, fontStyle: 'bold' },
-                        1: { width: pageWidth - (margin * 2) - 55 }
-                    },
-                    margin: { left: margin, right: margin }
+            // Wire conduct form buttons
+            detailsEl.querySelectorAll('.btn-conduct-form').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const formId = btn.getAttribute('data-form');
+                    modal.classList.remove('show');
+                    setActiveChild(childData);
+                    switchTab(formId);
+                    showToast(`Opening ${cleanLabel(formId)} for "${childData.name}"`);
                 });
-            }
+            });
 
-            // Doctor / Clinician Sign-off Block
-            let sigY = doc.lastAutoTable.finalY + 14;
-            if (sigY + 28 > pageHeight - 14) {
-                doc.addPage();
-                sigY = 24;
-            }
-
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(8);
-            doc.setTextColor(71, 85, 105);
-            doc.text('Multidisciplinary Therapy Team:', margin, sigY);
-            doc.text('Clinical In-Charge / Medical Supervisor:', pageWidth - margin - 60, sigY);
-
-            doc.setDrawColor(203, 213, 225);
-            doc.line(margin, sigY + 12, margin + 55, sigY + 12);
-            doc.line(pageWidth - margin - 60, sigY + 12, pageWidth - margin, sigY + 12);
-
-            doc.setFontSize(7.5);
-            doc.text('Therapist Signatures & Date', margin, sigY + 16);
-            doc.text('Authorized Signatory & Seal', pageWidth - margin - 60, sigY + 16);
-
-            // Add Header/Footer to each page
-            const totalPages = doc.internal.getNumberOfPages();
-            for (let i = 1; i <= totalPages; i++) {
-                doc.setPage(i);
-                doc.setFontSize(7.5);
-                doc.setTextColor(148, 163, 184);
-                doc.text(`Page ${i} of ${totalPages}`, pageWidth - margin, pageHeight - 6, { align: 'right' });
-                doc.text('Chitra Ortho & Rehab Clinic — Confidential Clinical Assessment Summary', margin, pageHeight - 6);
-            }
-
-            const cleanName = (child.name || 'Child').replace(/[^a-zA-Z0-9]/g, '_');
-            const filename = `Clinical_Summary_${cleanName}.pdf`;
-            saveAndOpenPdf(doc, filename);
-            showToast('Clinical Assessment Summary PDF opened & downloaded!');
         } catch (err) {
-            console.error('PDF generation error:', err);
-            showToast('Error generating summary PDF', true);
+            console.error('Error opening child summary modal:', err);
+            detailsEl.innerHTML = '<div style="color: var(--danger); text-align: center; padding: 20px;">Failed to load clinical assessment dossier.</div>';
         }
     }
 
-    // ── Center-Wide All Assessments Summary ──────────────────────────────
+    // ── Center-Wide Assessment Summary Matrix Modal ─────────────────────────
     async function openAllAssessmentsSummaryModal() {
         const modal = document.getElementById('all-summary-modal');
         if (!modal) return;
 
         const tbody = document.getElementById('all-summary-tbody');
         const kpisEl = document.getElementById('all-summary-kpis');
-        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 25px; color: var(--text-light);">Loading center assessment records...</td></tr>';
-        kpisEl.innerHTML = '';
+        if (tbody) tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 25px; color: var(--text-light);">Loading center assessment records...</td></tr>';
+        if (kpisEl) kpisEl.innerHTML = '';
         modal.classList.add('show');
 
         try {
             const res = await fetch('/api/children');
             if (!res.ok) {
-                tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: var(--danger); padding: 20px;">Failed to load child records</td></tr>';
+                if (tbody) tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: var(--danger); padding: 20px;">Failed to load child records</td></tr>';
                 return;
             }
             const allChildren = await res.json();
@@ -3685,28 +4126,30 @@ document.addEventListener('DOMContentLoaded', () => {
                 else noneAssessed++;
             });
 
-            kpisEl.innerHTML = `
-                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; text-align: center;">
-                    <div style="font-size: 0.75rem; font-weight: 600; color: #475569; text-transform: uppercase;">Total Registered Children</div>
-                    <div style="font-size: 1.45rem; font-weight: 700; color: #1e293b; margin-top: 3px;">${totalChildren}</div>
-                </div>
-                <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 12px; text-align: center;">
-                    <div style="font-size: 0.75rem; font-weight: 600; color: #166534; text-transform: uppercase;">Fully Assessed (4/4 Core)</div>
-                    <div style="font-size: 1.45rem; font-weight: 700; color: #15803d; margin-top: 3px;">${fullyAssessed}</div>
-                </div>
-                <div style="background: #fefce8; border: 1px solid #fef08a; border-radius: 8px; padding: 12px; text-align: center;">
-                    <div style="font-size: 0.75rem; font-weight: 600; color: #854d0e; text-transform: uppercase;">Partially Assessed (1-3)</div>
-                    <div style="font-size: 1.45rem; font-weight: 700; color: #a16207; margin-top: 3px;">${partiallyAssessed}</div>
-                </div>
-                <div style="background: #fee2e2; border: 1px solid #fecaca; border-radius: 8px; padding: 12px; text-align: center;">
-                    <div style="font-size: 0.75rem; font-weight: 600; color: #991b1b; text-transform: uppercase;">Needs Initial Assessment (0)</div>
-                    <div style="font-size: 1.45rem; font-weight: 700; color: #b91c1c; margin-top: 3px;">${noneAssessed}</div>
-                </div>
-                <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 12px; text-align: center;">
-                    <div style="font-size: 0.75rem; font-weight: 600; color: #1e40af; text-transform: uppercase;">Total Assessments Done</div>
-                    <div style="font-size: 1.45rem; font-weight: 700; color: #1d4ed8; margin-top: 3px;">${totalAssessments}</div>
-                </div>
-            `;
+            if (kpisEl) {
+                kpisEl.innerHTML = `
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; text-align: center;">
+                        <div style="font-size: 0.72rem; font-weight: 700; color: #475569; text-transform: uppercase;">Total Registered Children</div>
+                        <div style="font-size: 1.45rem; font-weight: 700; color: #1e293b; margin-top: 3px;">${totalChildren}</div>
+                    </div>
+                    <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 12px; text-align: center;">
+                        <div style="font-size: 0.72rem; font-weight: 700; color: #166534; text-transform: uppercase;">Fully Assessed (4/4 Core)</div>
+                        <div style="font-size: 1.45rem; font-weight: 700; color: #15803d; margin-top: 3px;">${fullyAssessed}</div>
+                    </div>
+                    <div style="background: #fefce8; border: 1px solid #fef08a; border-radius: 8px; padding: 12px; text-align: center;">
+                        <div style="font-size: 0.72rem; font-weight: 700; color: #854d0e; text-transform: uppercase;">Partially Assessed (1-3)</div>
+                        <div style="font-size: 1.45rem; font-weight: 700; color: #a16207; margin-top: 3px;">${partiallyAssessed}</div>
+                    </div>
+                    <div style="background: #fee2e2; border: 1px solid #fecaca; border-radius: 8px; padding: 12px; text-align: center;">
+                        <div style="font-size: 0.72rem; font-weight: 700; color: #991b1b; text-transform: uppercase;">Needs Initial Assessment (0)</div>
+                        <div style="font-size: 1.45rem; font-weight: 700; color: #b91c1c; margin-top: 3px;">${noneAssessed}</div>
+                    </div>
+                    <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 12px; text-align: center;">
+                        <div style="font-size: 0.72rem; font-weight: 700; color: #1e40af; text-transform: uppercase;">Total Assessments Done</div>
+                        <div style="font-size: 1.45rem; font-weight: 700; color: #1d4ed8; margin-top: 3px;">${totalAssessments}</div>
+                    </div>
+                `;
+            }
 
             renderAllSummaryTable(allSummaryChildrenList);
 
@@ -3749,20 +4192,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderAllSummaryTable(list);
             };
 
-            searchInput && (searchInput.oninput = handleFilterChange);
-            filterSelect && (filterSelect.onchange = handleFilterChange);
+            if (searchInput) searchInput.oninput = handleFilterChange;
+            if (filterSelect) filterSelect.onchange = handleFilterChange;
 
-            // Export handlers
-            document.getElementById('btn-export-all-summary-pdf').onclick = () => {
-                generateAllAssessmentsSummaryPdf(allSummaryChildrenList);
-            };
-            document.getElementById('btn-export-all-summary-csv').onclick = () => {
-                exportAllAssessmentsSummaryCsv(allSummaryChildrenList);
-            };
+            // Modal Export handlers
+            const btnPdf = document.getElementById('btn-export-all-summary-pdf');
+            if (btnPdf) btnPdf.onclick = () => generateAllAssessmentsSummaryPdf(allSummaryChildrenList);
+            const btnCsv = document.getElementById('btn-export-all-summary-csv');
+            if (btnCsv) btnCsv.onclick = () => exportAllAssessmentsSummaryCsv(allSummaryChildrenList);
 
         } catch (err) {
             console.error('Error opening all assessments summary:', err);
-            tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: var(--danger); padding: 20px;">Error loading assessment matrix</td></tr>';
+            if (tbody) tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: var(--danger); padding: 20px;">Error loading assessment matrix</td></tr>';
         }
     }
 
@@ -3809,24 +4250,222 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td style="padding: 10px 12px; text-align: center;">${progressBadge}</td>
                     <td style="padding: 10px 12px; text-align: center;">${totalBadge}</td>
                     <td style="padding: 10px 12px; text-align: center;">
-                        <button class="btn-summary-table-view btn-secondary btn-sm" data-child-json="${safeChildJson}" style="padding: 3px 8px; font-size: 0.78rem; font-weight: 600; background: #f0fdf4; color: #166534; border-color: #86efac;">📋 View Summary</button>
+                        <button class="btn-summary-table-view btn-secondary btn-sm" data-child-json="${safeChildJson}" style="padding: 3px 8px; font-size: 0.78rem; font-weight: 600; background: #f0fdf4; color: #166534; border-color: #86efac; cursor: pointer;">📋 View Summary</button>
                     </td>
                 </tr>
             `;
         }).join('');
 
+        // Wire View Summary button: AUTOMATICALLY CLOSES All Children Matrix modal and displays Child Summary modal
         tbody.querySelectorAll('.btn-summary-table-view').forEach(btn => {
-            btn.addEventListener('click', () => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
                 const cd = JSON.parse(btn.getAttribute('data-child-json').replace(/&quot;/g, '"'));
-                openChildSummaryModal(cd);
+                
+                // 1. Immediately close the All Children Matrix Modal
+                const allModal = document.getElementById('all-summary-modal');
+                if (allModal) {
+                    allModal.classList.remove('show');
+                }
+
+                // 2. Open the Child's clinical assessment summary modal
+                openChildSummaryModal(cd, true);
             });
         });
     }
 
-    // Generate Center-Wide Summary PDF
-    function generateAllAssessmentsSummaryPdf(children) {
+    // ── Generate Comprehensive Child Summary PDF (All Forms Together!) ───────
+    function generateChildSummaryPdf(child, assessments = []) {
         if (!window.jspdf || !window.jspdf.jsPDF) {
-            showToast('PDF library is loading, please try again in a moment', true);
+            showToast('PDF generator is initializing, please try again in a moment', true);
+            return;
+        }
+
+        try {
+            const doc = new window.jspdf.jsPDF('portrait', 'mm', 'a4');
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const pageHeight = doc.internal.pageSize.getHeight();
+            const margin = 14;
+
+            // Brand Header Banner
+            doc.setFillColor(30, 58, 138); // Deep Navy
+            doc.rect(margin, 10, pageWidth - (margin * 2), 2.5, 'F');
+
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(14);
+            doc.setTextColor(30, 58, 138);
+            doc.text('CHITRA ORTHO & REHAB CLINIC', pageWidth / 2, 17, { align: 'center' });
+
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8.5);
+            doc.setTextColor(71, 85, 105);
+            doc.text('CHILD DEVELOPMENT & EARLY INTERVENTION CENTRE', pageWidth / 2, 21.5, { align: 'center' });
+            doc.setFontSize(7.5);
+            doc.text('Comprehensive Multi-Disciplinary Clinical Assessment Dossier', pageWidth / 2, 25.5, { align: 'center' });
+
+            // Child Demographics Table
+            const ageYears = extractChildAge(child);
+            const ageStr = ageYears ? `${ageYears} yrs` : (child.dob ? `DOB: ${child.dob}` : 'N/A');
+            const summaryDate = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+            const summary = extractAssessmentSummaries(child, assessments);
+
+            doc.autoTable({
+                startY: 29,
+                head: [['PATIENT CLINICAL SUMMARY RECORD', '']],
+                body: [
+                    ['Child Name:', child.name || 'N/A', 'Patient ID:', '#' + (child.id || '-')],
+                    ['Date of Birth:', child.dob || 'Not specified', 'Age / Sex:', `${ageStr} / ${child.sex || '-'}`],
+                    ['Contact Phone:', child.mobile || 'None', 'Dossier Generated:', summaryDate],
+                    ['Total Assessments:', `${summary.totalCount} Record(s)`, 'Workup Status:', summary.coreCount === 4 ? 'Complete Multi-Disciplinary Workup (4/4)' : `${summary.coreCount}/4 Disciplines Completed`]
+                ],
+                theme: 'plain',
+                styles: { fontSize: 8, cellPadding: 2, textColor: [30, 41, 59] },
+                headStyles: {
+                    fillColor: [241, 245, 249],
+                    textColor: [30, 58, 138],
+                    fontStyle: 'bold',
+                    fontSize: 8.5
+                },
+                columnStyles: {
+                    0: { fontStyle: 'bold', width: 32 },
+                    1: { width: 58 },
+                    2: { fontStyle: 'bold', width: 34 },
+                    3: { width: 58 }
+                },
+                margin: { left: margin, right: margin }
+            });
+
+            // Executive Assessment Matrix Table
+            const matrixRows = [
+                ['1', 'Rapid Assessment', summary.rapid.exists ? summary.rapid.date : '—', summary.rapid.exists ? summary.rapid.diagnosis : 'Pending assessment', summary.rapid.exists ? 'Completed' : 'Pending'],
+                ['2', 'Child Development', summary.dev.exists ? summary.dev.date : '—', summary.dev.exists ? summary.dev.diagnosis : 'Pending assessment', summary.dev.exists ? 'Completed' : 'Pending'],
+                ['3', 'Physiotherapy', summary.physio.exists ? summary.physio.date : '—', summary.physio.exists ? summary.physio.diagnosis : 'Pending assessment', summary.physio.exists ? 'Completed' : 'Pending'],
+                ['4', 'Speech Assessment', summary.speech.exists ? summary.speech.date : '—', summary.speech.exists ? summary.speech.diagnosis : 'Pending assessment', summary.speech.exists ? 'Completed' : 'Pending'],
+                ['5', 'Quarterly Progress Reviews', summary.progress.length ? `${summary.progress.length} Review(s)` : '—', summary.progress.length ? summary.progress[0].achievement : 'No reviews recorded', summary.progress.length ? 'Completed' : 'Pending']
+            ];
+
+            doc.autoTable({
+                startY: doc.lastAutoTable.finalY + 4,
+                head: [['#', 'Assessment Discipline', 'Date', 'Primary Clinical Finding / Impression', 'Status']],
+                body: matrixRows,
+                theme: 'striped',
+                styles: { fontSize: 7.5, cellPadding: 2.2, textColor: [30, 41, 59] },
+                headStyles: { fillColor: [37, 99, 235], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
+                columnStyles: {
+                    0: { width: 10, halign: 'center' },
+                    1: { width: 45, fontStyle: 'bold' },
+                    2: { width: 25 },
+                    3: { width: 82 },
+                    4: { width: 20, halign: 'center' }
+                },
+                margin: { left: margin, right: margin }
+            });
+
+            // Detailed Findings Breakdown Table across ALL 5 forms
+            const domainFindings = [];
+
+            if (summary.rapid.exists) {
+                const r = summary.rapid;
+                let teamStr = r.teamObservations.map(t => `${t.role}: ${t.obs || ''} (Sug: ${t.sug || '-'})`).join('\n');
+                domainFindings.push([
+                    '1. Rapid Assessment\n(' + r.date + ')',
+                    `Diagnosis: ${r.diagnosis}\nSymptoms: ${r.symptoms}\nBirth History: ${r.birth_history} | Med: ${r.medical_history}\n${teamStr ? 'Team Observations:\n' + teamStr + '\n' : ''}Finalized By: ${r.finalized_by}`
+                ]);
+            }
+
+            if (summary.dev.exists) {
+                const d = summary.dev;
+                domainFindings.push([
+                    '2. Child Development\n(' + d.date + ')',
+                    `Developmental Impression: ${d.diagnosis}\nChief Complaints: ${d.chief_complaints} (Informant: ${d.informant})\nPerinatal: ${d.delivery}\nIdentified Delays: ${d.delays.join(', ') || 'None stated'}\nConditions: ${d.conditions.join(', ') || 'None noted'}\nGoals & Plan: ${d.goals || 'Targeted early intervention'}`
+                ]);
+            }
+
+            if (summary.physio.exists) {
+                const p = summary.physio;
+                domainFindings.push([
+                    '3. Physiotherapy\n(' + p.date + ')',
+                    `Diagnosis: ${p.diagnosis}\nGait & Mobility: ${p.gait}\nMuscle Tone & Clonus: Tone: ${p.tone} | Clonus: ${p.clonus}\nDeformities: ${p.deformities.join(', ') || 'None visible'}\nMilestones: ${p.milestones.join(', ') || 'Evaluated'}\nTreatment Plan: ${p.plan}`
+                ]);
+            }
+
+            if (summary.speech.exists) {
+                const s = summary.speech;
+                domainFindings.push([
+                    '4. Speech Assessment\n(' + s.date + ')',
+                    `Diagnosis: ${s.diagnosis}\nArticulation: ${s.articulation}\nVoice: ${s.voice} | Rhythm: ${s.rhythm}\nIntelligibility: ${s.intelligibility}\nTherapy Plan: ${s.plan}`
+                ]);
+            }
+
+            if (summary.progress.length > 0) {
+                const prText = summary.progress.map(pr => `${pr.quarter} (${pr.date}): Achieved: ${pr.achievement} | Next: ${pr.next_plan}`).join('\n');
+                domainFindings.push([
+                    '5. Progress Reviews\n(' + summary.progress.length + ' Recorded)',
+                    prText
+                ]);
+            }
+
+            if (domainFindings.length > 0) {
+                doc.autoTable({
+                    startY: doc.lastAutoTable.finalY + 4,
+                    head: [['Clinical Discipline & Date', 'Multidisciplinary Summary of Findings & Action Plan']],
+                    body: domainFindings,
+                    theme: 'grid',
+                    styles: { fontSize: 7.5, cellPadding: 2.8, textColor: [30, 41, 59], overflow: 'linebreak' },
+                    headStyles: { fillColor: [71, 85, 105], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
+                    columnStyles: {
+                        0: { width: 55, fontStyle: 'bold' },
+                        1: { width: pageWidth - (margin * 2) - 55 }
+                    },
+                    margin: { left: margin, right: margin }
+                });
+            }
+
+            // Clinician Sign-off Block
+            let sigY = doc.lastAutoTable.finalY + 14;
+            if (sigY + 28 > pageHeight - 14) {
+                doc.addPage();
+                sigY = 24;
+            }
+
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8);
+            doc.setTextColor(71, 85, 105);
+            doc.text('Multidisciplinary Therapy Team:', margin, sigY);
+            doc.text('Clinical In-Charge / Medical Supervisor:', pageWidth - margin - 60, sigY);
+
+            doc.setDrawColor(203, 213, 225);
+            doc.line(margin, sigY + 12, margin + 55, sigY + 12);
+            doc.line(pageWidth - margin - 60, sigY + 12, pageWidth - margin, sigY + 12);
+
+            doc.setFontSize(7.5);
+            doc.text('Therapist Signatures & Date', margin, sigY + 16);
+            doc.text('Authorized Signatory & Seal', pageWidth - margin - 60, sigY + 16);
+
+            // Add Header/Footer to each page
+            const totalPages = doc.internal.getNumberOfPages();
+            for (let i = 1; i <= totalPages; i++) {
+                doc.setPage(i);
+                doc.setFontSize(7.5);
+                doc.setTextColor(148, 163, 184);
+                doc.text(`Page ${i} of ${totalPages}`, pageWidth - margin, pageHeight - 6, { align: 'right' });
+                doc.text('Chitra Ortho & Rehab Clinic — Confidential Clinical Assessment Dossier', margin, pageHeight - 6);
+            }
+
+            const cleanName = (child.name || 'Child').replace(/[^a-zA-Z0-9]/g, '_');
+            const filename = `Clinical_Dossier_${cleanName}.pdf`;
+            saveAndOpenPdf(doc, filename);
+            showToast('Clinical Assessment Summary PDF opened & downloaded!');
+        } catch (err) {
+            console.error('PDF generation error:', err);
+            showToast('Error generating summary PDF', true);
+        }
+    }
+
+    // ── Generate Center-Wide Summary PDF (All Children, All Forms Together) ───
+    function generateAllAssessmentsSummaryPdf(children = []) {
+        if (!window.jspdf || !window.jspdf.jsPDF) {
+            showToast('PDF generator is initializing, please try again in a moment', true);
             return;
         }
 
@@ -3846,74 +4485,71 @@ document.addEventListener('DOMContentLoaded', () => {
             doc.text('CHITRA ORTHO & REHAB CLINIC — CHILD DEVELOPMENT & EARLY INTERVENTION CENTRE', pageWidth / 2, 14, { align: 'center' });
 
             doc.setFont('helvetica', 'normal');
-            doc.setFontSize(9);
+            doc.setFontSize(8.5);
             doc.setTextColor(71, 85, 105);
-            doc.text(`Comprehensive Center-Wide Assessment Summary Matrix · Generated: ${new Date().toLocaleDateString('en-IN')} · Total Profiles: ${children.length}`, pageWidth / 2, 19, { align: 'center' });
+            doc.text(`Center-Wide Multi-Disciplinary Assessment Summary Report · Generated: ${new Date().toLocaleDateString('en-IN')} · Total Children: ${children.length}`, pageWidth / 2, 19, { align: 'center' });
 
             const tableBody = children.map((c, idx) => {
                 const ageYears = extractChildAge(c);
                 const ageStr = ageYears ? `${ageYears}y` : (c.dob || '-');
-                const aList = c.assessments || [];
+                const summary = extractAssessmentSummaries(c, c.assessments || []);
 
-                const getStatus = (t) => {
-                    const match = aList.find(a => a.form_type === t);
-                    return match ? 'Done (' + (match.created_at ? new Date(match.created_at).toLocaleDateString('en-IN') : '✓') + ')' : '—';
-                };
+                const rapidTxt = summary.rapid.exists ? `${summary.rapid.diagnosis}\n(Date: ${summary.rapid.date})` : '—';
+                const devTxt = summary.dev.exists ? `${summary.dev.diagnosis}\n(Date: ${summary.dev.date})` : '—';
+                const physioTxt = summary.physio.exists ? `${summary.physio.diagnosis}\n(Date: ${summary.physio.date})` : '—';
+                const speechTxt = summary.speech.exists ? `${summary.speech.diagnosis}\n(Date: ${summary.speech.date})` : '—';
+                const progTxt = summary.progress.length ? `${summary.progress[0].quarter}: ${summary.progress[0].achievement.slice(0, 35)}...` : '—';
 
-                const progressCount = aList.filter(a => a.form_type === 'Quarterly Progress Review').length;
+                const statusTxt = summary.coreCount === 4 ? 'Complete (4/4)' : (summary.totalCount > 0 ? `Partial (${summary.coreCount}/4)` : 'Pending (0)');
 
                 return [
                     (idx + 1).toString(),
-                    c.name || '-',
-                    `${ageStr} / ${c.sex || '-'}`,
-                    c.mobile || '-',
-                    getStatus('Rapid Assessment'),
-                    getStatus('Child Development'),
-                    getStatus('Physiotherapy'),
-                    getStatus('Speech Assessment'),
-                    progressCount ? `${progressCount} review(s)` : '—',
-                    aList.length.toString()
+                    `${c.name}\n(${ageStr}/${c.sex || '-'})`,
+                    rapidTxt,
+                    devTxt,
+                    physioTxt,
+                    speechTxt,
+                    progTxt,
+                    statusTxt
                 ];
             });
 
             doc.autoTable({
                 startY: 23,
-                head: [['#', 'Child Name', 'Age / Sex', 'Mobile', '⚡ Rapid Assessment', '👶 Child Development', '💪 Physiotherapy', '🗣️ Speech Assessment', '📈 Progress', 'Total']],
+                head: [['#', 'Child Name & Profile', '⚡ Rapid Assessment', '👶 Child Development', '💪 Physiotherapy', '🗣️ Speech Assessment', '📈 Progress Reviews', 'Status']],
                 body: tableBody,
                 theme: 'striped',
-                styles: { fontSize: 7.5, cellPadding: 2, textColor: [30, 41, 59] },
-                headStyles: { fillColor: [30, 58, 138], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
+                styles: { fontSize: 7, cellPadding: 2, textColor: [30, 41, 59], overflow: 'linebreak' },
+                headStyles: { fillColor: [30, 58, 138], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7.5 },
                 columnStyles: {
                     0: { width: 8, halign: 'center' },
-                    1: { width: 38, fontStyle: 'bold' },
-                    2: { width: 22 },
-                    3: { width: 22 },
-                    4: { width: 34, halign: 'center' },
-                    5: { width: 38, halign: 'center' },
-                    6: { width: 34, halign: 'center' },
-                    7: { width: 38, halign: 'center' },
-                    8: { width: 26, halign: 'center' },
-                    9: { width: 13, halign: 'center', fontStyle: 'bold' }
+                    1: { width: 34, fontStyle: 'bold' },
+                    2: { width: 44 },
+                    3: { width: 44 },
+                    4: { width: 44 },
+                    5: { width: 44 },
+                    6: { width: 35 },
+                    7: { width: 20, halign: 'center' }
                 },
                 margin: { left: margin, right: margin },
                 didDrawPage: (data) => {
                     doc.setFontSize(7.5);
                     doc.setTextColor(148, 163, 184);
                     doc.text(`Page ${data.pageNumber}`, pageWidth - margin, pageHeight - 5, { align: 'right' });
-                    doc.text('Center-Wide Child Clinical Assessment Summary Matrix · Confidential Clinical Record', margin, pageHeight - 5);
+                    doc.text('Center-Wide Child Clinical Assessment Summary Dossier · Confidential Record', margin, pageHeight - 5);
                 }
             });
 
-            saveAndOpenPdf(doc, 'Center_Assessment_Summary_Matrix.pdf');
-            showToast('Center Assessment Summary PDF opened & downloaded!');
+            saveAndOpenPdf(doc, 'Center_Assessment_Summaries_Report.pdf');
+            showToast('Center Assessment Summaries PDF generated successfully!');
         } catch (err) {
-            console.error('Error generating matrix PDF:', err);
+            console.error('Error generating center assessment PDF:', err);
             showToast('Error generating center assessment PDF', true);
         }
     }
 
-    // Export Center-Wide Summary CSV
-    function exportAllAssessmentsSummaryCsv(children) {
+    // ── Export Center-Wide Summary CSV (All Children, All Forms Together) ─────
+    function exportAllAssessmentsSummaryCsv(children = []) {
         if (!children || !children.length) {
             showToast('No child assessment records to export', true);
             return;
@@ -3921,27 +4557,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const headers = [
             'Child ID', 'Child Name', 'Sex', 'DOB', 'Age (Years)', 'Mobile',
-            'Rapid Assessment Status', 'Rapid Date',
-            'Child Development Status', 'Child Development Date',
-            'Physiotherapy Status', 'Physiotherapy Date',
-            'Speech Assessment Status', 'Speech Date',
-            'Progress Reviews Count', 'Total Completed Assessments'
+            'Workup Status', 'Total Assessments',
+            'Rapid Assessment Date', 'Rapid Diagnosis', 'Rapid Symptoms', 'Rapid Finalized By',
+            'Child Dev Date', 'Child Dev Diagnosis', 'Child Dev Chief Complaint', 'Child Dev Delays', 'Child Dev Treatment Goal',
+            'Physiotherapy Date', 'Physiotherapy Diagnosis', 'Physio Gait & Mobility', 'Physio Tone', 'Physio Plan',
+            'Speech Assessment Date', 'Speech Diagnosis', 'Speech Articulation', 'Speech Voice', 'Speech Plan',
+            'Latest Progress Review Date', 'Progress Quarter', 'Progress Achievement', 'Progress Next Plan'
         ];
 
         const rows = children.map(c => {
             const ageYears = extractChildAge(c);
             const aList = c.assessments || [];
+            const summary = extractAssessmentSummaries(c, aList);
 
-            const getDetail = (t) => {
-                const match = aList.find(a => a.form_type === t);
-                return match ? ['Completed', match.created_at ? new Date(match.created_at).toLocaleDateString('en-IN') : ''] : ['Pending', ''];
-            };
-
-            const [rapidStatus, rapidDate] = getDetail('Rapid Assessment');
-            const [devStatus, devDate] = getDetail('Child Development');
-            const [physioStatus, physioDate] = getDetail('Physiotherapy');
-            const [speechStatus, speechDate] = getDetail('Speech Assessment');
-            const progressCount = aList.filter(a => a.form_type === 'Quarterly Progress Review').length;
+            const r = summary.rapid;
+            const d = summary.dev;
+            const p = summary.physio;
+            const s = summary.speech;
+            const prog = summary.progress.length ? summary.progress[0] : {};
 
             return [
                 c.id,
@@ -3950,16 +4583,31 @@ document.addEventListener('DOMContentLoaded', () => {
                 `"${c.dob || ''}"`,
                 ageYears || '',
                 `"${c.mobile || ''}"`,
-                rapidStatus,
-                `"${rapidDate}"`,
-                devStatus,
-                `"${devDate}"`,
-                physioStatus,
-                `"${physioDate}"`,
-                speechStatus,
-                `"${speechDate}"`,
-                progressCount,
-                aList.length
+                `"${summary.workupStatus}"`,
+                summary.totalCount,
+                `"${r.date || ''}"`,
+                `"${(r.diagnosis || '').replace(/"/g, '""')}"`,
+                `"${(r.symptoms || '').replace(/"/g, '""')}"`,
+                `"${(r.finalized_by || '').replace(/"/g, '""')}"`,
+                `"${d.date || ''}"`,
+                `"${(d.diagnosis || '').replace(/"/g, '""')}"`,
+                `"${(d.chief_complaints || '').replace(/"/g, '""')}"`,
+                `"${(d.delays.join('; ') || '').replace(/"/g, '""')}"`,
+                `"${(d.goals || '').replace(/"/g, '""')}"`,
+                `"${p.date || ''}"`,
+                `"${(p.diagnosis || '').replace(/"/g, '""')}"`,
+                `"${(p.gait || '').replace(/"/g, '""')}"`,
+                `"${(p.tone || '').replace(/"/g, '""')}"`,
+                `"${(p.plan || '').replace(/"/g, '""')}"`,
+                `"${s.date || ''}"`,
+                `"${(s.diagnosis || '').replace(/"/g, '""')}"`,
+                `"${(s.articulation || '').replace(/"/g, '""')}"`,
+                `"${(s.voice || '').replace(/"/g, '""')}"`,
+                `"${(s.plan || '').replace(/"/g, '""')}"`,
+                `"${prog.date || ''}"`,
+                `"${(prog.quarter || '').replace(/"/g, '""')}"`,
+                `"${(prog.achievement || '').replace(/"/g, '""')}"`,
+                `"${(prog.next_plan || '').replace(/"/g, '""')}"`
             ].join(',');
         });
 
@@ -3968,13 +4616,137 @@ document.addEventListener('DOMContentLoaded', () => {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `Center_Assessment_Summary_${new Date().toISOString().slice(0,10)}.csv`;
+        a.download = `Center_Assessment_Summaries_${new Date().toISOString().slice(0,10)}.csv`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
         showToast('Center assessment CSV exported successfully!');
     }
+
+    // ── Global Event Wire-up for Assessment Summaries ───────────────────────
+    // Sidebar & Records buttons
+    document.getElementById('nav-assessment-summaries')?.addEventListener('click', () => {
+        switchTab('assessment-summaries');
+    });
+
+    document.getElementById('btn-all-assessments-summary')?.addEventListener('click', () => {
+        switchTab('assessment-summaries');
+    });
+
+    // Main Export Buttons in Assessment Summaries tab
+    document.getElementById('btn-main-export-all-summary-pdf')?.addEventListener('click', () => {
+        const searchInput = document.getElementById('main-summary-search');
+        const statusFilter = document.getElementById('main-summary-status-filter');
+        const ageFilter = document.getElementById('main-summary-age-filter');
+        const q = (searchInput?.value || '').toLowerCase().trim();
+        const sf = statusFilter?.value || 'all';
+        const af = ageFilter?.value || 'all';
+
+        let list = allSummaryChildrenList.filter(c => matchesAgeFilter(c, af));
+        if (q) {
+            list = list.filter(c => (c.name && c.name.toLowerCase().includes(q)) || (c.mobile && c.mobile.includes(q)));
+        }
+        if (sf === 'completed') {
+            list = list.filter(c => ['Rapid Assessment', 'Child Development', 'Physiotherapy', 'Speech Assessment'].every(t => (c.assessments || []).some(a => a.form_type === t)));
+        } else if (sf === 'partial') {
+            list = list.filter(c => {
+                const cnt = ['Rapid Assessment', 'Child Development', 'Physiotherapy', 'Speech Assessment'].filter(t => (c.assessments || []).some(a => a.form_type === t)).length;
+                return cnt > 0 && cnt < 4;
+            });
+        } else if (sf === 'none') {
+            list = list.filter(c => !c.assessments || c.assessments.length === 0);
+        }
+
+        generateAllAssessmentsSummaryPdf(list);
+    });
+
+    document.getElementById('btn-main-export-all-summary-csv')?.addEventListener('click', () => {
+        const searchInput = document.getElementById('main-summary-search');
+        const statusFilter = document.getElementById('main-summary-status-filter');
+        const ageFilter = document.getElementById('main-summary-age-filter');
+        const q = (searchInput?.value || '').toLowerCase().trim();
+        const sf = statusFilter?.value || 'all';
+        const af = ageFilter?.value || 'all';
+
+        let list = allSummaryChildrenList.filter(c => matchesAgeFilter(c, af));
+        if (q) {
+            list = list.filter(c => (c.name && c.name.toLowerCase().includes(q)) || (c.mobile && c.mobile.includes(q)));
+        }
+        if (sf === 'completed') {
+            list = list.filter(c => ['Rapid Assessment', 'Child Development', 'Physiotherapy', 'Speech Assessment'].every(t => (c.assessments || []).some(a => a.form_type === t)));
+        }
+
+        exportAllAssessmentsSummaryCsv(list);
+    });
+
+    document.getElementById('btn-print-assessment-summaries')?.addEventListener('click', () => {
+        window.print();
+    });
+
+    // View Switcher (Cards vs Matrix)
+    const btnViewCards = document.getElementById('btn-view-cards');
+    const btnViewMatrix = document.getElementById('btn-view-matrix');
+    const cardsContainerEl = document.getElementById('summary-cards-container');
+    const matrixContainerEl = document.getElementById('summary-matrix-container');
+
+    btnViewCards?.addEventListener('click', () => {
+        currentMainSummaryView = 'cards';
+        btnViewCards.classList.add('active');
+        btnViewCards.style.background = '#fff';
+        btnViewCards.style.color = 'var(--primary)';
+        btnViewMatrix.classList.remove('active');
+        btnViewMatrix.style.background = 'transparent';
+        btnViewMatrix.style.color = 'var(--text-light)';
+        if (cardsContainerEl) cardsContainerEl.style.display = 'flex';
+        if (matrixContainerEl) matrixContainerEl.style.display = 'none';
+    });
+
+    btnViewMatrix?.addEventListener('click', () => {
+        currentMainSummaryView = 'matrix';
+        btnViewMatrix.classList.add('active');
+        btnViewMatrix.style.background = '#fff';
+        btnViewMatrix.style.color = 'var(--primary)';
+        btnViewCards.classList.remove('active');
+        btnViewCards.style.background = 'transparent';
+        btnViewCards.style.color = 'var(--text-light)';
+        if (cardsContainerEl) cardsContainerEl.style.display = 'none';
+        if (matrixContainerEl) matrixContainerEl.style.display = 'block';
+    });
+
+    // Toggle All Cards (Expand All / Collapse All)
+    const btnToggleAllCards = document.getElementById('btn-toggle-all-cards');
+    btnToggleAllCards?.addEventListener('click', () => {
+        allCardsExpanded = !allCardsExpanded;
+        const iconEl = document.getElementById('toggle-cards-icon');
+        const textEl = document.getElementById('toggle-cards-text');
+        if (iconEl) iconEl.textContent = allCardsExpanded ? '⊟' : '⊞';
+        if (textEl) textEl.textContent = allCardsExpanded ? 'Collapse All' : 'Expand All';
+
+        document.querySelectorAll('.summary-child-card .summary-card-body').forEach(body => {
+            body.style.display = allCardsExpanded ? 'flex' : 'none';
+        });
+        document.querySelectorAll('.summary-child-card .folder-toggle').forEach(t => {
+            t.textContent = allCardsExpanded ? '▴' : '▾';
+        });
+    });
+
+    // Export PDF from Single Child Summary Modal
+    document.getElementById('btn-download-child-summary-pdf')?.addEventListener('click', () => {
+        if (!currentSummaryChild) {
+            showToast('No child summary profile loaded', true);
+            return;
+        }
+        generateChildSummaryPdf(currentSummaryChild, currentSummaryAssessments);
+    });
+
+    // Center-Wide Modal export buttons
+    document.getElementById('btn-export-all-summary-pdf')?.addEventListener('click', () => {
+        generateAllAssessmentsSummaryPdf(allSummaryChildrenList);
+    });
+    document.getElementById('btn-export-all-summary-csv')?.addEventListener('click', () => {
+        exportAllAssessmentsSummaryCsv(allSummaryChildrenList);
+    });
 
     // ── Change Password Modal ─────────────────────────────────
     const passwordModal = document.getElementById('password-modal');

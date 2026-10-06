@@ -1337,3 +1337,249 @@ button {
     border-radius: 12px;
     margin-top: 10px;
 }
+
+/* ── Consolidated Assessment Summaries Styles ──────────── */
+.summary-child-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-left: 5px solid #cbd5e1;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition);
+}
+.summary-child-card:hover {
+    box-shadow: var(--shadow-md);
+}
+.summary-child-card.status-complete {
+    border-left-color: #10b981;
+}
+.summary-child-card.status-partial {
+    border-left-color: #f59e0b;
+}
+.summary-child-card.status-none {
+    border-left-color: #ef4444;
+}
+
+.summary-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    background: #ffffff;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+.summary-card-header:hover {
+    background: #f8fafc;
+}
+
+.summary-card-header-main {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex: 1;
+    min-width: 250px;
+}
+.summary-child-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1.25rem;
+    border: 1px solid #bfdbfe;
+    flex-shrink: 0;
+}
+.summary-child-info strong {
+    font-size: 1.05rem;
+    color: #0f172a;
+    display: block;
+}
+.summary-child-meta {
+    font-size: 0.82rem;
+    color: var(--text-light);
+    margin-top: 2px;
+}
+
+.summary-card-disciplines-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.discipline-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 9px;
+    border-radius: 16px;
+    font-size: 0.76rem;
+    font-weight: 600;
+    border: 1px solid transparent;
+}
+.discipline-pill.done {
+    background: #dcfce7;
+    color: #15803d;
+    border-color: #86efac;
+}
+.discipline-pill.pending {
+    background: #f1f5f9;
+    color: #94a3b8;
+    border-color: #e2e8f0;
+}
+
+.summary-card-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.summary-card-body {
+    padding: 20px;
+    background: #f8fafc;
+    border-top: 1px solid #f1f5f9;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.summary-forms-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+    gap: 16px;
+}
+
+.summary-form-panel {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.summary-form-panel.panel-done {
+    border-top: 3px solid #3b82f6;
+}
+.summary-form-panel.panel-pending {
+    border-top: 3px dashed #cbd5e1;
+    background: #fafafa;
+}
+
+.summary-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #f1f5f9;
+}
+.summary-panel-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: #1e293b;
+}
+.summary-panel-date {
+    font-size: 0.78rem;
+    color: #64748b;
+    background: #f1f5f9;
+    padding: 2px 8px;
+    border-radius: 12px;
+}
+
+.summary-field-box {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 0.83rem;
+}
+.summary-field-box .field-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 2px;
+}
+.summary-field-box .field-val {
+    color: #1e293b;
+    line-height: 1.4;
+}
+
+.summary-matrix-table th {
+    font-weight: 600;
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+.summary-matrix-table td {
+    padding: 12px 14px;
+    vertical-align: top;
+    border-bottom: 1px solid #f1f5f9;
+}
+.summary-matrix-table tr:hover td {
+    background: #f8fafc;
+}
+.matrix-snippet-box {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 6px 8px;
+    font-size: 0.8rem;
+    line-height: 1.35;
+    max-height: 90px;
+    overflow-y: auto;
+}
+.matrix-snippet-box strong {
+    color: #1e3a8a;
+    display: block;
+    font-size: 0.82rem;
+}
+
+@media print {
+    .sidebar, .records-toolbar, .summary-toolbar, .summary-card-actions, .nav-links {
+        display: none !important;
+    }
+    .main-content, #assessment-summaries, .tab-content {
+        padding: 0 !important;
+        margin: 0 !important;
+        width: 100% !important;
+    }
+    .summary-child-card {
+        page-break-inside: avoid;
+        box-shadow: none !important;
+        border: 1px solid #94a3b8 !important;
+        margin-bottom: 20px !important;
+    }
+    .summary-card-body {
+        display: flex !important;
+    }
+}
+
+/* Summary Modals Stacking Order & Responsiveness */
+#all-summary-modal {
+    z-index: 1050 !important;
+}
+
+#child-summary-modal {
+    z-index: 1100 !important;
+}
+
+#record-modal {
+    z-index: 1200 !important;
+}
+
