@@ -4337,11 +4337,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Executive Assessment Matrix Table
             const matrixRows = [
-                ['1', 'Rapid Assessment', summary.rapid.exists ? summary.rapid.date : '—', summary.rapid.exists ? summary.rapid.diagnosis : 'Pending assessment', summary.rapid.exists ? 'Completed' : 'Pending'],
-                ['2', 'Child Development', summary.dev.exists ? summary.dev.date : '—', summary.dev.exists ? summary.dev.diagnosis : 'Pending assessment', summary.dev.exists ? 'Completed' : 'Pending'],
-                ['3', 'Physiotherapy', summary.physio.exists ? summary.physio.date : '—', summary.physio.exists ? summary.physio.diagnosis : 'Pending assessment', summary.physio.exists ? 'Completed' : 'Pending'],
-                ['4', 'Speech Assessment', summary.speech.exists ? summary.speech.date : '—', summary.speech.exists ? summary.speech.diagnosis : 'Pending assessment', summary.speech.exists ? 'Completed' : 'Pending'],
-                ['5', 'Quarterly Progress Reviews', summary.progress.length ? `${summary.progress.length} Review(s)` : '—', summary.progress.length ? summary.progress[0].achievement : 'No reviews recorded', summary.progress.length ? 'Completed' : 'Pending']
+                ['1', 'Rapid Assessment', summary.rapid.exists ? summary.rapid.date : '-', summary.rapid.exists ? summary.rapid.diagnosis : 'Pending assessment', summary.rapid.exists ? 'Completed' : 'Pending'],
+                ['2', 'Child Development', summary.dev.exists ? summary.dev.date : '-', summary.dev.exists ? summary.dev.diagnosis : 'Pending assessment', summary.dev.exists ? 'Completed' : 'Pending'],
+                ['3', 'Physiotherapy', summary.physio.exists ? summary.physio.date : '-', summary.physio.exists ? summary.physio.diagnosis : 'Pending assessment', summary.physio.exists ? 'Completed' : 'Pending'],
+                ['4', 'Speech Assessment', summary.speech.exists ? summary.speech.date : '-', summary.speech.exists ? summary.speech.diagnosis : 'Pending assessment', summary.speech.exists ? 'Completed' : 'Pending'],
+                ['5', 'Quarterly Progress Reviews', summary.progress.length ? `${summary.progress.length} Review(s)` : '-', summary.progress.length ? summary.progress[0].achievement : 'No reviews recorded', summary.progress.length ? 'Completed' : 'Pending']
             ];
 
             doc.autoTable({
@@ -4449,7 +4449,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 doc.setFontSize(7.5);
                 doc.setTextColor(148, 163, 184);
                 doc.text(`Page ${i} of ${totalPages}`, pageWidth - margin, pageHeight - 6, { align: 'right' });
-                doc.text('Chitra Ortho & Rehab Clinic — Confidential Clinical Assessment Dossier', margin, pageHeight - 6);
+                doc.text('Chitra Ortho & Rehab Clinic - Confidential Clinical Assessment Dossier', margin, pageHeight - 6);
             }
 
             const cleanName = (child.name || 'Child').replace(/[^a-zA-Z0-9]/g, '_');
@@ -4482,23 +4482,23 @@ document.addEventListener('DOMContentLoaded', () => {
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(13);
             doc.setTextColor(30, 58, 138);
-            doc.text('CHITRA ORTHO & REHAB CLINIC — CHILD DEVELOPMENT & EARLY INTERVENTION CENTRE', pageWidth / 2, 14, { align: 'center' });
+            doc.text('CHITRA ORTHO & REHAB CLINIC - CHILD DEVELOPMENT & EARLY INTERVENTION CENTRE', pageWidth / 2, 14, { align: 'center' });
 
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(8.5);
             doc.setTextColor(71, 85, 105);
-            doc.text(`Center-Wide Multi-Disciplinary Assessment Summary Report · Generated: ${new Date().toLocaleDateString('en-IN')} · Total Children: ${children.length}`, pageWidth / 2, 19, { align: 'center' });
+            doc.text(`Center-Wide Multi-Disciplinary Assessment Summary Report | Generated: ${new Date().toLocaleDateString('en-IN')} | Total Children: ${children.length}`, pageWidth / 2, 19, { align: 'center' });
 
             const tableBody = children.map((c, idx) => {
                 const ageYears = extractChildAge(c);
                 const ageStr = ageYears ? `${ageYears}y` : (c.dob || '-');
                 const summary = extractAssessmentSummaries(c, c.assessments || []);
 
-                const rapidTxt = summary.rapid.exists ? `${summary.rapid.diagnosis}\n(Date: ${summary.rapid.date})` : '—';
-                const devTxt = summary.dev.exists ? `${summary.dev.diagnosis}\n(Date: ${summary.dev.date})` : '—';
-                const physioTxt = summary.physio.exists ? `${summary.physio.diagnosis}\n(Date: ${summary.physio.date})` : '—';
-                const speechTxt = summary.speech.exists ? `${summary.speech.diagnosis}\n(Date: ${summary.speech.date})` : '—';
-                const progTxt = summary.progress.length ? `${summary.progress[0].quarter}: ${summary.progress[0].achievement.slice(0, 35)}...` : '—';
+                const rapidTxt = summary.rapid.exists ? `${summary.rapid.diagnosis}\n(Date: ${summary.rapid.date})` : '-';
+                const devTxt = summary.dev.exists ? `${summary.dev.diagnosis}\n(Date: ${summary.dev.date})` : '-';
+                const physioTxt = summary.physio.exists ? `${summary.physio.diagnosis}\n(Date: ${summary.physio.date})` : '-';
+                const speechTxt = summary.speech.exists ? `${summary.speech.diagnosis}\n(Date: ${summary.speech.date})` : '-';
+                const progTxt = summary.progress.length ? `${summary.progress[0].quarter}: ${summary.progress[0].achievement.slice(0, 35)}...` : '-';
 
                 const statusTxt = summary.coreCount === 4 ? 'Complete (4/4)' : (summary.totalCount > 0 ? `Partial (${summary.coreCount}/4)` : 'Pending (0)');
 
@@ -4516,7 +4516,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             doc.autoTable({
                 startY: 23,
-                head: [['#', 'Child Name & Profile', '⚡ Rapid Assessment', '👶 Child Development', '💪 Physiotherapy', '🗣️ Speech Assessment', '📈 Progress Reviews', 'Status']],
+                head: [['#', 'Child Name & Profile', 'Rapid Assessment', 'Child Development', 'Physiotherapy', 'Speech Assessment', 'Progress Reviews', 'Status']],
                 body: tableBody,
                 theme: 'striped',
                 styles: { fontSize: 7, cellPadding: 2, textColor: [30, 41, 59], overflow: 'linebreak' },
@@ -4536,7 +4536,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     doc.setFontSize(7.5);
                     doc.setTextColor(148, 163, 184);
                     doc.text(`Page ${data.pageNumber}`, pageWidth - margin, pageHeight - 5, { align: 'right' });
-                    doc.text('Center-Wide Child Clinical Assessment Summary Dossier · Confidential Record', margin, pageHeight - 5);
+                    doc.text('Center-Wide Child Clinical Assessment Summary Dossier | Confidential Record', margin, pageHeight - 5);
                 }
             });
 
