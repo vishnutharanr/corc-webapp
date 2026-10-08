@@ -194,6 +194,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (tid === 'records') fetchChildFolders();
             if (tid === 'assessment-summaries') fetchAndRenderAssessmentSummaries();
             if (tid === 'user-management') fetchUsers();
+            if (tid === 'therapists-settings') fetchTherapists();
         });
     });
 
@@ -208,6 +209,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (targetId === 'records') fetchChildFolders();
         if (targetId === 'assessment-summaries') fetchAndRenderAssessmentSummaries();
         if (targetId === 'user-management') fetchUsers();
+        if (targetId === 'therapists-settings') fetchTherapists();
     }
 
     // ── Inject Back Buttons into Assessment Forms ────────────
