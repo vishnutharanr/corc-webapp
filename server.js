@@ -41,11 +41,14 @@ const INIT_SQL = `
     CREATE TABLE IF NOT EXISTS children (
         id SERIAL PRIMARY KEY,
         name TEXT NOT NULL,
+        admission_no TEXT,
         dob TEXT,
         sex TEXT,
         mobile TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
+
+    ALTER TABLE children ADD COLUMN IF NOT EXISTS admission_no TEXT;
 
     CREATE TABLE IF NOT EXISTS assessments (
         id SERIAL PRIMARY KEY,
@@ -115,8 +118,12 @@ const INIT_SQL = `
     CREATE INDEX IF NOT EXISTS idx_assessments_data_gin ON assessments USING gin (data);
     CREATE INDEX IF NOT EXISTS idx_therapy_attendance_child_id ON therapy_attendance(child_id);
     CREATE INDEX IF NOT EXISTS idx_therapy_attendance_date ON therapy_attendance(date);
+    CREATE INDEX IF NOT EXISTS idx_children_admission_no ON children(admission_no);
     CREATE INDEX IF NOT EXISTS idx_schedules_date ON schedules(date);
     CREATE INDEX IF NOT EXISTS idx_schedules_child_id ON schedules(child_id);
+
+    UPDATE schedules SET time_slot = '4.00 - 4.30' WHERE time_slot = '4.00 - 5.00';
+    UPDATE therapy_attendance SET time_slot = '4.00 - 4.30' WHERE time_slot = '4.00 - 5.00';
 `;
 
 async function seedDefaultUsers() {
@@ -335,19 +342,47 @@ app.delete('/api/users/:id', authenticateToken, requireAdmin, async (req, res) =
 // ─── Children API ─────────────────────────────────────────────────────────────
 
 app.post('/api/children', async (req, res) => {
-    const { name, dob, sex, mobile } = req.body;
+    const { name, admission_no, dob, sex, mobile } = req.body;
     const trimmedName = name ? name.trim() : '';
     if (!trimmedName) return res.status(400).json({ error: 'Child name is required' });
 
     try {
         const result = await pool.query(
-            `INSERT INTO children (name, dob, sex, mobile) VALUES ($1, $2, $3, $4) RETURNING id, name, dob, sex, mobile`,
-            [trimmedName, dob || null, sex || null, mobile || null]
+            `INSERT INTO children (name, admission_no, dob, sex, mobile) VALUES ($1, $2, $3, $4, $5) RETURNING id, name, admission_no, dob, sex, mobile`,
+            [trimmedName, admission_no ? admission_no.trim() : null, dob || null, sex || null, mobile || null]
         );
         res.status(201).json(result.rows[0]);
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Failed to create child profile: ' + err.message });
+    }
+});
+
+app.put('/api/children/:id', async (req, res) => {
+    const { name, admission_no, dob, sex, mobile } = req.body;
+    const trimmedName = name ? name.trim() : '';
+    if (!trimmedName) return res.status(400).json({ error: 'Child name is required' });
+
+    try {
+        const result = await pool.query(
+            `UPDATE children SET 
+                name = $1, 
+                admission_no = $2, 
+                dob = $3, 
+                sex = $4, 
+                mobile = $5 
+            WHERE id = $6 RETURNING id, name, admission_no, dob, sex, mobile`,
+            [trimmedName, admission_no ? admission_no.trim() : null, dob || null, sex || null, mobile || null, req.params.id]
+        );
+        if (result.rowCount === 0) return res.status(404).json({ error: 'Child not found' });
+
+        // Synchronize assessments child_name
+        await pool.query(`UPDATE assessments SET child_name = $1 WHERE child_id = $2`, [trimmedName, req.params.id]);
+
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to update child profile: ' + err.message });
     }
 });
 
@@ -357,7 +392,7 @@ app.get('/api/children', async (req, res) => {
         let sql = `SELECT * FROM children`;
         let params = [];
         if (search) {
-            sql += ` WHERE name ILIKE $1`;
+            sql += ` WHERE (name ILIKE $1 OR admission_no ILIKE $1 OR mobile ILIKE $1)`;
             params.push(`%${search}%`);
         }
         sql += ` ORDER BY created_at DESC`;
@@ -519,6 +554,7 @@ app.put('/api/assessments/:id', async (req, res) => {
         // Sync basic details to children profile if Rapid Assessment
         if (child_id && form_type === 'Rapid Assessment' && parsedData) {
             const childName = parsedData.child_name || parsedData.name;
+            const admissionNo = parsedData.admission_no !== undefined ? parsedData.admission_no : null;
             const dob = parsedData.dob !== undefined ? parsedData.dob : null;
             const sex = parsedData.sex !== undefined ? parsedData.sex : null;
             const mobile = parsedData.mobile !== undefined ? parsedData.mobile : null;
@@ -526,11 +562,12 @@ app.put('/api/assessments/:id', async (req, res) => {
             await pool.query(
                 `UPDATE children SET 
                     name = COALESCE($1, name), 
-                    dob = COALESCE($2, dob), 
-                    sex = COALESCE($3, sex), 
-                    mobile = COALESCE($4, mobile) 
-                WHERE id = $5`,
-                [childName || null, dob || null, sex || null, mobile || null, child_id]
+                    admission_no = COALESCE($2, admission_no),
+                    dob = COALESCE($3, dob), 
+                    sex = COALESCE($4, sex), 
+                    mobile = COALESCE($5, mobile) 
+                WHERE id = $6`,
+                [childName || null, admissionNo ? admissionNo.trim() : null, dob || null, sex || null, mobile || null, child_id]
             );
 
             if (childName) {
@@ -589,7 +626,7 @@ app.get('/api/reports/attendance', async (req, res) => {
     const { start_date, end_date, child_id } = req.query;
     try {
         let sql = `
-            SELECT t.*, c.name as child_name, c.dob as child_dob,
+            SELECT t.*, c.name as child_name, c.dob as child_dob, c.admission_no as child_admission_no,
                    (SELECT data FROM assessments WHERE child_id = c.id AND form_type = 'Rapid Assessment' ORDER BY created_at DESC LIMIT 1) as rapid_data
             FROM therapy_attendance t 
             JOIN children c ON t.child_id = c.id 
@@ -697,7 +734,7 @@ app.get('/api/schedules', async (req, res) => {
 
     try {
         const result = await pool.query(`
-            SELECT s.*, c.name as child_name, c.dob as child_dob 
+            SELECT s.*, c.name as child_name, c.dob as child_dob, c.admission_no as child_admission_no 
             FROM schedules s 
             JOIN children c ON s.child_id = c.id 
             WHERE s.date = $1

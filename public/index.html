@@ -99,6 +99,7 @@
                     </div>
                 </div>
                 <div class="active-child-actions">
+                    <button class="btn-secondary btn-sm" id="btn-edit-active-child">✏️ Edit Details</button>
                     <button class="btn-secondary btn-sm" id="btn-new-child">+ New Child</button>
                     <button class="btn-secondary btn-sm" id="btn-clear-child"
                         style="color: var(--danger); border-color: var(--danger);">✕ Clear</button>
@@ -119,6 +120,11 @@
                                 <label for="rapid-name">Child Name *</label>
                                 <input type="text" id="rapid-name" name="child_name" required
                                     placeholder="Enter child's name">
+                            </div>
+                            <div class="input-group">
+                                <label for="rapid-admission-no">Admission Number</label>
+                                <input type="text" id="rapid-admission-no" name="admission_no"
+                                    placeholder="e.g. ADM-001">
                             </div>
                             <div class="input-group">
                                 <label for="rapid-sex">Sex</label>
@@ -273,6 +279,10 @@
                             <div class="input-group">
                                 <label>1. Name *</label>
                                 <input type="text" name="child_name" required>
+                            </div>
+                            <div class="input-group">
+                                <label>Admission No</label>
+                                <input type="text" name="admission_no" placeholder="e.g. ADM-001">
                             </div>
                             <div class="input-group">
                                 <label>Sex</label>
@@ -771,6 +781,10 @@
                             <div class="input-group">
                                 <label for="physio-name">Child Name *</label>
                                 <input type="text" id="physio-name" name="child_name" required>
+                            </div>
+                            <div class="input-group">
+                                <label for="physio-admission-no">Admission No</label>
+                                <input type="text" id="physio-admission-no" name="admission_no" readonly style="background: #e8e8e8;">
                             </div>
                         </div>
                     </div>
@@ -1574,6 +1588,10 @@
                                 <input type="text" id="speech-name" name="child_name" required>
                             </div>
                             <div class="input-group">
+                                <label for="speech-admission-no">Admission No</label>
+                                <input type="text" id="speech-admission-no" name="admission_no" readonly style="background: #e8e8e8;">
+                            </div>
+                            <div class="input-group">
                                 <label for="speech-date">Date of Assessment</label>
                                 <input type="date" id="speech-date" name="assessment_date">
                             </div>
@@ -1743,6 +1761,10 @@
                                 <input type="text" id="prog-name" name="child_name" required>
                             </div>
                             <div class="input-group">
+                                <label for="prog-admission-no">Admission No</label>
+                                <input type="text" id="prog-admission-no" name="admission_no" readonly style="background: #e8e8e8;">
+                            </div>
+                            <div class="input-group">
                                 <label for="prog-date">Date</label>
                                 <input type="date" id="prog-date" name="review_date">
                             </div>
@@ -1788,7 +1810,7 @@
                 </div>
 
                 <div class="records-toolbar" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
-                    <input type="text" id="search-input" placeholder="Search by child name or mobile..." class="search-box" style="flex: 1; min-width: 200px;">
+                    <input type="text" id="search-input" placeholder="Search by child name, admission no, or mobile..." class="search-box" style="flex: 1; min-width: 200px;">
                     <select id="records-therapy-filter" style="padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0; background: white; font-size: 0.9rem;">
                         <option value="all">All Assessments</option>
                         <option value="Rapid Assessment">Rapid Assessment</option>
@@ -1966,11 +1988,12 @@
                                 <th>2.30 -<br>3.00</th>
                                 <th>3.00 -<br>3.30</th>
                                 <th>3.30 -<br>4.00</th>
-                                <th>4.00 -<br>5.00</th>
+                                <th>4.00 -<br>4.30</th>
+                                <th>4.30 -<br>5.00</th>
                             </tr>
                         </thead>
                         <tbody id="schedule-table-body">
-                            <tr><td colspan="13" style="text-align: center;">Loading...</td></tr>
+                            <tr><td colspan="14" style="text-align: center;">Loading...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -2339,7 +2362,8 @@
                                     <option value="2.30 - 3.00">2.30 - 3.00</option>
                                     <option value="3.00 - 3.30">3.00 - 3.30</option>
                                     <option value="3.30 - 4.00">3.30 - 4.00</option>
-                                    <option value="4.00 - 5.00">4.00 - 5.00</option>
+                                    <option value="4.00 - 4.30">4.00 - 4.30</option>
+                                    <option value="4.30 - 5.00">4.30 - 5.00</option>
                                 </select>
                             </div>
                             <div class="input-group full-width">
@@ -2594,6 +2618,51 @@
                             <div id="child-summary-details-list" style="display: flex; flex-direction: column; gap: 14px;"></div>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <!-- Modal for Editing Child Profile -->
+            <div id="child-edit-modal" class="modal hidden">
+                <div class="modal-content" style="max-width: 480px;">
+                    <span class="close-modal" id="close-child-edit-modal">&times;</span>
+                    <h3 style="margin-top: 0; display: flex; align-items: center; gap: 8px;">
+                        <span>✏️</span> Edit Child Profile
+                    </h3>
+                    <p style="color: var(--text-light); font-size: 0.88rem; margin-bottom: 16px;">
+                        Update admission number, name, and demographic details.
+                    </p>
+                    <form id="child-edit-form">
+                        <input type="hidden" id="edit-child-id">
+                        <div class="input-group">
+                            <label for="edit-child-adm">Admission Number</label>
+                            <input type="text" id="edit-child-adm" placeholder="e.g. ADM-001">
+                        </div>
+                        <div class="input-group">
+                            <label for="edit-child-name">Child Name *</label>
+                            <input type="text" id="edit-child-name" required placeholder="Enter full name">
+                        </div>
+                        <div class="input-group">
+                            <label for="edit-child-dob">Date of Birth</label>
+                            <input type="date" id="edit-child-dob">
+                        </div>
+                        <div class="input-group">
+                            <label for="edit-child-sex">Sex</label>
+                            <select id="edit-child-sex">
+                                <option value="">Select...</option>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label for="edit-child-mobile">Mobile Number</label>
+                            <input type="tel" id="edit-child-mobile" placeholder="Mobile number">
+                        </div>
+                        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+                            <button type="button" class="btn-secondary" id="btn-cancel-child-edit">Cancel</button>
+                            <button type="submit" class="btn-primary">💾 Save Changes</button>
+                        </div>
+                    </form>
                 </div>
             </div>
 

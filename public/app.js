@@ -244,10 +244,11 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateBanner() {
         if (activeChild) {
             banner.classList.remove('hidden');
-            bannerName.textContent = activeChild.name;
+            bannerName.textContent = activeChild.name + (activeChild.admission_no ? ` (Adm: ${activeChild.admission_no})` : '');
             // Show meta details from child profile + rapid assessment data
             const rd = activeChild._rapidData || {};
             const metaParts = [];
+            if (activeChild.admission_no)   metaParts.push('Adm\u00a0#' + activeChild.admission_no);
             if (activeChild.sex || rd.sex)  metaParts.push(activeChild.sex || rd.sex);
             if (activeChild.dob)            metaParts.push('DOB\u00a0' + activeChild.dob);
             if (rd.age)                     metaParts.push('Age\u00a0' + rd.age);
@@ -294,6 +295,22 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
+        // ── Lock / fill admission number in all assessment forms ────
+        const admFields = [
+            document.getElementById('physio-admission-no'),
+            document.getElementById('speech-admission-no'),
+            document.getElementById('prog-admission-no'),
+            document.querySelector('#form-development input[name="admission_no"]')
+        ];
+        admFields.forEach(f => {
+            if (!f) return;
+            if (activeChild && activeChild.admission_no) {
+                f.value = activeChild.admission_no;
+            } else if (!activeChild) {
+                f.value = '';
+            }
+        });
+
         // ── Auto-fill Child Development form from Rapid Assessment data ──
         if (!activeChild) return;
         const devForm = document.getElementById('form-development');
@@ -301,6 +318,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Map: [CSS selector, value]  — only fills if value is non-empty
         const fills = [
+            ['input[name="admission_no"]',  activeChild.admission_no || ''],
             ['select[name="sex"]',          activeChild.sex || rd.sex || ''],
             ['input[name="dob"]',           activeChild.dob || rd.dob || ''],
             ['input[name="age"]',           rd.age     || ''],
@@ -731,7 +749,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const cr = await fetch('/api/children', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, dob: data.dob || null, sex: data.sex || null, mobile: data.mobile || null })
+                body: JSON.stringify({ 
+                    name, 
+                    admission_no: data.admission_no || null,
+                    dob: data.dob || null, 
+                    sex: data.sex || null, 
+                    mobile: data.mobile || null 
+                })
             });
             if (!cr.ok) { showToast('Error creating child profile: ' + (await cr.json()).error, true); return; }
             const child = await cr.json();
@@ -922,7 +946,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         '</div>').join('')
                     : '<div class="folder-empty-msg">No assessments saved yet.</div>';
 
-                const childJson    = JSON.stringify({id:child.id, name:child.name, dob:child.dob, sex:child.sex, mobile:child.mobile});
+                const childJson    = JSON.stringify({id:child.id, name:child.name, admission_no:child.admission_no || '', dob:child.dob, sex:child.sex, mobile:child.mobile});
                 const safeChildJson = childJson.replace(/"/g, '&quot;');
                 const openBtn = isActive
                     ? '<span class="active-badge">\u25cf Active</span>'
@@ -942,17 +966,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const card = document.createElement('div');
                 card.className = 'child-folder-card' + (isActive ? ' folder-active' : '');
-                const meta = [child.sex, child.dob ? 'DOB: '+child.dob : '', child.mobile ? '\ud83d\udcf1 '+child.mobile : '', child.assessments.length + ' assessment(s)'].filter(Boolean).join(' \u00b7 ');
+                const meta = [child.admission_no ? 'Adm No: ' + child.admission_no : '', child.sex, child.dob ? 'DOB: '+child.dob : '', child.mobile ? '\ud83d\udcf1 '+child.mobile : '', child.assessments.length + ' assessment(s)'].filter(Boolean).join(' \u00b7 ');
+                const admBadge = child.admission_no 
+                    ? '<span style="display:inline-block; font-size:0.75rem; background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; border-radius:4px; padding:1px 6px; margin-left:8px; font-weight:600;">Adm: ' + child.admission_no + '</span>'
+                    : '';
                 card.innerHTML =
                     '<div class="folder-header" data-child-id="' + child.id + '">' +
                         '<div class="folder-title">' +
                             '<span class="folder-icon">' + (isActive ? '\ud83d\udcc2' : '\ud83d\udcc1') + '</span>' +
                             '<div>' +
-                                '<strong class="folder-child-name">' + child.name + '</strong>' +
+                                '<strong class="folder-child-name">' + child.name + admBadge + '</strong>' +
                                 '<small class="folder-meta">' + meta + '</small>' +
                             '</div>' +
                         '</div>' +
-                        '<div class="folder-actions">' + openBtn + '<button class="btn-folder-summary btn-secondary btn-sm" data-child-json="' + safeChildJson + '" style="background:#f0fdf4; color:#166534; border-color:#bbf7d0; font-weight:600; padding:3px 8px; font-size:0.75rem;" title="View Clinical Assessment Summary">📋 Summary</button><button class="btn-delete-folder" data-id="' + child.id + '" data-name="' + child.name.replace(/"/g, '&quot;') + '" title="Delete Folder">&#128465;</button><span class="folder-toggle">\u25be</span></div>' +
+                        '<div class="folder-actions">' + openBtn + '<button class="btn-edit-child-profile btn-secondary btn-sm" data-child-json="' + safeChildJson + '" style="font-weight:600; padding:3px 8px; font-size:0.75rem;" title="Edit Child Profile">✏️ Edit</button><button class="btn-folder-summary btn-secondary btn-sm" data-child-json="' + safeChildJson + '" style="background:#f0fdf4; color:#166534; border-color:#bbf7d0; font-weight:600; padding:3px 8px; font-size:0.75rem;" title="View Clinical Assessment Summary">📋 Summary</button><button class="btn-delete-folder" data-id="' + child.id + '" data-name="' + child.name.replace(/"/g, '&quot;') + '" title="Delete Folder">&#128465;</button><span class="folder-toggle">\u25be</span></div>' +
                     '</div>' +
                     '<div class="folder-body">' +
                         rows +
@@ -962,6 +989,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         '</div>' +
                         '<div class="folder-form-links" style="margin-top: 10px; border-top: 1px dashed #ccc; padding-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center;">' +
                             '<span class="folder-form-links-label">Actions:</span> ' +
+                            '<button class="btn-edit-child-profile btn-secondary btn-sm" data-child-json="' + safeChildJson + '" style="background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; font-weight: 600;">✏️ Edit Profile</button>' +
                             '<button class="btn-child-summary btn-secondary btn-sm" data-child-json="' + safeChildJson + '" style="background: #f0fdf4; color: #166534; border-color: #86efac; font-weight: 600;">📋 Assessment Summary</button>' +
                             '<button class="btn-log-therapy btn-blue btn-sm" data-child-json="' + safeChildJson + '">⏱️ Log Therapy</button>' +
                             '<button class="btn-view-attendance btn-secondary btn-sm" data-child-id="' + child.id + '">📊 View History</button>' +
@@ -976,6 +1004,7 @@ document.addEventListener('DOMContentLoaded', () => {
             foldersEl.querySelectorAll('.folder-header').forEach(h => {
                 h.addEventListener('click', e => {
                     if (e.target.classList.contains('btn-open-folder') ||
+                        e.target.classList.contains('btn-edit-child-profile') ||
                         e.target.classList.contains('btn-folder-summary')||
                         e.target.classList.contains('btn-child-summary') ||
                         e.target.classList.contains('btn-view-sm')      ||
@@ -990,6 +1019,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     const c = h.closest('.child-folder-card');
                     c.classList.toggle('folder-open');
                     h.querySelector('.folder-toggle').textContent = c.classList.contains('folder-open') ? '\u25b4' : '\u25be';
+                });
+            });
+
+            foldersEl.querySelectorAll('.btn-edit-child-profile').forEach(btn => {
+                btn.addEventListener('click', e => {
+                    e.stopPropagation();
+                    const cd = JSON.parse(btn.getAttribute('data-child-json').replace(/&quot;/g, '"'));
+                    openChildEditModal(cd);
                 });
             });
 
@@ -1738,6 +1775,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!grouped[row.child_id]) {
                     grouped[row.child_id] = { 
                         name: row.child_name, 
+                        admission_no: row.child_admission_no,
                         rows: [], 
                         sumFee: 0, sumConcession: 0, sumPaid: 0, sumBalance: 0 
                     };
@@ -1757,9 +1795,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 sumPaid += group.sumPaid;
                 sumBalance += group.sumBalance;
                 
+                const admBadge = group.admission_no ? `<span style="display:inline-block; font-size:0.75rem; background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; border-radius:4px; padding:1px 6px; margin-left:8px; font-weight:600;">Adm: ${group.admission_no}</span>` : '';
+
                 // Header row
                 html += `<tr class="accordion-header" data-child-index="${index}" style="cursor: pointer; background: #f8fafc;">
-                    <td colspan="6"><strong><span class="toggle-icon">▼</span> ${group.name}</strong> <span style="color: #64748b; font-size: 0.9em; margin-left: 10px;">(${group.rows.length} session${group.rows.length > 1 ? 's' : ''})</span></td>
+                    <td colspan="6"><strong><span class="toggle-icon">▼</span> ${group.name}${admBadge}</strong> <span style="color: #64748b; font-size: 0.9em; margin-left: 10px;">(${group.rows.length} session${group.rows.length > 1 ? 's' : ''})</span></td>
                     <td class="header-fee"><strong>${group.sumFee}</strong></td>
                     <td class="header-concession"><strong>${group.sumConcession}</strong></td>
                     <td class="header-paid"><strong>${group.sumPaid}</strong></td>
@@ -2070,10 +2110,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 showToast('No data to export', true);
                 return;
             }
-            let csvContent = "\uFEFFDate,Child Name,Time Slot,Therapy,Therapist,Status,Fee,Concession,Paid,Payment Mode,Balance\n";
+            let csvContent = "\uFEFFDate,Admission No,Child Name,Time Slot,Therapy,Therapist,Status,Fee,Concession,Paid,Payment Mode,Balance\n";
             window.currentReportData.forEach(row => {
                 const arr = [
                     row.date || '',
+                    `"${(row.child_admission_no || '').replace(/"/g, '""')}"`,
                     `"${(row.child_name || '').replace(/"/g, '""')}"`,
                     row.time_slot || '',
                     `"${(row.therapy_type || '').replace(/"/g, '""')}"`,
@@ -2212,7 +2253,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const TIME_SLOTS = [
         "10.00 - 10.30", "10.30 - 11.00", "11.00 - 11.30", "11.30 - 12.00",
         "12.00 - 12.30", "12.30 - 1.00", "1.00 - 1.30", "2.00 - 2.30",
-        "2.30 - 3.00", "3.00 - 3.30", "3.30 - 4.00", "4.00 - 5.00"
+        "2.30 - 3.00", "3.00 - 3.30", "3.30 - 4.00", "4.00 - 4.30", "4.30 - 5.00"
     ];
     let currentScheduleData = [];
     let scheduleChildrenList = [];
@@ -2233,7 +2274,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const date = scheduleDateInput.value;
         if (!date) return;
 
-        tbody.innerHTML = '<tr><td colspan="13" style="text-align: center;">Loading...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="14" style="text-align: center;">Loading...</td></tr>';
         try {
             // Always fetch fresh children list so newly added/updated children appear immediately
             const respChild = await fetch('/api/children');
@@ -2251,7 +2292,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 permittedChildren.forEach(child => {
                     const opt = document.createElement('option');
                     opt.value = child.id;
-                    opt.textContent = child.name;
+                    opt.textContent = child.name + (child.admission_no ? ` (${child.admission_no})` : '');
                     scheduleFilterInput.appendChild(opt);
                 });
                 scheduleFilterInput.value = currentVal;
@@ -2262,7 +2303,7 @@ document.addEventListener('DOMContentLoaded', () => {
             currentScheduleData = await respSched.json();
 
             if (permittedChildren.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="13" style="text-align: center;">No permitted children registered.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="14" style="text-align: center;">No permitted children registered.</td></tr>';
                 return;
             }
 
@@ -2273,8 +2314,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             let html = '';
             filteredChildren.forEach((child, index) => {
+                const admBadge = child.admission_no ? `<br><small style="color: #64748b; font-size: 0.72rem; font-weight: 500;">Adm: ${child.admission_no}</small>` : '';
                 html += `<tr>`;
-                html += `<td class="sticky-col">${index + 1}. ${child.name}</td>`;
+                html += `<td class="sticky-col">${index + 1}. ${child.name}${admBadge}</td>`;
                 
                 TIME_SLOTS.forEach(slot => {
                     const block = currentScheduleData.find(s => s.child_id === child.id && s.time_slot === slot);
@@ -2307,7 +2349,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             tbody.innerHTML = html;
         } catch (err) {
-            tbody.innerHTML = '<tr><td colspan="13" style="text-align: center; color: red;">Failed to load schedule.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="14" style="text-align: center; color: red;">Failed to load schedule.</td></tr>';
         }
     }
 
@@ -2457,7 +2499,7 @@ document.addEventListener('DOMContentLoaded', () => {
         blocks.sort((a, b) => timeOrder[a.time_slot] - timeOrder[b.time_slot]);
 
         const formattedDate = formatDisplayDate(date);
-        let message = `📅 Therapy Schedule for ${child.name}\n`;
+        let message = `📅 Therapy Schedule for ${child.name}${child.admission_no ? ` (Adm: ${child.admission_no})` : ''}\n`;
         message += `🗓 Date: ${formattedDate}\n\n`;
 
         blocks.forEach(block => {
@@ -2566,8 +2608,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 startY: 30,
                 head: [['PATIENT & ASSESSMENT RECORD INFORMATION', '']],
                 body: [
-                    ['Child Name:', childName, 'Assessment Type:', formType],
-                    ['Assessment Date:', formattedDate, 'Record ID:', '#' + (rec.id || '-')]
+                    ['Child Name:', childName, 'Admission No:', (rec.admission_no || (activeChild?.name === childName ? activeChild?.admission_no : '') || '-')],
+                    ['Assessment Type:', formType, 'Assessment Date:', formattedDate]
                 ],
                 theme: 'plain',
                 styles: { fontSize: 8.5, cellPadding: 2, textColor: [30, 41, 59] },
@@ -3320,7 +3362,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const summary = extractAssessmentSummaries(child, assessments);
         const ageYears = extractChildAge(child);
         const ageStr = ageYears ? `${ageYears} yrs` : (child.dob ? `DOB: ${child.dob}` : 'Age not specified');
-        const safeChildJson = JSON.stringify({ id: child.id, name: child.name, dob: child.dob, sex: child.sex, mobile: child.mobile }).replace(/"/g, '&quot;');
+        const safeChildJson = JSON.stringify({ id: child.id, name: child.name, admission_no: child.admission_no || '', dob: child.dob, sex: child.sex, mobile: child.mobile }).replace(/"/g, '&quot;');
 
         const statusBadgeText = summary.coreCount === 4 
             ? '✓ 4/4 Core Complete' 
@@ -3604,7 +3646,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div class="summary-child-avatar">${(child.name || 'C').charAt(0).toUpperCase()}</div>
                         <div class="summary-child-info">
                             <strong>${child.name}</strong>
-                            <div class="summary-child-meta">${ageStr} / ${child.sex || '-'} · 📱 ${child.mobile || 'None'} · ID: #${child.id}</div>
+                            <div class="summary-child-meta">${ageStr} / ${child.sex || '-'} · ${child.admission_no ? `Adm: ${child.admission_no} · ` : ''}📱 ${child.mobile || 'None'} · ID: #${child.id}</div>
                         </div>
                     </div>
 
@@ -3645,7 +3687,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const summary = extractAssessmentSummaries(child, assessments);
         const ageYears = extractChildAge(child);
         const ageStr = ageYears ? `${ageYears}y` : (child.dob || '-');
-        const safeChildJson = JSON.stringify({ id: child.id, name: child.name, dob: child.dob, sex: child.sex, mobile: child.mobile }).replace(/"/g, '&quot;');
+        const safeChildJson = JSON.stringify({ id: child.id, name: child.name, admission_no: child.admission_no || '', dob: child.dob, sex: child.sex, mobile: child.mobile }).replace(/"/g, '&quot;');
 
         const r = summary.rapid;
         const d = summary.dev;
@@ -3657,11 +3699,15 @@ document.addEventListener('DOMContentLoaded', () => {
             ? '<span class="discipline-pill done">✓ Complete (4/4)</span>'
             : (summary.totalCount > 0 ? `<span class="discipline-pill" style="background:#fef9c3; color:#854d0e;">Partial (${summary.coreCount}/4)</span>` : '<span class="discipline-pill pending">Pending (0)</span>');
 
+        const admBadge = child.admission_no 
+            ? `<span style="font-size:0.75rem; color:#1d4ed8; background:#eff6ff; border:1px solid #bfdbfe; border-radius:3px; padding:1px 5px; margin-left:6px; font-weight:600;">Adm: ${child.admission_no}</span>`
+            : '';
+
         return `
             <tr style="border-bottom: 1px solid #f1f5f9;">
                 <td style="padding: 12px 14px; text-align: center; color: #64748b; font-weight: 600;">${index + 1}</td>
                 <td style="padding: 12px 14px;">
-                    <strong style="color: #0f172a; font-size: 0.92rem; display: block;">${child.name}</strong>
+                    <strong style="color: #0f172a; font-size: 0.92rem; display: block;">${child.name}${admBadge}</strong>
                     <div style="font-size: 0.78rem; color: #64748b;">${ageStr} / ${child.sex || '-'} · 📱 ${child.mobile || 'None'}</div>
                 </td>
                 <td style="padding: 12px 14px;">
@@ -3981,9 +4027,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const ageYears = extractChildAge(child);
         const ageStr = ageYears ? `${ageYears} yrs` : (child.dob ? `DOB: ${child.dob}` : 'Age not specified');
+        const admBadge = child.admission_no ? ` · Adm: ${child.admission_no}` : '';
         
         nameEl.textContent = `Clinical Assessment Summary — ${child.name}`;
-        subEl.textContent = `${child.sex || 'Child'} · ${ageStr} · Mobile: ${child.mobile || 'None'} · ID: #${child.id}`;
+        subEl.textContent = `${child.sex || 'Child'} · ${ageStr} · Mobile: ${child.mobile || 'None'} · ID: #${child.id}${admBadge}`;
 
         kpisEl.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 15px; color: var(--text-light);">Loading assessment history...</div>';
         domainsEl.innerHTML = '';
@@ -3997,6 +4044,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (res.ok) {
                 childData = await res.json();
                 assessments = childData.assessments || [];
+                if (childData.admission_no && !subEl.textContent.includes('Adm:')) {
+                    subEl.textContent += ` · Adm: ${childData.admission_no}`;
+                }
             } else {
                 const aRes = await fetch(`/api/assessments?child_id=${child.id}`);
                 if (aRes.ok) assessments = await aRes.json();
@@ -4239,11 +4289,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const totalBadge = `<span style="font-weight: 700; color: ${aList.length >= 4 ? '#15803d' : (aList.length > 0 ? '#b45309' : '#dc2626')};">${aList.length}</span>`;
 
-            const safeChildJson = JSON.stringify({ id: c.id, name: c.name, dob: c.dob, sex: c.sex, mobile: c.mobile }).replace(/"/g, '&quot;');
+            const admBadge = c.admission_no ? `<div style="font-size: 0.73rem; color: #0284c7; font-weight: 600;">Adm: ${c.admission_no}</div>` : '';
+            const safeChildJson = JSON.stringify({ id: c.id, name: c.name, admission_no: c.admission_no, dob: c.dob, sex: c.sex, mobile: c.mobile }).replace(/"/g, '&quot;');
 
             return `
                 <tr style="border-bottom: 1px solid #f1f5f9;">
-                    <td style="padding: 10px 12px;"><strong>${c.name}</strong></td>
+                    <td style="padding: 10px 12px;"><strong>${c.name}</strong>${admBadge}</td>
                     <td style="padding: 10px 12px; color: #64748b; font-size: 0.82rem;">${ageStr} / ${c.sex || '-'}</td>
                     <td style="padding: 10px 12px; text-align: center;">${renderBadge('Rapid Assessment')}</td>
                     <td style="padding: 10px 12px; text-align: center;">${renderBadge('Child Development')}</td>
@@ -4315,10 +4366,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 startY: 29,
                 head: [['PATIENT CLINICAL SUMMARY RECORD', '']],
                 body: [
-                    ['Child Name:', child.name || 'N/A', 'Patient ID:', '#' + (child.id || '-')],
-                    ['Date of Birth:', child.dob || 'Not specified', 'Age / Sex:', `${ageStr} / ${child.sex || '-'}`],
-                    ['Contact Phone:', child.mobile || 'None', 'Dossier Generated:', summaryDate],
-                    ['Total Assessments:', `${summary.totalCount} Record(s)`, 'Workup Status:', summary.coreCount === 4 ? 'Complete Multi-Disciplinary Workup (4/4)' : `${summary.coreCount}/4 Disciplines Completed`]
+                    ['Child Name:', child.name || 'N/A', 'Admission No:', child.admission_no || 'N/A'],
+                    ['Patient ID:', '#' + (child.id || '-'), 'Date of Birth:', child.dob || 'Not specified'],
+                    ['Age / Sex:', `${ageStr} / ${child.sex || '-'}`, 'Contact Phone:', child.mobile || 'None'],
+                    ['Dossier Generated:', summaryDate, 'Workup Status:', summary.coreCount === 4 ? 'Complete Multi-Disciplinary Workup (4/4)' : `${summary.coreCount}/4 Disciplines Completed`]
                 ],
                 theme: 'plain',
                 styles: { fontSize: 8, cellPadding: 2, textColor: [30, 41, 59] },
@@ -4503,10 +4554,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const progTxt = summary.progress.length ? `${summary.progress[0].quarter}: ${summary.progress[0].achievement.slice(0, 35)}...` : '-';
 
                 const statusTxt = summary.coreCount === 4 ? 'Complete (4/4)' : (summary.totalCount > 0 ? `Partial (${summary.coreCount}/4)` : 'Pending (0)');
+                const admLine = c.admission_no ? `Adm: ${c.admission_no}\n` : '';
 
                 return [
                     (idx + 1).toString(),
-                    `${c.name}\n(${ageStr}/${c.sex || '-'})`,
+                    `${c.name}\n${admLine}(${ageStr}/${c.sex || '-'})`,
                     rapidTxt,
                     devTxt,
                     physioTxt,
@@ -4558,7 +4610,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const headers = [
-            'Child ID', 'Child Name', 'Sex', 'DOB', 'Age (Years)', 'Mobile',
+            'Child ID', 'Admission No', 'Child Name', 'Sex', 'DOB', 'Age (Years)', 'Mobile',
             'Workup Status', 'Total Assessments',
             'Rapid Assessment Date', 'Rapid Diagnosis', 'Rapid Symptoms', 'Rapid Finalized By',
             'Child Dev Date', 'Child Dev Diagnosis', 'Child Dev Chief Complaint', 'Child Dev Delays', 'Child Dev Treatment Goal',
@@ -4580,6 +4632,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             return [
                 c.id,
+                `"${(c.admission_no || '').replace(/"/g, '""')}"`,
                 `"${(c.name || '').replace(/"/g, '""')}"`,
                 `"${c.sex || ''}"`,
                 `"${c.dob || ''}"`,
@@ -4748,6 +4801,72 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     document.getElementById('btn-export-all-summary-csv')?.addEventListener('click', () => {
         exportAllAssessmentsSummaryCsv(allSummaryChildrenList);
+    });
+
+    // ── Edit Child Profile Modal ──────────────────────────────
+    const childEditModal = document.getElementById('child-edit-modal');
+    const childEditForm = document.getElementById('child-edit-form');
+    const closeChildEditModal = document.getElementById('close-child-edit-modal');
+    const btnCancelChildEdit = document.getElementById('btn-cancel-child-edit');
+    const btnEditActiveChild = document.getElementById('btn-edit-active-child');
+
+    function openChildEditModal(child) {
+        if (!child || !childEditModal) return;
+        document.getElementById('edit-child-id').value = child.id;
+        document.getElementById('edit-child-adm').value = child.admission_no || '';
+        document.getElementById('edit-child-name').value = child.name || '';
+        document.getElementById('edit-child-dob').value = child.dob || '';
+        document.getElementById('edit-child-sex').value = child.sex || '';
+        document.getElementById('edit-child-mobile').value = child.mobile || '';
+        childEditModal.classList.add('show');
+    }
+
+    function closeChildEditModalDialog() {
+        if (childEditModal) childEditModal.classList.remove('show');
+    }
+
+    closeChildEditModal?.addEventListener('click', closeChildEditModalDialog);
+    btnCancelChildEdit?.addEventListener('click', closeChildEditModalDialog);
+    window.addEventListener('click', (e) => {
+        if (e.target === childEditModal) closeChildEditModalDialog();
+    });
+
+    btnEditActiveChild?.addEventListener('click', () => {
+        if (activeChild) openChildEditModal(activeChild);
+        else showToast('No active child selected', true);
+    });
+
+    childEditForm?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('edit-child-id').value;
+        const payload = {
+            admission_no: document.getElementById('edit-child-adm').value.trim() || null,
+            name: document.getElementById('edit-child-name').value.trim(),
+            dob: document.getElementById('edit-child-dob').value || null,
+            sex: document.getElementById('edit-child-sex').value || null,
+            mobile: document.getElementById('edit-child-mobile').value.trim() || null
+        };
+        try {
+            const resp = await fetch(`/api/children/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (resp.ok) {
+                const updatedChild = await resp.json();
+                showToast('✅ Child profile updated successfully!');
+                closeChildEditModalDialog();
+                if (activeChild && activeChild.id == id) {
+                    setActiveChild({ ...activeChild, ...updatedChild });
+                }
+                fetchChildFolders(searchInput ? searchInput.value : '');
+            } else {
+                const err = await resp.json();
+                showToast('Error: ' + (err.error || 'Failed to update child'), true);
+            }
+        } catch (err) {
+            showToast('Failed to update child profile', true);
+        }
     });
 
     // ── Change Password Modal ─────────────────────────────────
