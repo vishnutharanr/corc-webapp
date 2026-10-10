@@ -1,4 +1,4 @@
-const CACHE_NAME = 'corc-v4';
+const CACHE_NAME = 'corc-v8';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',

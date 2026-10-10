@@ -98,7 +98,17 @@ const INIT_SQL = `
     CREATE TABLE IF NOT EXISTS therapists (
         id SERIAL PRIMARY KEY,
         name TEXT NOT NULL,
-        therapy_type TEXT NOT NULL,
+        therapy_type TEXT,
+        fee REAL DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+    ALTER TABLE therapists ALTER COLUMN therapy_type DROP NOT NULL;
+    ALTER TABLE therapists ALTER COLUMN fee DROP NOT NULL;
+
+    CREATE TABLE IF NOT EXISTS therapy_fees (
+        id SERIAL PRIMARY KEY,
+        therapy_type TEXT UNIQUE NOT NULL,
         fee REAL NOT NULL DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
@@ -126,6 +136,81 @@ const INIT_SQL = `
     UPDATE therapy_attendance SET time_slot = '4.00 - 4.30' WHERE time_slot = '4.00 - 5.00';
 `;
 
+const DEFAULT_THERAPY_FEES = [
+    { type: "Assessment and Goal setting", fee: 250 },
+    { type: "Medical review", fee: 300 },
+    { type: "Physiotherapy", fee: 250 },
+    { type: "Occupational Therapy", fee: 250 },
+    { type: "Sensory integration Sessions", fee: 100 },
+    { type: "Speech Training Sessions", fee: 150 },
+    { type: "Hydro therapy Sessions", fee: 100 },
+    { type: "ADL Sessions", fee: 100 },
+    { type: "Outdoor Activity Sessions", fee: 100 },
+    { type: "Academic Sessions", fee: 100 },
+    { type: "Music Therapy", fee: 100 },
+    { type: "Reflex Therapy", fee: 250 },
+    { type: "Siddha Treatment", fee: 0 },
+    { type: "Home programme", fee: 0 },
+    { type: "Nursing care and counselling", fee: 0 },
+    { type: "Orthotic Review", fee: 0 },
+    { type: "Other services", fee: 0 }
+];
+
+const DEFAULT_THERAPISTS = [
+    "Dr. Alen Sam",
+    "Dr. Belsi Felix",
+    "Mr. Fredly",
+    "Ms. Jeya Nadhini",
+    "Ms. Anisha",
+    "Dr. Vijayasanthi",
+    "Mr. Justin Vens",
+    "Mr. Natharajan",
+    "Mr. Jenish",
+    "Dr. Mohandoss",
+    "Mr. Vimal",
+    "Ms. Vidhya",
+    "Ms. Lega"
+];
+
+async function seedDefaultTherapyFees() {
+    try {
+        for (const item of DEFAULT_THERAPY_FEES) {
+            await pool.query(
+                `INSERT INTO therapy_fees (therapy_type, fee)
+                 VALUES ($1, $2)
+                 ON CONFLICT (therapy_type) DO NOTHING`,
+                [item.type, item.fee]
+            );
+        }
+        await pool.query(`
+            INSERT INTO therapy_fees (therapy_type, fee)
+            SELECT DISTINCT therapy_type, fee FROM therapists 
+            WHERE therapy_type IS NOT NULL AND therapy_type != ''
+            ON CONFLICT (therapy_type) DO NOTHING
+        `).catch(() => {});
+        console.log('Default therapy fees checked/seeded successfully.');
+    } catch (e) {
+        console.error('Error seeding default therapy fees:', e.message);
+    }
+}
+
+async function seedDefaultTherapists() {
+    try {
+        const existing = await pool.query(`SELECT count(*) FROM therapists`);
+        if (parseInt(existing.rows[0].count, 10) === 0) {
+            for (const name of DEFAULT_THERAPISTS) {
+                await pool.query(
+                    `INSERT INTO therapists (name, therapy_type, fee) VALUES ($1, '', 0)`,
+                    [name]
+                );
+            }
+            console.log('Default therapists seeded successfully.');
+        }
+    } catch (e) {
+        console.error('Error seeding default therapists:', e.message);
+    }
+}
+
 async function seedDefaultUsers() {
     try {
         const existing = await pool.query(`SELECT count(*) FROM users`);
@@ -151,6 +236,8 @@ pool.query(INIT_SQL)
     .then(async () => {
         console.log('Database tables & indexes initialized');
         await seedDefaultUsers();
+        await seedDefaultTherapyFees();
+        await seedDefaultTherapists();
     })
     .catch(err => console.error('Error executing init script:', err.stack));
 
@@ -179,6 +266,8 @@ app.get('/api/init-db', async (req, res) => {
     try {
         await pool.query(INIT_SQL);
         await seedDefaultUsers();
+        await seedDefaultTherapyFees();
+        await seedDefaultTherapists();
         res.json({ message: 'Database tables and indexes initialized successfully!' });
     } catch (err) {
         console.error(err);
@@ -196,7 +285,7 @@ app.post('/api/login', async (req, res) => {
     try {
         const u = username.trim().toLowerCase();
         const userRes = await pool.query(`SELECT * FROM users WHERE LOWER(username) = $1`, [u]);
-        
+
         let user = userRes.rows[0];
         let passwordMatches = false;
 
@@ -688,11 +777,77 @@ app.delete('/api/reports/attendance/:id', async (req, res) => {
     }
 });
 
+// ─── Individual Therapy Fees API ──────────────────────────────────────────────
+
+app.get('/api/therapy-fees', async (req, res) => {
+    try {
+        const result = await pool.query(`SELECT * FROM therapy_fees ORDER BY therapy_type ASC`);
+        res.json(result.rows);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/therapy-fees', async (req, res) => {
+    const { therapy_type, fee } = req.body;
+    if (!therapy_type) return res.status(400).json({ error: 'Therapy type is required' });
+    const numFee = parseFloat(fee) || 0;
+
+    try {
+        const result = await pool.query(
+            `INSERT INTO therapy_fees (therapy_type, fee)
+             VALUES ($1, $2)
+             ON CONFLICT (therapy_type) DO UPDATE SET fee = EXCLUDED.fee
+             RETURNING *`,
+            [therapy_type.trim(), numFee]
+        );
+        res.status(200).json(result.rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.put('/api/therapy-fees/:id', async (req, res) => {
+    const { fee } = req.body;
+    const numFee = parseFloat(fee) || 0;
+
+    try {
+        const result = await pool.query(
+            `UPDATE therapy_fees SET fee = $1 WHERE id = $2 RETURNING *`,
+            [numFee, req.params.id]
+        );
+        if (result.rows.length === 0) return res.status(404).json({ error: 'Therapy fee record not found' });
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.delete('/api/therapy-fees/:id', async (req, res) => {
+    try {
+        const result = await pool.query(`DELETE FROM therapy_fees WHERE id = $1 RETURNING id`, [req.params.id]);
+        if (result.rowCount === 0) return res.status(404).json({ error: 'Therapy not found' });
+        res.json({ success: true, message: 'Therapy deleted successfully' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // ─── Therapists API ─────────────────────────────────────────────────────────────
 
 app.get('/api/therapists', async (req, res) => {
     try {
-        const result = await pool.query(`SELECT * FROM therapists ORDER BY name ASC`);
+        const result = await pool.query(`
+            SELECT MIN(id) as id, name, MIN(created_at) as created_at 
+            FROM therapists 
+            WHERE name IS NOT NULL AND TRIM(name) != ''
+            GROUP BY name 
+            ORDER BY name ASC
+        `);
         res.json(result.rows);
     } catch (err) {
         console.error(err);
@@ -701,13 +856,19 @@ app.get('/api/therapists', async (req, res) => {
 });
 
 app.post('/api/therapists', async (req, res) => {
-    const { name, therapy_type, fee } = req.body;
-    if (!name || !therapy_type) return res.status(400).json({ error: 'Name and therapy type are required' });
+    const { name } = req.body;
+    if (!name || !name.trim()) return res.status(400).json({ error: 'Therapist name is required' });
 
     try {
+        const trimmedName = name.trim();
+        const existing = await pool.query(`SELECT id FROM therapists WHERE LOWER(TRIM(name)) = LOWER(TRIM($1))`, [trimmedName]);
+        if (existing.rows.length > 0) {
+            return res.status(400).json({ error: 'Therapist already exists in roster' });
+        }
+
         const result = await pool.query(
-            `INSERT INTO therapists (name, therapy_type, fee) VALUES ($1, $2, $3) RETURNING id, name, therapy_type, fee`,
-            [name.trim(), therapy_type, parseFloat(fee) || 0]
+            `INSERT INTO therapists (name, therapy_type, fee) VALUES ($1, '', 0) RETURNING id, name, created_at`,
+            [trimmedName]
         );
         res.status(201).json(result.rows[0]);
     } catch (err) {
@@ -718,7 +879,12 @@ app.post('/api/therapists', async (req, res) => {
 
 app.delete('/api/therapists/:id', async (req, res) => {
     try {
-        await pool.query(`DELETE FROM therapists WHERE id = $1`, [req.params.id]);
+        const findRes = await pool.query(`SELECT name FROM therapists WHERE id = $1`, [req.params.id]);
+        if (findRes.rows.length > 0) {
+            await pool.query(`DELETE FROM therapists WHERE name = $1`, [findRes.rows[0].name]);
+        } else {
+            await pool.query(`DELETE FROM therapists WHERE id = $1`, [req.params.id]);
+        }
         res.json({ message: 'Therapist deleted' });
     } catch (err) {
         console.error(err);

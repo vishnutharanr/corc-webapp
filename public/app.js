@@ -71,6 +71,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             applyRoleRestrictions();
+            if (typeof fetchTherapyFees === 'function') fetchTherapyFees();
+            if (typeof fetchTherapists === 'function') fetchTherapists();
         }
     }
 
@@ -97,7 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 .btn-edit-sm, .btn-delete-sm, .btn-delete-folder, .btn-notice-edit, .btn-notice-delete {
                     display: none !important;
                 }
-                li[data-target="therapists-settings"], li[data-target="user-management"] {
+                li[data-target="therapies-settings"], li[data-target="therapists-settings"], li[data-target="user-management"] {
                     display: none !important;
                 }
                 .edit-attendance {
@@ -194,6 +196,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (tid === 'records') fetchChildFolders();
             if (tid === 'assessment-summaries') fetchAndRenderAssessmentSummaries();
             if (tid === 'user-management') fetchUsers();
+            if (tid === 'therapies-settings') fetchTherapyFees();
             if (tid === 'therapists-settings') fetchTherapists();
         });
     });
@@ -209,6 +212,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (targetId === 'records') fetchChildFolders();
         if (targetId === 'assessment-summaries') fetchAndRenderAssessmentSummaries();
         if (targetId === 'user-management') fetchUsers();
+        if (targetId === 'therapies-settings') fetchTherapyFees();
         if (targetId === 'therapists-settings') fetchTherapists();
     }
 
@@ -1389,25 +1393,41 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    const THERAPY_DEFAULTS = {
-        "Assessment and Goal setting": { therapist: "Dr. Alen Sam", fee: 250 },
-        "Medical review": { therapist: "Dr. Belsi Felix", fee: 300 },
-        "Physiotherapy": { therapist: "Mr. Fredly", fee: 250 },
-        "Occupational Therapy": { therapist: "Ms. Jeya Nadhini", fee: 250 },
-        "Sensory integration Sessions": { therapist: "Ms. Anisha", fee: 100 },
-        "Speech Training Sessions": { therapist: "Dr. Vijayasanthi", fee: 150 },
-        "Hydro therapy Sessions": { therapist: "Mr. Justin Vens", fee: 100 },
-        "ADL Sessions": { therapist: "Mr. Natharajan", fee: 100 },
-        "Outdoor Activity Sessions": { therapist: "Mr. Jenish", fee: 100 },
-        "Academic Sessions": { therapist: "Dr. Mohandoss", fee: 100 },
-        "Music Therapy": { therapist: "Mr. Vimal", fee: 100 },
-        "Reflex Therapy": { therapist: "Ms. Vidhya", fee: 250 },
-        "Siddha Treatment": { therapist: "Ms. Lega", fee: 0 },
-        "Home programme": { therapist: "", fee: 0 },
-        "Nursing care and counselling": { therapist: "", fee: 0 },
-        "Orthotic Review": { therapist: "", fee: 0 },
-        "Other services": { therapist: "", fee: 0 }
+    const THERAPY_DEFAULT_FEES = {
+        "Assessment and Goal setting": 250,
+        "Medical review": 300,
+        "Physiotherapy": 250,
+        "Occupational Therapy": 250,
+        "Sensory integration Sessions": 100,
+        "Speech Training Sessions": 150,
+        "Hydro therapy Sessions": 100,
+        "ADL Sessions": 100,
+        "Outdoor Activity Sessions": 100,
+        "Academic Sessions": 100,
+        "Music Therapy": 100,
+        "Reflex Therapy": 250,
+        "Siddha Treatment": 0,
+        "Home programme": 0,
+        "Nursing care and counselling": 0,
+        "Orthotic Review": 0,
+        "Other services": 0
     };
+
+    const DEFAULT_THERAPISTS = [
+        "Dr. Alen Sam",
+        "Dr. Belsi Felix",
+        "Mr. Fredly",
+        "Ms. Jeya Nadhini",
+        "Ms. Anisha",
+        "Dr. Vijayasanthi",
+        "Mr. Justin Vens",
+        "Mr. Natharajan",
+        "Mr. Jenish",
+        "Dr. Mohandoss",
+        "Mr. Vimal",
+        "Ms. Vidhya",
+        "Ms. Lega"
+    ];
 
     const typeSelect = document.getElementById('log-therapy-type');
     const orthoticGroup = document.getElementById('orthotic-group');
@@ -1438,17 +1458,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('log-therapy-sub-therapy').value = '';
             }
 
-            // Find matching therapist from dynamic DB, or fallback to hardcoded defaults for smooth transition
-            const dynamicMatch = dynamicTherapists.find(t => t.therapy_type === val);
-            const defaults = dynamicMatch ? { therapist: dynamicMatch.name, fee: dynamicMatch.fee } : THERAPY_DEFAULTS[val];
-            
-            if (defaults) {
-                therapistSelect.value = defaults.therapist;
-                feeInput.value = defaults.fee;
+            // Fee is determined strictly by the individual therapy type, NOT the therapist:
+            const feeMatch = dynamicTherapyFees.find(tf => tf.therapy_type === val);
+            if (feeMatch && feeMatch.fee !== undefined) {
+                feeInput.value = feeMatch.fee;
+            } else if (THERAPY_DEFAULT_FEES[val] !== undefined) {
+                feeInput.value = THERAPY_DEFAULT_FEES[val];
             } else {
-                therapistSelect.value = '';
                 feeInput.value = 0;
             }
+
+            // Note: A single therapist can do multiple therapies. The therapist is chosen independently
+            // and does not change or dictate the therapy fee.
+
             calculateFinancials();
         });
     }
@@ -2140,68 +2162,241 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // ── Therapists Settings Logic ──────────────────────────────────
+    // ── Therapies & Therapists Settings Logic ──────────────────────
     const therapistsTbody = document.getElementById('therapists-table-body');
+    const therapyFeesTbody = document.getElementById('therapy-fees-table-body');
+    const addTherapyForm = document.getElementById('add-therapy-form');
     const addTherapistForm = document.getElementById('add-therapist-form');
 
+    let dynamicTherapyFees = [];
     let dynamicTherapists = [];
 
-    async function fetchTherapists() {
-        if (!therapistsTbody) return;
+    // ── Individual Therapy Fees Management ──────────────────────────
+    async function fetchTherapyFees() {
+        const tbody = document.getElementById('therapy-fees-table-body');
+        if (!tbody) return;
+
         try {
-            therapistsTbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">Loading...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="3" style="text-align: center;">Loading therapy fees...</td></tr>';
+            const resp = await fetch('/api/therapy-fees');
+            if (resp.ok) {
+                dynamicTherapyFees = await resp.json();
+            } else {
+                dynamicTherapyFees = [];
+            }
+
+            // Fallback to default therapy fees list if DB table is currently empty
+            if (dynamicTherapyFees.length === 0) {
+                dynamicTherapyFees = Object.keys(THERAPY_DEFAULT_FEES).map((type, idx) => ({
+                    id: idx + 1,
+                    therapy_type: type,
+                    fee: THERAPY_DEFAULT_FEES[type]
+                }));
+            }
+
+            renderTherapyFeesTable();
+            populateTherapyDropdowns();
+        } catch (err) {
+            tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: red;">Failed to load therapy fees.</td></tr>';
+        }
+    }
+
+    function renderTherapyFeesTable() {
+        const tbody = document.getElementById('therapy-fees-table-body');
+        if (!tbody) return;
+
+        if (dynamicTherapyFees.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="3" style="text-align: center;">No therapy fee records.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = dynamicTherapyFees.map((tf, idx) => `
+            <tr>
+                <td><strong>${tf.therapy_type}</strong></td>
+                <td>
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <span style="font-weight: 600; color: var(--text-light);">₹</span>
+                        <input type="number" id="fee-inp-${idx}" value="${tf.fee !== undefined ? tf.fee : 0}" min="0" step="10"
+                               style="width: 100px; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border-color); font-weight: 600;"
+                               onkeydown="if(event.key==='Enter'){ event.preventDefault(); saveTherapyFee('${tf.therapy_type.replace(/'/g, "\\'")}', document.getElementById('fee-inp-${idx}').value); }">
+                    </div>
+                </td>
+                <td style="text-align: center;">
+                    <button type="button" class="btn-secondary btn-sm" onclick="saveTherapyFee('${tf.therapy_type.replace(/'/g, "\\'")}', document.getElementById('fee-inp-${idx}').value)" style="color: var(--primary); border-color: var(--primary); margin-right: 4px;">
+                        💾 Save
+                    </button>
+                    ${tf.id ? `<button type="button" class="btn-secondary btn-sm" onclick="deleteTherapyFee(${tf.id}, '${tf.therapy_type.replace(/'/g, "\\'")}')" style="color: var(--danger); border-color: var(--danger);">Delete</button>` : ''}
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    window.saveTherapyFee = async function(therapyType, newFeeVal) {
+        const numFee = parseFloat(newFeeVal) || 0;
+        try {
+            const resp = await fetch('/api/therapy-fees', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ therapy_type: therapyType, fee: numFee })
+            });
+
+            if (resp.ok) {
+                const updated = await resp.json();
+                showToast(`✅ Fee for "${therapyType}" set to ₹${numFee}`);
+                const match = dynamicTherapyFees.find(t => t.therapy_type === therapyType);
+                if (match) {
+                    match.fee = numFee;
+                    if (updated.id) match.id = updated.id;
+                } else {
+                    dynamicTherapyFees.push(updated);
+                }
+                populateTherapyDropdowns();
+            } else {
+                showToast('Failed to save therapy fee', true);
+            }
+        } catch (err) {
+            showToast('Error saving therapy fee', true);
+        }
+    };
+
+    window.deleteTherapyFee = async function(id, therapyType) {
+        if (!confirm(`Are you sure you want to remove the therapy "${therapyType}"?`)) return;
+        try {
+            const resp = await fetch('/api/therapy-fees/' + id, { method: 'DELETE' });
+            if (resp.ok) {
+                showToast(`Therapy "${therapyType}" removed`);
+                fetchTherapyFees();
+            } else {
+                showToast('Failed to delete therapy', true);
+            }
+        } catch (err) {
+            showToast('Error deleting therapy', true);
+        }
+    };
+
+    // ── Add New Therapy Form Handler ──────────────────────────────
+    if (addTherapyForm) {
+        addTherapyForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('new-therapy-name').value.trim();
+            const fee = parseFloat(document.getElementById('new-therapy-fee').value) || 0;
+            if (!name) return;
+
+            try {
+                const resp = await fetch('/api/therapy-fees', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ therapy_type: name, fee })
+                });
+
+                if (resp.ok) {
+                    showToast(`✅ Therapy "${name}" added!`);
+                    addTherapyForm.reset();
+                    fetchTherapyFees();
+                } else {
+                    const err = await resp.json();
+                    showToast('Failed to add therapy: ' + (err.error || 'Server error'), true);
+                }
+            } catch (err) {
+                showToast('Error adding therapy', true);
+            }
+        });
+    }
+
+    // ── Update All Therapy Dropdowns Across App ─────────────────────
+    function populateTherapyDropdowns() {
+        const therapyNames = dynamicTherapyFees.map(tf => tf.therapy_type);
+        Object.keys(THERAPY_DEFAULT_FEES).forEach(t => {
+            if (!therapyNames.includes(t)) therapyNames.push(t);
+        });
+
+        // 1. Log Therapy Dropdown
+        const logTypeSelect = document.getElementById('log-therapy-type');
+        if (logTypeSelect) {
+            const curVal = logTypeSelect.value;
+            logTypeSelect.innerHTML = '<option value="">Select...</option>' +
+                therapyNames.map(t => `<option value="${t}">${t}</option>`).join('');
+            if (curVal && therapyNames.includes(curVal)) logTypeSelect.value = curVal;
+        }
+
+        // 2. Daily Schedule Modal Therapy Dropdown
+        const schedTypeSelect = document.getElementById('schedule-therapy-type');
+        if (schedTypeSelect) {
+            const curVal = schedTypeSelect.value;
+            schedTypeSelect.innerHTML = '<option value="">Select...</option>' +
+                therapyNames.map(t => `<option value="${t}">${t}</option>`).join('');
+            if (curVal && therapyNames.includes(curVal)) schedTypeSelect.value = curVal;
+        }
+    }
+
+    // ── Therapist Roster Management (No Fees) ──────────────────────
+    async function fetchTherapists() {
+        const tbody = document.getElementById('therapists-table-body');
+        if (!tbody) return;
+        try {
+            tbody.innerHTML = '<tr><td colspan="2" style="text-align: center;">Loading therapists...</td></tr>';
             const resp = await fetch('/api/therapists');
-            dynamicTherapists = await resp.json();
+            if (resp.ok) {
+                dynamicTherapists = await resp.json();
+            } else {
+                dynamicTherapists = [];
+            }
             
             if (dynamicTherapists.length === 0) {
-                therapistsTbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">No therapists found.</td></tr>';
-            } else {
-                therapistsTbody.innerHTML = dynamicTherapists.map(t => 
-                    `<tr>
-                        <td><strong>${t.name}</strong></td>
-                        <td>${t.therapy_type}</td>
-                        <td>${t.fee}</td>
-                        <td>
-                            <button class="btn-secondary btn-sm" onclick="deleteTherapist(${t.id})" style="color: var(--danger); border-color: var(--danger);">Delete</button>
-                        </td>
-                    </tr>`
-                ).join('');
+                dynamicTherapists = DEFAULT_THERAPISTS.map((name, idx) => ({ id: idx + 1, name }));
             }
+            
+            tbody.innerHTML = dynamicTherapists.map(t => 
+                `<tr>
+                    <td><strong>${t.name}</strong></td>
+                    <td style="text-align: center;">
+                        <button type="button" class="btn-secondary btn-sm" onclick="deleteTherapist(${t.id}, '${t.name.replace(/'/g, "\\'")}')" style="color: var(--danger); border-color: var(--danger);">Delete</button>
+                    </td>
+                </tr>`
+            ).join('');
+            
             populateTherapistDropdowns();
         } catch (err) {
-            therapistsTbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: red;">Failed to load therapists.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="2" style="text-align: center; color: red;">Failed to load therapists.</td></tr>';
         }
     }
 
     function populateTherapistDropdowns() {
-        // Update the log therapy modal dropdown with the latest dynamic therapists
-        const select = document.getElementById('log-therapy-therapist');
-        if (!select) return;
-        
-        // Preserve the currently selected value if any
-        const currentVal = select.value;
-        
-        select.innerHTML = '<option value="">Select Therapist...</option>';
-        // Extract unique therapist names
-        const uniqueNames = [...new Set(dynamicTherapists.map(t => t.name))];
-        uniqueNames.forEach(name => {
-            const opt = document.createElement('option');
-            opt.value = name;
-            opt.textContent = name;
-            select.appendChild(opt);
-        });
-        
-        if (uniqueNames.includes(currentVal)) {
-            select.value = currentVal;
+        const uniqueNames = [...new Set(dynamicTherapists.map(t => t.name).filter(Boolean))];
+        if (uniqueNames.length === 0) {
+            DEFAULT_THERAPISTS.forEach(n => {
+                if (!uniqueNames.includes(n)) uniqueNames.push(n);
+            });
+        }
+
+        const logSelect = document.getElementById('log-therapy-therapist');
+        if (logSelect) {
+            const currentVal = logSelect.value;
+            logSelect.innerHTML = '<option value="">Select Therapist...</option>' +
+                uniqueNames.map(n => `<option value="${n}">${n}</option>`).join('');
+            if (currentVal && uniqueNames.includes(currentVal)) {
+                logSelect.value = currentVal;
+            }
+        }
+
+        const schedSelect = document.getElementById('schedule-therapist');
+        if (schedSelect) {
+            const currentVal = schedSelect.value;
+            schedSelect.innerHTML = '<option value="">Select Therapist...</option>' +
+                uniqueNames.map(n => `<option value="${n}">${n}</option>`).join('');
+            if (currentVal && uniqueNames.includes(currentVal)) {
+                schedSelect.value = currentVal;
+            }
         }
     }
 
-    window.deleteTherapist = async function(id) {
-        if (!confirm('Are you sure you want to delete this therapist?')) return;
+    window.deleteTherapist = async function(id, name) {
+        const label = name ? ` "${name}"` : '';
+        if (!confirm(`Are you sure you want to remove therapist${label}?`)) return;
         try {
             const r = await fetch('/api/therapists/' + id, { method: 'DELETE' });
             if (r.ok) {
-                showToast('Therapist deleted');
+                showToast(`Therapist${label} removed`);
                 fetchTherapists();
             } else {
                 showToast('Error deleting therapist', true);
@@ -2214,22 +2409,23 @@ document.addEventListener('DOMContentLoaded', () => {
     if (addTherapistForm) {
         addTherapistForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const name = document.getElementById('new-therapist-name').value;
-            const type = document.getElementById('new-therapist-type').value;
-            const fee = document.getElementById('new-therapist-fee').value;
+            const nameInput = document.getElementById('new-therapist-name');
+            const name = nameInput ? nameInput.value.trim() : '';
+            if (!name) return;
 
             try {
                 const resp = await fetch('/api/therapists', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, therapy_type: type, fee: parseFloat(fee) || 0 })
+                    body: JSON.stringify({ name })
                 });
                 if (resp.ok) {
-                    showToast('Therapist added!');
+                    showToast(`✅ Therapist "${name}" added!`);
                     addTherapistForm.reset();
                     fetchTherapists();
                 } else {
-                    showToast('Error adding therapist', true);
+                    const err = await resp.json().catch(() => ({}));
+                    showToast(err.error || 'Error adding therapist', true);
                 }
             } catch (err) {
                 showToast('Failed to add therapist', true);
@@ -2239,6 +2435,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.querySelectorAll('.nav-item').forEach(item => {
         item.addEventListener('click', () => {
+            if (item.getAttribute('data-target') === 'therapies-settings') {
+                fetchTherapyFees();
+            }
             if (item.getAttribute('data-target') === 'therapists-settings') {
                 fetchTherapists();
             }
@@ -2367,23 +2566,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (schedTherapySelect) {
         schedTherapySelect.addEventListener('change', () => {
-            const val = schedTherapySelect.value;
-            const therapistSelect = document.getElementById('schedule-therapist');
-            therapistSelect.innerHTML = '<option value="">Select Therapist...</option>';
-            
-            const uniqueNames = [...new Set(dynamicTherapists.map(t => t.name))];
-            uniqueNames.forEach(name => {
-                const opt = document.createElement('option');
-                opt.value = name;
-                opt.textContent = name;
-                therapistSelect.appendChild(opt);
-            });
-
-            // Auto-select if exists
-            const match = dynamicTherapists.find(t => t.therapy_type === val);
-            if (match) {
-                therapistSelect.value = match.name;
-            }
+            // Therapists are independently selectable; therapy type does not dictate therapist
         });
     }
 
@@ -2404,15 +2587,15 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const deleteBtn = document.getElementById('btn-delete-schedule');
         if (blockId) {
-            document.getElementById('schedule-therapy-type').value = td.dataset.type;
-            // trigger change to load therapists
-            schedTherapySelect.dispatchEvent(new Event('change'));
-            document.getElementById('schedule-therapist').value = td.dataset.therapist;
+            document.getElementById('schedule-therapy-type').value = td.dataset.type || '';
+            document.getElementById('schedule-therapist').value = td.dataset.therapist || '';
             deleteBtn.style.display = 'block';
         } else {
             scheduleForm.reset();
             document.getElementById('schedule-child-id').value = childId;
             document.getElementById('schedule-time-slot').value = timeSlot;
+            document.getElementById('schedule-therapy-type').value = '';
+            document.getElementById('schedule-therapist').value = '';
             deleteBtn.style.display = 'none';
         }
         
@@ -2499,20 +2682,35 @@ document.addEventListener('DOMContentLoaded', () => {
         blocks.sort((a, b) => timeOrder[a.time_slot] - timeOrder[b.time_slot]);
 
         const formattedDate = formatDisplayDate(date);
-        let message = `📅 Therapy Schedule for ${child.name}${child.admission_no ? ` (Adm: ${child.admission_no})` : ''}\n`;
-        message += `🗓 Date: ${formattedDate}\n\n`;
+        let message = `*CHILDREN OCCUPATIONAL REHABILITATION CENTRE (CORC)*\n`;
+        message += `*Daily Therapy Schedule*\n\n`;
+        message += `*Child Name:* ${child.name}${child.admission_no ? ` (Adm: ${child.admission_no})` : ''}\n`;
+        message += `*Date:* ${formattedDate}\n\n`;
+        message += `*Scheduled Sessions:*\n`;
 
         blocks.forEach(block => {
-            message += `⏰ ${block.time_slot}\n`;
-            message += `🔹 ${block.therapy_type}\n\n`;
+            message += `• *${block.time_slot}* : ${block.therapy_type}\n`;
         });
 
         return { message: message.trim(), child };
     }
 
-    document.getElementById('btn-share-schedule')?.addEventListener('click', () => {
+    document.getElementById('btn-share-schedule')?.addEventListener('click', async () => {
         const data = getScheduleMessageAndChild();
         if (!data) return;
+
+        // Use native Web Share API if supported (mobile / tablet share sheet)
+        if (navigator.share) {
+            try {
+                await navigator.share({
+                    title: `Therapy Schedule - ${data.child.name}`,
+                    text: data.message
+                });
+                return;
+            } catch (err) {
+                if (err.name === 'AbortError') return;
+            }
+        }
 
         if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(data.message).then(() => {
@@ -5012,5 +5210,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // ── Initial load ─────────────────────────────────────────
     fetchChildFolders(); // populate records on page load
     fetchTherapists(); // load therapists on load to populate dropdowns
+    fetchTherapyFees(); // load therapy fees for session recording
     if (userRole === 'admin') fetchUsers();
 });
