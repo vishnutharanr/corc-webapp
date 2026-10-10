@@ -2218,18 +2218,32 @@ document.addEventListener('DOMContentLoaded', () => {
                         <span style="font-weight: 600; color: var(--text-light);">₹</span>
                         <input type="number" id="fee-inp-${idx}" value="${tf.fee !== undefined ? tf.fee : 0}" min="0" step="10"
                                style="width: 100px; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border-color); font-weight: 600;"
-                               onkeydown="if(event.key==='Enter'){ event.preventDefault(); saveTherapyFee('${tf.therapy_type.replace(/'/g, "\\'")}', document.getElementById('fee-inp-${idx}').value); }">
+                               onkeydown="if(event.key==='Enter'){ event.preventDefault(); saveTherapyFeeByIndex(${idx}); }">
                     </div>
                 </td>
                 <td style="text-align: center;">
-                    <button type="button" class="btn-secondary btn-sm" onclick="saveTherapyFee('${tf.therapy_type.replace(/'/g, "\\'")}', document.getElementById('fee-inp-${idx}').value)" style="color: var(--primary); border-color: var(--primary); margin-right: 4px;">
+                    <button type="button" class="btn-secondary btn-sm" onclick="saveTherapyFeeByIndex(${idx})" style="color: var(--primary); border-color: var(--primary); margin-right: 4px;">
                         💾 Save
                     </button>
-                    ${tf.id ? `<button type="button" class="btn-secondary btn-sm" onclick="deleteTherapyFee(${tf.id}, '${tf.therapy_type.replace(/'/g, "\\'")}')" style="color: var(--danger); border-color: var(--danger);">Delete</button>` : ''}
+                    ${tf.id ? `<button type="button" class="btn-secondary btn-sm" onclick="deleteTherapyFeeByIndex(${idx})" style="color: var(--danger); border-color: var(--danger);">Delete</button>` : ''}
                 </td>
             </tr>
         `).join('');
     }
+
+    window.saveTherapyFeeByIndex = function(idx) {
+        const item = dynamicTherapyFees[idx];
+        if (!item) return;
+        const inp = document.getElementById(`fee-inp-${idx}`);
+        const feeVal = inp ? inp.value : item.fee;
+        saveTherapyFee(item.therapy_type, feeVal);
+    };
+
+    window.deleteTherapyFeeByIndex = function(idx) {
+        const item = dynamicTherapyFees[idx];
+        if (!item) return;
+        deleteTherapyFee(item.id, item.therapy_type);
+    };
 
     window.saveTherapyFee = async function(therapyType, newFeeVal) {
         const numFee = parseFloat(newFeeVal) || 0;
@@ -2252,10 +2266,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 populateTherapyDropdowns();
             } else {
-                showToast('Failed to save therapy fee', true);
+                const errData = await resp.json().catch(() => ({}));
+                showToast(errData.error ? `Failed: ${errData.error}` : 'Failed to save therapy fee', true);
             }
         } catch (err) {
-            showToast('Error saving therapy fee', true);
+            showToast('Error saving therapy fee: ' + (err.message || 'Network error'), true);
         }
     };
 
@@ -2267,10 +2282,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 showToast(`Therapy "${therapyType}" removed`);
                 fetchTherapyFees();
             } else {
-                showToast('Failed to delete therapy', true);
+                const errData = await resp.json().catch(() => ({}));
+                showToast(errData.error ? `Failed: ${errData.error}` : 'Failed to delete therapy', true);
             }
         } catch (err) {
-            showToast('Error deleting therapy', true);
+            showToast('Error deleting therapy: ' + (err.message || 'Network error'), true);
         }
     };
 

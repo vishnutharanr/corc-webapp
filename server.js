@@ -16,16 +16,24 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Database Setup
-const DB_URL = process.env.DATABASE_URL;
+let DB_URL = process.env.DATABASE_URL;
 
 if (!DB_URL) {
     console.error('DATABASE_URL environment variable is not set.');
     process.exit(1);
 }
 
+// Automatically switch to Supabase transaction pooler port (6543) if port 5432 is configured
+if (DB_URL.includes('pooler.supabase.com:5432')) {
+    DB_URL = DB_URL.replace('pooler.supabase.com:5432', 'pooler.supabase.com:6543');
+}
+
 const pool = new Pool({
     connectionString: DB_URL,
-    ssl: (DB_URL.includes('localhost') || DB_URL.includes('127.0.0.1')) ? false : { rejectUnauthorized: false }
+    ssl: (DB_URL.includes('localhost') || DB_URL.includes('127.0.0.1')) ? false : { rejectUnauthorized: false },
+    max: 2,
+    idleTimeoutMillis: 10000,
+    connectionTimeoutMillis: 10000
 });
 
 const INIT_SQL = `
@@ -232,14 +240,25 @@ async function seedDefaultUsers() {
     }
 }
 
-pool.query(INIT_SQL)
-    .then(async () => {
-        console.log('Database tables & indexes initialized');
-        await seedDefaultUsers();
-        await seedDefaultTherapyFees();
-        await seedDefaultTherapists();
-    })
-    .catch(err => console.error('Error executing init script:', err.stack));
+let isDbReady = false;
+async function ensureDbInit() {
+    if (isDbReady) return;
+    try {
+        const check = await pool.query(`SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='therapy_fees' LIMIT 1`);
+        if (check.rows.length === 0) {
+            console.log('Initializing database tables & indexes...');
+            await pool.query(INIT_SQL);
+            await seedDefaultUsers();
+            await seedDefaultTherapyFees();
+            await seedDefaultTherapists();
+        }
+        isDbReady = true;
+    } catch (err) {
+        console.error('Error in ensureDbInit:', err.message);
+    }
+}
+
+ensureDbInit();
 
 // ─── Authentication Middleware ──────────────────────────────────────────────
 function authenticateToken(req, res, next) {
@@ -791,8 +810,8 @@ app.get('/api/therapy-fees', async (req, res) => {
 
 app.post('/api/therapy-fees', async (req, res) => {
     const { therapy_type, fee } = req.body;
-    if (!therapy_type) return res.status(400).json({ error: 'Therapy type is required' });
-    const numFee = parseFloat(fee) || 0;
+    if (!therapy_type || !therapy_type.trim()) return res.status(400).json({ error: 'Therapy type is required' });
+    const numFee = isNaN(parseFloat(fee)) ? 0 : parseFloat(fee);
 
     try {
         const result = await pool.query(
