@@ -252,6 +252,7 @@ async function ensureDbInit() {
             await seedDefaultTherapyFees();
             await seedDefaultTherapists();
         }
+        await backfillMissingAdmissionNumbers();
         isDbReady = true;
     } catch (err) {
         console.error('Error in ensureDbInit:', err.message);
@@ -449,15 +450,64 @@ app.delete('/api/users/:id', authenticateToken, requireAdmin, async (req, res) =
 
 // ─── Children API ─────────────────────────────────────────────────────────────
 
+async function getNextAdmissionNo() {
+    const result = await pool.query(`
+        SELECT admission_no FROM children WHERE admission_no IS NOT NULL AND TRIM(admission_no) != ''
+    `);
+    let maxNum = 0;
+    for (const row of result.rows) {
+        const val = String(row.admission_no).trim();
+        const match = val.match(/\d+/);
+        if (match) {
+            const num = parseInt(match[0], 10);
+            if (!isNaN(num) && num > maxNum) {
+                maxNum = num;
+            }
+        }
+    }
+    const nextNum = maxNum + 1;
+    return `ADM-${String(nextNum).padStart(3, '0')}`;
+}
+
+async function backfillMissingAdmissionNumbers() {
+    try {
+        const unassigned = await pool.query(`
+            SELECT id, name FROM children WHERE admission_no IS NULL OR TRIM(admission_no) = '' ORDER BY id ASC
+        `);
+        if (unassigned.rows.length > 0) {
+            console.log(`Backfilling admission numbers for ${unassigned.rows.length} children...`);
+            for (const child of unassigned.rows) {
+                const adm = await getNextAdmissionNo();
+                await pool.query(`UPDATE children SET admission_no = $1 WHERE id = $2`, [adm, child.id]);
+                console.log(`Assigned ${adm} to "${child.name}" (ID ${child.id})`);
+            }
+        }
+    } catch (e) {
+        console.error('Error in backfillMissingAdmissionNumbers:', e.message);
+    }
+}
+
+app.get('/api/children/next-admission-no', async (req, res) => {
+    try {
+        const nextNo = await getNextAdmissionNo();
+        res.json({ next_admission_no: nextNo });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 app.post('/api/children', async (req, res) => {
     const { name, admission_no, dob, sex, mobile } = req.body;
     const trimmedName = name ? name.trim() : '';
     if (!trimmedName) return res.status(400).json({ error: 'Child name is required' });
 
     try {
+        const finalAdmNo = admission_no && admission_no.trim() ? admission_no.trim() : await getNextAdmissionNo();
+
         const result = await pool.query(
             `INSERT INTO children (name, admission_no, dob, sex, mobile) VALUES ($1, $2, $3, $4, $5) RETURNING id, name, admission_no, dob, sex, mobile`,
-            [trimmedName, admission_no ? admission_no.trim() : null, dob || null, sex || null, mobile || null]
+            [trimmedName, finalAdmNo, dob || null, sex || null, mobile || null]
         );
         res.status(201).json(result.rows[0]);
     } catch (err) {
@@ -472,6 +522,12 @@ app.put('/api/children/:id', async (req, res) => {
     if (!trimmedName) return res.status(400).json({ error: 'Child name is required' });
 
     try {
+        let finalAdmNo = admission_no && admission_no.trim() ? admission_no.trim() : null;
+        if (!finalAdmNo) {
+            const cur = await pool.query(`SELECT admission_no FROM children WHERE id = $1`, [req.params.id]);
+            finalAdmNo = cur.rows[0]?.admission_no || await getNextAdmissionNo();
+        }
+
         const result = await pool.query(
             `UPDATE children SET 
                 name = $1, 
@@ -480,7 +536,7 @@ app.put('/api/children/:id', async (req, res) => {
                 sex = $4, 
                 mobile = $5 
             WHERE id = $6 RETURNING id, name, admission_no, dob, sex, mobile`,
-            [trimmedName, admission_no ? admission_no.trim() : null, dob || null, sex || null, mobile || null, req.params.id]
+            [trimmedName, finalAdmNo, dob || null, sex || null, mobile || null, req.params.id]
         );
         if (result.rowCount === 0) return res.status(404).json({ error: 'Child not found' });
 

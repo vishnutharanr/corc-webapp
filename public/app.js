@@ -214,6 +214,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (targetId === 'user-management') fetchUsers();
         if (targetId === 'therapies-settings') fetchTherapyFees();
         if (targetId === 'therapists-settings') fetchTherapists();
+        if (targetId === 'rapid-assessment' && !activeChild) primeRapidAdmissionNo();
     }
 
     // ── Inject Back Buttons into Assessment Forms ────────────
@@ -248,16 +249,17 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateBanner() {
         if (activeChild) {
             banner.classList.remove('hidden');
-            bannerName.textContent = activeChild.name + (activeChild.admission_no ? ` (Adm: ${activeChild.admission_no})` : '');
+            const admPrefix = activeChild.admission_no ? `[${activeChild.admission_no}] ` : '';
+            bannerName.textContent = `${admPrefix}${activeChild.name}`;
             // Show meta details from child profile + rapid assessment data
             const rd = activeChild._rapidData || {};
             const metaParts = [];
-            if (activeChild.admission_no)   metaParts.push('Adm\u00a0#' + activeChild.admission_no);
+            if (activeChild.admission_no)   metaParts.push('Adm #' + activeChild.admission_no);
             if (activeChild.sex || rd.sex)  metaParts.push(activeChild.sex || rd.sex);
-            if (activeChild.dob)            metaParts.push('DOB\u00a0' + activeChild.dob);
-            if (rd.age)                     metaParts.push('Age\u00a0' + rd.age);
-            if (activeChild.mobile)         metaParts.push('\uD83D\uDCF1\u00a0' + activeChild.mobile);
-            if (rd.diagnosis)               metaParts.push('Dx:\u00a0' + rd.diagnosis);
+            if (activeChild.dob)            metaParts.push('DOB ' + activeChild.dob);
+            if (rd.age)                     metaParts.push('Age ' + rd.age);
+            if (activeChild.mobile)         metaParts.push('📱 ' + activeChild.mobile);
+            if (rd.diagnosis)               metaParts.push('Dx: ' + rd.diagnosis);
             let metaEl = document.getElementById('active-child-meta');
             if (!metaEl) {
                 metaEl = document.createElement('small');
@@ -265,10 +267,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 metaEl.style.cssText = 'display:block;font-size:0.78rem;color:var(--text-light);margin-top:2px;letter-spacing:0.01em;';
                 bannerName.insertAdjacentElement('afterend', metaEl);
             }
-            metaEl.textContent = metaParts.join(' \u00b7 ');
+            metaEl.textContent = metaParts.join(' · ');
         } else {
             banner.classList.add('hidden');
-            bannerName.textContent = '\u2014';
+            bannerName.textContent = '—';
             const metaEl = document.getElementById('active-child-meta');
             if (metaEl) metaEl.remove();
         }
@@ -336,12 +338,41 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    btnNew && btnNew.addEventListener('click', () => {
+    async function fetchNextAdmissionNo() {
+        try {
+            const res = await fetch('/api/children/next-admission-no');
+            if (res.ok) {
+                const data = await res.json();
+                return data.next_admission_no || '';
+            }
+        } catch (e) {
+            console.error('Error fetching next admission no:', e);
+        }
+        return '';
+    }
+
+    async function primeRapidAdmissionNo() {
+        const admInp = document.getElementById('rapid-admission-no');
+        if (!admInp) return;
+        if (activeChild && activeChild.admission_no) {
+            admInp.value = activeChild.admission_no;
+        } else {
+            const nextAdm = await fetchNextAdmissionNo();
+            if (nextAdm && !admInp.value) {
+                admInp.value = nextAdm;
+            }
+        }
+    }
+
+    btnNew && btnNew.addEventListener('click', async () => {
         setActiveChild(null);
         const rf = document.getElementById('form-rapid');
         rf && rf.reset();
         switchTab('rapid-assessment');
-        showToast('Start a new Rapid Assessment to create a new child profile.');
+        const nextAdm = await fetchNextAdmissionNo();
+        const admInp = document.getElementById('rapid-admission-no');
+        if (admInp && nextAdm) admInp.value = nextAdm;
+        showToast('New Child registration started' + (nextAdm ? ` · Auto Admission No: ${nextAdm}` : ''));
     });
 
     btnClear && btnClear.addEventListener('click', () => {
@@ -972,14 +1003,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 card.className = 'child-folder-card' + (isActive ? ' folder-active' : '');
                 const meta = [child.admission_no ? 'Adm No: ' + child.admission_no : '', child.sex, child.dob ? 'DOB: '+child.dob : '', child.mobile ? '\ud83d\udcf1 '+child.mobile : '', child.assessments.length + ' assessment(s)'].filter(Boolean).join(' \u00b7 ');
                 const admBadge = child.admission_no 
-                    ? '<span style="display:inline-block; font-size:0.75rem; background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; border-radius:4px; padding:1px 6px; margin-left:8px; font-weight:600;">Adm: ' + child.admission_no + '</span>'
+                    ? '<span class="adm-badge" style="display:inline-block; font-size:0.8rem; background:#1e40af; color:#ffffff; border-radius:4px; padding:2px 8px; margin-right:8px; font-weight:700; letter-spacing:0.02em;">' + child.admission_no + '</span>'
                     : '';
                 card.innerHTML =
                     '<div class="folder-header" data-child-id="' + child.id + '">' +
                         '<div class="folder-title">' +
                             '<span class="folder-icon">' + (isActive ? '\ud83d\udcc2' : '\ud83d\udcc1') + '</span>' +
                             '<div>' +
-                                '<strong class="folder-child-name">' + child.name + admBadge + '</strong>' +
+                                '<strong class="folder-child-name">' + admBadge + child.name + '</strong>' +
                                 '<small class="folder-meta">' + meta + '</small>' +
                             '</div>' +
                         '</div>' +
@@ -1482,7 +1513,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Expose globally for the folder buttons
     window.openLogTherapyModal = function(child) {
         document.getElementById('log-therapy-child-id').value = child.id;
-        document.getElementById('log-therapy-child-name').value = child.name;
+        document.getElementById('log-therapy-child-name').value = (child.admission_no ? `[${child.admission_no}] ` : '') + (child.name || '');
         document.getElementById('log-therapy-date').value = getLocalTodayDateString();
         typeSelect.value = '';
         document.getElementById('log-therapy-sub-therapy').value = '';
@@ -1564,7 +1595,7 @@ document.addEventListener('DOMContentLoaded', () => {
             children.forEach(c => {
                 const opt = document.createElement('option');
                 opt.value = c.id;
-                opt.textContent = c.name;
+                opt.textContent = (c.admission_no ? `[${c.admission_no}] ` : '') + c.name;
                 select.appendChild(opt);
             });
 
@@ -1817,11 +1848,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 sumPaid += group.sumPaid;
                 sumBalance += group.sumBalance;
                 
-                const admBadge = group.admission_no ? `<span style="display:inline-block; font-size:0.75rem; background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe; border-radius:4px; padding:1px 6px; margin-left:8px; font-weight:600;">Adm: ${group.admission_no}</span>` : '';
+                const admBadge = group.admission_no ? `<span class="adm-badge" style="display:inline-block; font-size:0.75rem; background:#1e40af; color:#ffffff; border-radius:4px; padding:2px 7px; margin-right:8px; font-weight:700;">${group.admission_no}</span>` : '';
 
                 // Header row
                 html += `<tr class="accordion-header" data-child-index="${index}" style="cursor: pointer; background: #f8fafc;">
-                    <td colspan="6"><strong><span class="toggle-icon">▼</span> ${group.name}${admBadge}</strong> <span style="color: #64748b; font-size: 0.9em; margin-left: 10px;">(${group.rows.length} session${group.rows.length > 1 ? 's' : ''})</span></td>
+                    <td colspan="6"><strong><span class="toggle-icon">▼</span> ${admBadge}${group.name}</strong> <span style="color: #64748b; font-size: 0.9em; margin-left: 10px;">(${group.rows.length} session${group.rows.length > 1 ? 's' : ''})</span></td>
                     <td class="header-fee"><strong>${group.sumFee}</strong></td>
                     <td class="header-concession"><strong>${group.sumConcession}</strong></td>
                     <td class="header-paid"><strong>${group.sumPaid}</strong></td>
@@ -2507,7 +2538,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 permittedChildren.forEach(child => {
                     const opt = document.createElement('option');
                     opt.value = child.id;
-                    opt.textContent = child.name + (child.admission_no ? ` (${child.admission_no})` : '');
+                    opt.textContent = (child.admission_no ? `[${child.admission_no}] ` : '') + child.name;
                     scheduleFilterInput.appendChild(opt);
                 });
                 scheduleFilterInput.value = currentVal;
@@ -2529,9 +2560,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             let html = '';
             filteredChildren.forEach((child, index) => {
-                const admBadge = child.admission_no ? `<br><small style="color: #64748b; font-size: 0.72rem; font-weight: 500;">Adm: ${child.admission_no}</small>` : '';
+                const admBadge = child.admission_no ? `<span class="adm-badge" style="display:inline-block; font-size:0.75rem; background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe; border-radius:4px; padding:1px 6px; font-weight:700; margin-bottom:3px;">${child.admission_no}</span><br>` : '';
                 html += `<tr>`;
-                html += `<td class="sticky-col">${index + 1}. ${child.name}${admBadge}</td>`;
+                html += `<td class="sticky-col">${index + 1}. ${admBadge}<strong>${child.name}</strong></td>`;
                 
                 TIME_SLOTS.forEach(slot => {
                     const block = currentScheduleData.find(s => s.child_id === child.id && s.time_slot === slot);
@@ -2549,14 +2580,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         let shortTherapy = block.therapy_type.split(' ')[0];
                         if (block.therapy_type === 'Occupational Therapy') shortTherapy = 'OT';
 
-                        html += `<td data-child="${child.id}" data-childname="${child.name}" data-slot="${slot}" data-id="${block.id}" data-type="${block.therapy_type}" data-therapist="${block.therapist_name || ''}">
+                        html += `<td data-child="${child.id}" data-childadm="${child.admission_no || ''}" data-childname="${child.name}" data-slot="${slot}" data-id="${block.id}" data-type="${block.therapy_type}" data-therapist="${block.therapist_name || ''}">
                                     <div class="schedule-cell ${colorClass}">
                                         <span>${shortTherapy}</span>
                                         <span class="therapist-name">(${block.therapist_name || 'TBD'})</span>
                                     </div>
                                  </td>`;
                     } else {
-                        html += `<td data-child="${child.id}" data-childname="${child.name}" data-slot="${slot}"></td>`;
+                        html += `<td data-child="${child.id}" data-childadm="${child.admission_no || ''}" data-childname="${child.name}" data-slot="${slot}"></td>`;
                     }
                 });
                 
@@ -2592,12 +2623,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const childId = td.dataset.child;
         const childName = td.dataset.childname;
+        const childAdm = td.dataset.childadm ? `[${td.dataset.childadm}] ` : '';
         const timeSlot = td.dataset.slot;
         const blockId = td.dataset.id;
         
         document.getElementById('schedule-child-id').value = childId;
         document.getElementById('schedule-time-slot').value = timeSlot;
-        document.getElementById('schedule-modal-subtitle').textContent = `For ${childName} at ${timeSlot}`;
+        document.getElementById('schedule-modal-subtitle').textContent = `For ${childAdm}${childName} at ${timeSlot}`;
         
         currentScheduleBlockId = blockId || null;
         
@@ -3859,7 +3891,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="summary-card-header-main">
                         <div class="summary-child-avatar">${(child.name || 'C').charAt(0).toUpperCase()}</div>
                         <div class="summary-child-info">
-                            <strong>${child.name}</strong>
+                            <strong>${child.admission_no ? `<span class="adm-badge" style="display:inline-block; font-size:0.75rem; background:#1e40af; color:#ffffff; border-radius:4px; padding:2px 7px; margin-right:8px; font-weight:700;">${child.admission_no}</span>` : ''}${child.name}</strong>
                             <div class="summary-child-meta">${ageStr} / ${child.sex || '-'} · ${child.admission_no ? `Adm: ${child.admission_no} · ` : ''}📱 ${child.mobile || 'None'} · ID: #${child.id}</div>
                         </div>
                     </div>
@@ -3914,14 +3946,14 @@ document.addEventListener('DOMContentLoaded', () => {
             : (summary.totalCount > 0 ? `<span class="discipline-pill" style="background:#fef9c3; color:#854d0e;">Partial (${summary.coreCount}/4)</span>` : '<span class="discipline-pill pending">Pending (0)</span>');
 
         const admBadge = child.admission_no 
-            ? `<span style="font-size:0.75rem; color:#1d4ed8; background:#eff6ff; border:1px solid #bfdbfe; border-radius:3px; padding:1px 5px; margin-left:6px; font-weight:600;">Adm: ${child.admission_no}</span>`
+            ? `<span class="adm-badge" style="font-size:0.75rem; color:#1e40af; background:#eff6ff; border:1px solid #bfdbfe; border-radius:3px; padding:1px 6px; margin-right:6px; font-weight:700;">${child.admission_no}</span>`
             : '';
 
         return `
             <tr style="border-bottom: 1px solid #f1f5f9;">
                 <td style="padding: 12px 14px; text-align: center; color: #64748b; font-weight: 600;">${index + 1}</td>
                 <td style="padding: 12px 14px;">
-                    <strong style="color: #0f172a; font-size: 0.92rem; display: block;">${child.name}${admBadge}</strong>
+                    <strong style="color: #0f172a; font-size: 0.92rem; display: block;">${admBadge}${child.name}</strong>
                     <div style="font-size: 0.78rem; color: #64748b;">${ageStr} / ${child.sex || '-'} · 📱 ${child.mobile || 'None'}</div>
                 </td>
                 <td style="padding: 12px 14px;">
@@ -4038,6 +4070,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (q) {
             list = list.filter(c => {
                 const nameMatch = c.name && c.name.toLowerCase().includes(q);
+                const admMatch = c.admission_no && c.admission_no.toLowerCase().includes(q);
                 const mobileMatch = c.mobile && c.mobile.includes(q);
                 const aList = c.assessments || [];
                 const diagMatch = aList.some(a => {
@@ -4045,7 +4078,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const txt = JSON.stringify(d).toLowerCase();
                     return txt.includes(q);
                 });
-                return nameMatch || mobileMatch || diagMatch;
+                return nameMatch || admMatch || mobileMatch || diagMatch;
             });
         }
 
@@ -4914,7 +4947,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let list = allSummaryChildrenList.filter(c => matchesAgeFilter(c, af));
         if (q) {
-            list = list.filter(c => (c.name && c.name.toLowerCase().includes(q)) || (c.mobile && c.mobile.includes(q)));
+            list = list.filter(c => (c.name && c.name.toLowerCase().includes(q)) || (c.admission_no && c.admission_no.toLowerCase().includes(q)) || (c.mobile && c.mobile.includes(q)));
         }
         if (sf === 'completed') {
             list = list.filter(c => ['Rapid Assessment', 'Child Development', 'Physiotherapy', 'Speech Assessment'].every(t => (c.assessments || []).some(a => a.form_type === t)));
@@ -4940,7 +4973,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let list = allSummaryChildrenList.filter(c => matchesAgeFilter(c, af));
         if (q) {
-            list = list.filter(c => (c.name && c.name.toLowerCase().includes(q)) || (c.mobile && c.mobile.includes(q)));
+            list = list.filter(c => (c.name && c.name.toLowerCase().includes(q)) || (c.admission_no && c.admission_no.toLowerCase().includes(q)) || (c.mobile && c.mobile.includes(q)));
         }
         if (sf === 'completed') {
             list = list.filter(c => ['Rapid Assessment', 'Child Development', 'Physiotherapy', 'Speech Assessment'].every(t => (c.assessments || []).some(a => a.form_type === t)));
