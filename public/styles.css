@@ -1583,3 +1583,140 @@ button {
     z-index: 1200 !important;
 }
 
+/* ── Assessment Viewer & Editor Tab (Matching Assessment Forms) ── */
+.av-tab-header {
+    margin-bottom: 24px;
+}
+
+.av-nav-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.av-actions-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.av-title-bar h2 {
+    font-size: 1.85rem;
+    font-weight: 700;
+    color: var(--text-main);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 4px;
+}
+
+.av-title-bar p {
+    color: var(--text-light);
+    font-size: 0.95rem;
+}
+
+.av-notice-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 8px;
+    padding: 10px 16px;
+    margin-top: 14px;
+    font-size: 0.88rem;
+    color: #1e40af;
+    font-weight: 500;
+}
+
+.av-notice-bar.edit-mode {
+    background: #fefce8;
+    border-color: #fde047;
+    color: #854d0e;
+}
+
+.av-form-mount {
+    max-width: 900px;
+}
+
+.av-form-mount .assessment-form {
+    max-width: 100%;
+    display: block !important;
+}
+
+/* In View Mode: Clean, crisp clinical presentation matching the form */
+.av-form-mount.view-mode input,
+.av-form-mount.view-mode select,
+.av-form-mount.view-mode textarea {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    border-color: #cbd5e1 !important;
+    box-shadow: none !important;
+    cursor: default;
+    font-weight: 500;
+}
+
+.av-form-mount.view-mode input:focus,
+.av-form-mount.view-mode select:focus,
+.av-form-mount.view-mode textarea:focus {
+    outline: none !important;
+    border-color: #cbd5e1 !important;
+    box-shadow: none !important;
+}
+
+.av-form-mount.view-mode select {
+    pointer-events: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-image: none !important;
+}
+
+.av-form-mount.view-mode input[type="checkbox"],
+.av-form-mount.view-mode input[type="radio"] {
+    pointer-events: none;
+    accent-color: #1e40af;
+}
+
+.av-form-mount.view-mode textarea {
+    resize: none;
+    line-height: 1.5;
+}
+
+.av-form-mount.view-mode input[type="file"],
+.av-form-mount.view-mode label[for$="-photo"] {
+    display: none !important;
+}
+
+/* In Edit Mode: 100% interactive exactly like creating assessment */
+.av-form-mount.edit-mode .form-section {
+    border-color: #93c5fd;
+    box-shadow: 0 4px 16px rgba(37, 99, 235, 0.08);
+}
+
+.av-form-mount.edit-mode input,
+.av-form-mount.edit-mode select,
+.av-form-mount.edit-mode textarea {
+    background-color: #ffffff;
+    color: #0f172a;
+}
+
+.av-bottom-bar {
+    max-width: 900px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 24px 0 40px;
+    margin-top: 10px;
+    border-top: 1px dashed var(--border);
+}
+

@@ -204,7 +204,9 @@ document.addEventListener('DOMContentLoaded', () => {
     function switchTab(targetId) {
         navItems.forEach(n => {
             if (n.id !== 'nav-logout') {
-                n.classList.toggle('active', n.getAttribute('data-target') === targetId);
+                const isMatch = n.getAttribute('data-target') === targetId ||
+                    (targetId === 'assessment-viewer' && n.getAttribute('data-target') === 'records');
+                n.classList.toggle('active', isMatch);
             }
         });
         tabContents.forEach(t => t.classList.toggle('active', t.id === targetId));
@@ -1213,6 +1215,11 @@ document.addEventListener('DOMContentLoaded', () => {
         generateAssessmentPdf(currentViewingRecord);
     });
 
+    let currentViewingChild = null;
+
+    // Connect Assessment Viewer Back button
+    document.getElementById('btn-av-back')?.addEventListener('click', () => switchTab('records'));
+
     async function viewRecord(id) {
         try {
             const r = await fetch('/api/assessments/' + id);
@@ -1221,7 +1228,17 @@ document.addEventListener('DOMContentLoaded', () => {
             currentViewingRecord = rec;
             const data = rec.data || {};
 
-            modalTitle.textContent = rec.form_type + ' \u2014 ' + rec.child_name;
+            let child = activeChild;
+            if (rec.child_id && (!child || child.id !== rec.child_id)) {
+                try {
+                    const cr = await fetch('/api/children/' + rec.child_id);
+                    if (cr.ok) {
+                        child = await cr.json();
+                        setActiveChild(child);
+                    }
+                } catch (e) {}
+            }
+            currentViewingChild = child;
 
             const FORM_MAP = {
                 'Rapid Assessment':          'form-rapid',
@@ -1232,38 +1249,83 @@ document.addEventListener('DOMContentLoaded', () => {
             };
 
             const originalForm = document.getElementById(FORM_MAP[rec.form_type]);
-
-            if (!originalForm) {
-                modalBody.innerHTML = '<pre style="white-space:pre-wrap;font-family:monospace;font-size:0.83rem">' + JSON.stringify(data, null, 2) + '</pre>';
-                modalContent.classList.remove('modal-form-view');
-                modal.classList.add('show');
+            const mount = document.getElementById('av-form-mount');
+            if (!originalForm || !mount) {
+                showToast('Form template not found for ' + rec.form_type, true);
                 return;
             }
 
             const clone = buildFormClone(originalForm, data, true /* readOnly */);
+            mount.className = 'av-form-mount view-mode';
+            mount.innerHTML = '';
+            mount.appendChild(clone);
 
-            // Notice lives OUTSIDE clone so its buttons are clickable
+            // Auto-expand textareas in read-only mode so content is completely visible
+            setTimeout(() => {
+                clone.querySelectorAll('textarea').forEach(ta => {
+                    ta.style.height = 'auto';
+                    ta.style.height = Math.max(ta.scrollHeight + 8, 54) + 'px';
+                });
+            }, 60);
+
+            // Header Title & Demographics
+            const admBadge = (child && child.admission_no) ? `<span class="adm-badge" style="display:inline-block; font-size:0.8rem; background:#1e40af; color:#ffffff; border-radius:4px; padding:2px 8px; margin-right:8px; font-weight:700;">${child.admission_no}</span>` : '';
+            const avTitle = document.getElementById('av-title');
+            const avSubtitle = document.getElementById('av-subtitle');
+            if (avTitle) avTitle.innerHTML = `${admBadge}${rec.form_type} — <span>${rec.child_name}</span>`;
+            
             const dateStr = rec.created_at ? new Date(rec.created_at).toLocaleString() : '';
-            const notice  = document.createElement('div');
-            notice.className = 'form-view-notice';
-            notice.innerHTML =
-                '<span class="notice-left">' +
-                    '<span>\uD83D\uDCCB Read-only</span>' +
-                    '<button class="btn-notice-edit"   data-id="' + id + '">&#9998; Edit</button>' +
-                    '<button class="btn-notice-delete" data-id="' + id + '">&#128465; Delete</button>' +
-                '</span>' +
-                '<span class="notice-date">Saved: ' + dateStr + '</span>';
+            if (avSubtitle) avSubtitle.textContent = `Completed Assessment Dossier · Recorded on ${dateStr}`;
 
-            modalBody.innerHTML = '';
-            modalBody.appendChild(notice);
-            modalBody.appendChild(clone);
-            modalContent.classList.add('modal-form-view');
-            modal.classList.add('show');
+            // Notice Bar
+            const noticeBar = document.getElementById('av-notice-bar');
+            if (noticeBar) {
+                noticeBar.className = 'av-notice-bar';
+                noticeBar.innerHTML = `
+                    <span>📋 <strong>View Mode (Read-Only):</strong> Displaying saved assessment record for ${rec.child_name}.</span>
+                    <span style="font-size:0.82rem; color:#475569;">Recorded: ${dateStr}</span>
+                `;
+            }
 
-            notice.querySelector('.btn-notice-edit').addEventListener('click',   () => editRecord(id));
-            notice.querySelector('.btn-notice-delete').addEventListener('click', () => deleteRecord(id));
+            // Actions Bar (Top)
+            const actionsBar = document.getElementById('av-actions-bar');
+            if (actionsBar) {
+                actionsBar.innerHTML = `
+                    <button type="button" class="btn-primary btn-sm btn-av-edit" style="display:flex; align-items:center; gap:6px;">✏️ Edit Assessment</button>
+                    <button type="button" class="btn-secondary btn-sm btn-av-pdf" style="display:flex; align-items:center; gap:6px; background:#fff;">📄 Download PDF</button>
+                    <button type="button" class="btn-secondary btn-sm btn-av-delete" style="display:flex; align-items:center; gap:6px; color:var(--danger); border-color:#fca5a5;">🗑️ Delete</button>
+                `;
+                actionsBar.querySelector('.btn-av-edit')?.addEventListener('click', () => editRecord(id));
+                actionsBar.querySelector('.btn-av-pdf')?.addEventListener('click', () => generateAssessmentPdf(rec));
+                actionsBar.querySelector('.btn-av-delete')?.addEventListener('click', () => deleteRecord(id));
+            }
 
-        } catch (err) { console.error(err); }
+            // Bottom Actions Bar
+            const bottomBar = document.getElementById('av-bottom-bar');
+            if (bottomBar) {
+                bottomBar.innerHTML = `
+                    <button type="button" class="btn-secondary btn-av-back-bottom">← Back to Records</button>
+                    <div style="display:flex; gap:8px;">
+                        <button type="button" class="btn-primary btn-av-edit" style="display:flex; align-items:center; gap:6px;">✏️ Edit Assessment</button>
+                        <button type="button" class="btn-secondary btn-av-pdf" style="display:flex; align-items:center; gap:6px; background:#fff;">📄 Download PDF</button>
+                    </div>
+                `;
+                bottomBar.querySelector('.btn-av-back-bottom')?.addEventListener('click', () => switchTab('records'));
+                bottomBar.querySelector('.btn-av-edit')?.addEventListener('click', () => editRecord(id));
+                bottomBar.querySelector('.btn-av-pdf')?.addEventListener('click', () => generateAssessmentPdf(rec));
+            }
+
+            // Hide old modal if open
+            if (modal) modal.classList.remove('show');
+
+            // Switch to the assessment-viewer tab
+            switchTab('assessment-viewer');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+
+        } catch (err) {
+            console.error('Error viewing assessment:', err);
+            showToast('Failed to view assessment', true);
+        }
     }
 
     // ── Shared: build a populated form clone ──────────────────
@@ -1277,9 +1339,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const phEl = clone.querySelector('#photo-placeholder');
             if (phEl) phEl.style.display = 'none';
         }
-        // Hide file inputs & upload label
-        clone.querySelector('label[for="dev-photo"]') && (clone.querySelector('label[for="dev-photo"]').style.display = 'none');
-        clone.querySelectorAll('input[type="file"]').forEach(el => el.style.display = 'none');
+        // Hide file inputs & upload label in read-only mode
+        if (readOnly) {
+            clone.querySelectorAll('label[for="dev-photo"], label[for$="-photo"]').forEach(el => el.style.display = 'none');
+            clone.querySelectorAll('input[type="file"]').forEach(el => el.style.display = 'none');
+        }
 
         // Remove IDs to avoid DOM conflicts
         clone.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
@@ -1297,9 +1361,15 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 el.value = (val !== undefined && val !== null) ? (Array.isArray(val) ? val.join(', ') : String(val)) : '';
             }
-            // Remove any locked readonly from prefill (edit mode wants free fields)
-            if (!readOnly) {
+            if (readOnly) {
+                if (el.type === 'checkbox' || el.type === 'radio' || el.tagName === 'SELECT') {
+                    el.setAttribute('disabled', 'true');
+                } else {
+                    el.setAttribute('readonly', 'true');
+                }
+            } else {
                 el.removeAttribute('readonly');
+                el.removeAttribute('disabled');
                 el.style.backgroundColor = '';
                 el.style.cursor = '';
             }
@@ -1311,13 +1381,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (hasVal) desc.style.display = 'block';
         });
 
-        // Remove submit buttons
+        // Remove submit buttons from clone (we use dedicated top & bottom toolbars)
         clone.querySelectorAll('.form-actions').forEach(el => el.remove());
 
         clone.style.display = 'block';
-        if (readOnly) clone.classList.add('form-view-overlay');
         
-        // Attach BMI auto-calculation for cloned modal form
+        // Attach BMI auto-calculation for cloned form
         if (window.setupBmiAutoCalc) {
             window.setupBmiAutoCalc(clone);
         }
@@ -1328,10 +1397,26 @@ document.addEventListener('DOMContentLoaded', () => {
     // ── Edit record ────────────────────────────────────────────
     async function editRecord(id) {
         try {
-            const r = await fetch('/api/assessments/' + id);
-            if (!r.ok) { showToast('Failed to fetch record', true); return; }
-            const rec  = await r.json();
+            let rec = currentViewingRecord;
+            if (!rec || rec.id != id) {
+                const r = await fetch('/api/assessments/' + id);
+                if (!r.ok) { showToast('Failed to fetch assessment record', true); return; }
+                rec = await r.json();
+                currentViewingRecord = rec;
+            }
             const data = rec.data || {};
+
+            let child = activeChild;
+            if (rec.child_id && (!child || child.id !== rec.child_id)) {
+                try {
+                    const cr = await fetch('/api/children/' + rec.child_id);
+                    if (cr.ok) {
+                        child = await cr.json();
+                        setActiveChild(child);
+                    }
+                } catch (e) {}
+            }
+            currentViewingChild = child;
 
             const FORM_MAP = {
                 'Rapid Assessment':          'form-rapid',
@@ -1340,31 +1425,36 @@ document.addEventListener('DOMContentLoaded', () => {
                 'Speech Assessment':         'form-speech',
                 'Quarterly Progress Review': 'form-progress',
             };
-            const originalForm = document.getElementById(FORM_MAP[rec.form_type]);
-            if (!originalForm) { showToast('Cannot edit this form type.', true); return; }
 
-            modalTitle.textContent = '\u270f\ufe0f Edit: ' + rec.form_type + ' \u2014 ' + rec.child_name;
+            const originalForm = document.getElementById(FORM_MAP[rec.form_type]);
+            const mount = document.getElementById('av-form-mount');
+            if (!originalForm || !mount) {
+                showToast('Form template not found for ' + rec.form_type, true);
+                return;
+            }
 
             const clone = buildFormClone(originalForm, data, false /* editable */);
-            clone.classList.add('form-edit-mode');
+            mount.className = 'av-form-mount edit-mode';
+            mount.innerHTML = '';
+            mount.appendChild(clone);
 
-            const actionBar = document.createElement('div');
-            actionBar.className = 'modal-edit-actions';
-            actionBar.innerHTML =
-                '<button class="btn-secondary" id="modal-cancel-edit">Cancel</button>' +
-                '<button class="btn-primary"   id="modal-save-edit">\uD83D\uDCBE Save Changes</button>';
+            const admBadge = (child && child.admission_no) ? `<span class="adm-badge" style="display:inline-block; font-size:0.8rem; background:#1e40af; color:#ffffff; border-radius:4px; padding:2px 8px; margin-right:8px; font-weight:700;">${child.admission_no}</span>` : '';
+            const avTitle = document.getElementById('av-title');
+            const avSubtitle = document.getElementById('av-subtitle');
+            if (avTitle) avTitle.innerHTML = `✏️ Edit: ${admBadge}${rec.form_type} — <span>${rec.child_name}</span>`;
+            if (avSubtitle) avSubtitle.textContent = 'Modify assessment details, clinical notes or observations and click Save Changes.';
 
-            modalBody.innerHTML = '';
-            modalBody.appendChild(clone);
-            modalBody.appendChild(actionBar);
-            modalContent.classList.add('modal-form-view');
-            modal.classList.add('show');
+            // Notice Bar
+            const noticeBar = document.getElementById('av-notice-bar');
+            if (noticeBar) {
+                noticeBar.className = 'av-notice-bar edit-mode';
+                noticeBar.innerHTML = `
+                    <span>⚠️ <strong>Edit Mode:</strong> You are modifying clinical records for ${rec.child_name}. Changes will update this assessment upon saving.</span>
+                `;
+            }
 
-            document.getElementById('modal-cancel-edit').addEventListener('click', closeModal);
-
-            document.getElementById('modal-save-edit').addEventListener('click', async () => {
-                // Collect form data from the editable clone (it IS in the DOM)
-                const fd  = new FormData(clone);
+            async function saveChanges() {
+                const fd = new FormData(clone);
                 const newData = {};
                 for (let [k, v] of fd.entries()) {
                     if (k.endsWith('[]')) {
@@ -1378,7 +1468,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         newData[k] = v;
                     }
                 }
-                // Preserve photo if not re-uploaded
                 if (data.photo_base64 && !newData.photo_base64) newData.photo_base64 = data.photo_base64;
 
                 try {
@@ -1388,16 +1477,58 @@ document.addEventListener('DOMContentLoaded', () => {
                         body: JSON.stringify({ data: newData })
                     });
                     if (resp.ok) {
-                        showToast('\u2705 Assessment updated successfully!');
-                        closeModal();
+                        showToast('✅ Assessment updated successfully!');
+                        currentViewingRecord = null;
+                        await viewRecord(id);
                         fetchChildFolders();
                     } else {
-                        showToast('Error: ' + (await resp.json()).error, true);
+                        const err = await resp.json().catch(() => ({}));
+                        showToast('Error: ' + (err.error || 'Failed to save changes'), true);
                     }
-                } catch (err) { showToast('Failed to save.', true); }
+                } catch (err) {
+                    showToast('Failed to save assessment.', true);
+                }
+            }
+
+            // Actions Bar (Top)
+            const actionsBar = document.getElementById('av-actions-bar');
+            if (actionsBar) {
+                actionsBar.innerHTML = `
+                    <button type="button" class="btn-primary btn-sm btn-av-save" style="display:flex; align-items:center; gap:6px;">💾 Save Changes</button>
+                    <button type="button" class="btn-secondary btn-sm btn-av-cancel" style="display:flex; align-items:center; gap:6px; background:#fff;">✕ Cancel</button>
+                `;
+                actionsBar.querySelector('.btn-av-save')?.addEventListener('click', saveChanges);
+                actionsBar.querySelector('.btn-av-cancel')?.addEventListener('click', () => viewRecord(id));
+            }
+
+            // Bottom Actions Bar
+            const bottomBar = document.getElementById('av-bottom-bar');
+            if (bottomBar) {
+                bottomBar.innerHTML = `
+                    <button type="button" class="btn-secondary btn-av-cancel">✕ Cancel</button>
+                    <button type="button" class="btn-primary btn-av-save" style="min-width:140px; display:flex; align-items:center; gap:6px;">💾 Save Changes</button>
+                `;
+                bottomBar.querySelector('.btn-av-cancel')?.addEventListener('click', () => viewRecord(id));
+                bottomBar.querySelector('.btn-av-save')?.addEventListener('click', saveChanges);
+            }
+
+            // Form submit listener
+            clone.addEventListener('submit', (e) => {
+                e.preventDefault();
+                saveChanges();
             });
 
-        } catch (err) { console.error(err); }
+            // Hide old modal if open
+            if (modal) modal.classList.remove('show');
+
+            // Switch to assessment-viewer tab
+            switchTab('assessment-viewer');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+
+        } catch (err) {
+            console.error('Error editing assessment:', err);
+            showToast('Failed to open assessment editor', true);
+        }
     }
 
     // ── Delete record ──────────────────────────────────────────
@@ -1407,7 +1538,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const resp = await fetch('/api/assessments/' + id, { method: 'DELETE' });
             if (resp.ok) {
                 showToast('Assessment deleted.');
-                closeModal();
+                if (modal) modal.classList.remove('show');
+                switchTab('records');
                 fetchChildFolders();
             } else {
                 showToast('Error: ' + (await resp.json()).error, true);

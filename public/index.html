@@ -1866,6 +1866,27 @@
                 </div>
             </section>
 
+            <!-- Assessment Viewer & Editor Tab (Full-page layout matching the assessment form) -->
+            <section id="assessment-viewer" class="assessment-pane">
+                <div class="tab-header av-tab-header">
+                    <div class="av-nav-bar">
+                        <button type="button" class="btn-back-to-records" id="btn-av-back">← Back to Records</button>
+                        <div class="av-actions-bar" id="av-actions-bar"></div>
+                    </div>
+                    <div class="av-title-bar">
+                        <h2 id="av-title">Assessment Dossier</h2>
+                        <p id="av-subtitle">Clinical Assessment Record</p>
+                    </div>
+                    <div id="av-notice-bar" class="av-notice-bar"></div>
+                </div>
+
+                <!-- Cloned Assessment Form (rendered with exact same styling, cards, and sections) -->
+                <div id="av-form-mount" class="av-form-mount"></div>
+
+                <!-- Bottom Actions Bar -->
+                <div id="av-bottom-bar" class="av-bottom-bar"></div>
+            </section>
+
             <!-- Main: Assessment Summaries (Unified Multi-Disciplinary Dossier) -->
             <section id="assessment-summaries" class="tab-content">
                 <div class="tab-header"
