@@ -2646,6 +2646,11 @@ document.addEventListener('DOMContentLoaded', () => {
         scheduleFilterInput.addEventListener('change', loadDailySchedule);
     }
 
+    const scheduleHideUnscheduled = document.getElementById('schedule-hide-unscheduled');
+    if (scheduleHideUnscheduled) {
+        scheduleHideUnscheduled.addEventListener('change', loadDailySchedule);
+    }
+
     async function loadDailySchedule() {
         const tbody = document.getElementById('schedule-table-body');
         if (!tbody) return;
@@ -2663,10 +2668,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 permittedChildren = scheduleChildrenList.filter(child => matchesAgeFilter(child));
             }
 
+            // Fetch schedules for the date
+            const respSched = await fetch(`/api/schedules?date=${encodeURIComponent(date)}`);
+            currentScheduleData = await respSched.json();
+
             // Populate filter dropdown
             if (scheduleFilterInput) {
                 const currentVal = scheduleFilterInput.value;
-                scheduleFilterInput.innerHTML = '<option value="">All Children</option>';
+                scheduleFilterInput.innerHTML = '<option value="">All Children</option><option value="__scheduled__">Only Scheduled Children</option>';
                 permittedChildren.forEach(child => {
                     const opt = document.createElement('option');
                     opt.value = child.id;
@@ -2676,24 +2685,32 @@ document.addEventListener('DOMContentLoaded', () => {
                 scheduleFilterInput.value = currentVal;
             }
 
-            // Fetch schedules for the date
-            const respSched = await fetch(`/api/schedules?date=${encodeURIComponent(date)}`);
-            currentScheduleData = await respSched.json();
-
             if (permittedChildren.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="14" style="text-align: center;">No permitted children registered.</td></tr>';
                 return;
             }
 
             const filterChildId = scheduleFilterInput ? scheduleFilterInput.value : '';
-            const filteredChildren = filterChildId 
-                ? permittedChildren.filter(c => c.id == filterChildId)
-                : permittedChildren;
+            const hideUnscheduled = document.getElementById('schedule-hide-unscheduled')?.checked;
+
+            let filteredChildren = permittedChildren;
+            if (filterChildId && filterChildId !== '__scheduled__') {
+                filteredChildren = permittedChildren.filter(c => c.id == filterChildId);
+            } else if (filterChildId === '__scheduled__' || hideUnscheduled) {
+                filteredChildren = permittedChildren.filter(c => currentScheduleData.some(s => s.child_id === c.id));
+            }
+
+            if (filteredChildren.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="14" style="text-align: center; color: var(--text-light); padding: 25px;">No therapy sessions scheduled for this date.</td></tr>';
+                return;
+            }
 
             let html = '';
             filteredChildren.forEach((child, index) => {
+                const childHasSessions = currentScheduleData.some(s => s.child_id === child.id);
+                const rowClass = childHasSessions ? 'has-sessions' : 'schedule-row-empty';
                 const admBadge = child.admission_no ? `<span class="adm-badge" style="display:inline-block; font-size:0.75rem; background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe; border-radius:4px; padding:1px 6px; font-weight:700; margin-bottom:3px;">${child.admission_no}</span><br>` : '';
-                html += `<tr>`;
+                html += `<tr class="${rowClass}">`;
                 html += `<td class="sticky-col">${index + 1}. ${admBadge}<strong>${child.name}</strong></td>`;
                 
                 TIME_SLOTS.forEach(slot => {
@@ -2842,37 +2859,83 @@ document.addEventListener('DOMContentLoaded', () => {
             return null;
         }
 
-        const filterChildId = scheduleFilterInput ? scheduleFilterInput.value : '';
-        if (!filterChildId) {
-            showToast('Please select a specific child first', true);
-            return null;
-        }
-
-        const child = scheduleChildrenList.find(c => c.id == filterChildId);
-        if (!child) return null;
-
-        const blocks = currentScheduleData.filter(s => s.child_id == child.id);
-        if (blocks.length === 0) {
-            showToast('No sessions scheduled for this child on this date.', true);
-            return null;
-        }
-
+        const formattedDate = formatDisplayDate(date);
         const timeOrder = {};
         TIME_SLOTS.forEach((slot, index) => timeOrder[slot] = index);
-        blocks.sort((a, b) => timeOrder[a.time_slot] - timeOrder[b.time_slot]);
 
-        const formattedDate = formatDisplayDate(date);
-        let message = `*CHILDREN OCCUPATIONAL REHABILITATION CENTRE (CORC)*\n`;
-        message += `*Daily Therapy Schedule*\n\n`;
-        message += `*Child Name:* ${child.name}${child.admission_no ? ` (Adm: ${child.admission_no})` : ''}\n`;
-        message += `*Date:* ${formattedDate}\n\n`;
-        message += `*Scheduled Sessions:*\n`;
+        const filterChildId = scheduleFilterInput ? scheduleFilterInput.value : '';
 
-        blocks.forEach(block => {
-            message += `• *${block.time_slot}* : ${block.therapy_type}\n`;
+        // Specific child selected
+        if (filterChildId && filterChildId !== '__scheduled__') {
+            const child = scheduleChildrenList.find(c => c.id == filterChildId);
+            if (!child) return null;
+
+            const blocks = currentScheduleData.filter(s => s.child_id == child.id);
+            if (blocks.length === 0) {
+                showToast('No sessions scheduled for this child on this date.', true);
+                return null;
+            }
+
+            blocks.sort((a, b) => (timeOrder[a.time_slot] ?? 99) - (timeOrder[b.time_slot] ?? 99));
+
+            let message = `*CHILDREN OCCUPATIONAL REHABILITATION CENTRE (CORC)*\n`;
+            message += `*Daily Therapy Schedule*\n\n`;
+            message += `*Child Name:* ${child.name}${child.admission_no ? ` (Adm: ${child.admission_no})` : ''}\n`;
+            message += `*Date:* ${formattedDate}\n\n`;
+            message += `*Scheduled Sessions:*\n`;
+
+            blocks.forEach(block => {
+                message += `• *${block.time_slot}* : ${block.therapy_type}\n`;
+            });
+
+            return { 
+                isFull: false, 
+                message: message.trim(), 
+                child, 
+                title: `Therapy Schedule - ${child.name}` 
+            };
+        }
+
+        // Full Schedule: Share all children who HAVE scheduled sessions on this date (EXCLUDE children without schedule)
+        let permittedChildren = scheduleChildrenList;
+        if (userRole === 'staff' || userRole === 'staff8') {
+            permittedChildren = scheduleChildrenList.filter(child => matchesAgeFilter(child));
+        }
+
+        const scheduledChildren = [];
+        permittedChildren.forEach(child => {
+            const blocks = currentScheduleData.filter(s => s.child_id == child.id);
+            if (blocks && blocks.length > 0) {
+                blocks.sort((a, b) => (timeOrder[a.time_slot] ?? 99) - (timeOrder[b.time_slot] ?? 99));
+                scheduledChildren.push({ child, blocks });
+            }
         });
 
-        return { message: message.trim(), child };
+        if (scheduledChildren.length === 0) {
+            showToast('No therapy sessions scheduled for any child on this date.', true);
+            return null;
+        }
+
+        let message = `*CHILDREN OCCUPATIONAL REHABILITATION CENTRE (CORC)*\n`;
+        message += `*Daily Therapy Schedule*\n`;
+        message += `*Date:* ${formattedDate}\n`;
+        message += `*Scheduled Children:* ${scheduledChildren.length}\n\n`;
+
+        scheduledChildren.forEach(({ child, blocks }, index) => {
+            const admStr = child.admission_no ? ` (Adm: ${child.admission_no})` : '';
+            message += `*${index + 1}. ${child.name}*${admStr}\n`;
+            blocks.forEach(block => {
+                message += `• *${block.time_slot}* : ${block.therapy_type}\n`;
+            });
+            message += `\n`;
+        });
+
+        return { 
+            isFull: true, 
+            message: message.trim(), 
+            child: null, 
+            title: `CORC Daily Schedule - ${formattedDate}` 
+        };
     }
 
     document.getElementById('btn-share-schedule')?.addEventListener('click', async () => {
@@ -2883,7 +2946,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (navigator.share) {
             try {
                 await navigator.share({
-                    title: `Therapy Schedule - ${data.child.name}`,
+                    title: data.title || (data.child ? `Therapy Schedule - ${data.child.name}` : 'Daily Therapy Schedule'),
                     text: data.message
                 });
                 return;
@@ -2894,7 +2957,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(data.message).then(() => {
-                showToast('Schedule copied to clipboard! You can now paste it.');
+                showToast(data.isFull 
+                    ? 'Full schedule copied to clipboard! (Unscheduled children excluded)' 
+                    : 'Schedule copied to clipboard! You can now paste it.');
             }).catch(() => {
                 copyViaFallback(data.message);
             });
@@ -2914,7 +2979,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const successful = document.execCommand('copy');
                 document.body.removeChild(ta);
                 if (successful) {
-                    showToast('Schedule copied to clipboard! You can now paste it.');
+                    showToast(data.isFull 
+                        ? 'Full schedule copied to clipboard! (Unscheduled children excluded)' 
+                        : 'Schedule copied to clipboard! You can now paste it.');
                 } else {
                     showToast('Failed to copy. Please try again.', true);
                 }
@@ -2929,8 +2996,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const data = getScheduleMessageAndChild();
         if (!data) return;
 
-        let phone = (data.child.mobile || '').replace(/\D/g, '');
-        if (phone.length === 10) phone = '91' + phone; // Default country code if 10 digits
+        let phone = '';
+        if (!data.isFull && data.child && data.child.mobile) {
+            phone = data.child.mobile.replace(/\D/g, '');
+            if (phone.length === 10) phone = '91' + phone; // Default country code if 10 digits
+        }
         const text = encodeURIComponent(data.message);
         const waUrl = phone ? `https://wa.me/${phone}?text=${text}` : `https://wa.me/?text=${text}`;
         window.open(waUrl, '_blank');

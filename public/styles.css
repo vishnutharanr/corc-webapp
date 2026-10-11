@@ -1236,6 +1236,9 @@ button {
     .schedule-table .sticky-col {
         width: 12% !important;
     }
+    tr.schedule-row-empty {
+        display: none !important;
+    }
     .records-table th, .records-table td,
     .schedule-table th, .schedule-table td {
         border: 1px solid #000 !important;

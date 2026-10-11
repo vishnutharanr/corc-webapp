@@ -2021,7 +2021,13 @@
                             <label>Filter by Child</label>
                             <select id="schedule-child-filter">
                                 <option value="">All Children</option>
+                                <option value="__scheduled__">Only Scheduled Children</option>
                             </select>
+                        </div>
+                        <div class="input-group" style="margin-bottom: 0; align-self: flex-end; padding-bottom: 8px;">
+                            <label style="display: flex; align-items: center; gap: 6px; margin: 0; font-size: 0.85rem; font-weight: 500; cursor: pointer; color: var(--text-light); white-space: nowrap;">
+                                <input type="checkbox" id="schedule-hide-unscheduled" style="margin: 0; cursor: pointer;"> Only Scheduled
+                            </label>
                         </div>
                         <div class="input-group" style="margin-bottom: 0;">
                             <label>Schedule Date</label>
