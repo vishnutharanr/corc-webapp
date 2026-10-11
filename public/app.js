@@ -2942,68 +2942,38 @@ document.addEventListener('DOMContentLoaded', () => {
         const data = getScheduleMessageAndChild();
         if (!data) return;
 
-        // Use native Web Share API if supported (mobile / tablet share sheet)
-        if (navigator.share) {
-            try {
-                await navigator.share({
-                    title: data.title || (data.child ? `Therapy Schedule - ${data.child.name}` : 'Daily Therapy Schedule'),
-                    text: data.message
-                });
-                return;
-            } catch (err) {
-                if (err.name === 'AbortError') return;
-            }
-        }
+        const successMsg = data.isFull 
+            ? 'Full schedule copied to clipboard!' 
+            : `Schedule for ${data.child.name} copied to clipboard!`;
 
         if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(data.message).then(() => {
-                showToast(data.isFull 
-                    ? 'Full schedule copied to clipboard! (Unscheduled children excluded)' 
-                    : 'Schedule copied to clipboard! You can now paste it.');
-            }).catch(() => {
-                copyViaFallback(data.message);
-            });
-        } else {
-            copyViaFallback(data.message);
-        }
-
-        function copyViaFallback(text) {
             try {
-                const ta = document.createElement('textarea');
-                ta.value = text;
-                ta.style.position = 'fixed';
-                ta.style.opacity = '0';
-                document.body.appendChild(ta);
-                ta.focus();
-                ta.select();
-                const successful = document.execCommand('copy');
-                document.body.removeChild(ta);
-                if (successful) {
-                    showToast(data.isFull 
-                        ? 'Full schedule copied to clipboard! (Unscheduled children excluded)' 
-                        : 'Schedule copied to clipboard! You can now paste it.');
-                } else {
-                    showToast('Failed to copy. Please try again.', true);
-                }
+                await navigator.clipboard.writeText(data.message);
+                showToast(successMsg);
+                return;
             } catch (err) {
-                showToast('Failed to copy. Please try again.', true);
+                // Fallback to execCommand below
             }
         }
-    });
 
-    // ── WhatsApp Daily Schedule Dispatch ──────────────────────
-    document.getElementById('btn-whatsapp-schedule')?.addEventListener('click', () => {
-        const data = getScheduleMessageAndChild();
-        if (!data) return;
-
-        let phone = '';
-        if (!data.isFull && data.child && data.child.mobile) {
-            phone = data.child.mobile.replace(/\D/g, '');
-            if (phone.length === 10) phone = '91' + phone; // Default country code if 10 digits
+        try {
+            const ta = document.createElement('textarea');
+            ta.value = data.message;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.focus();
+            ta.select();
+            const successful = document.execCommand('copy');
+            document.body.removeChild(ta);
+            if (successful) {
+                showToast(successMsg);
+            } else {
+                showToast('Failed to copy schedule to clipboard.', true);
+            }
+        } catch (err) {
+            showToast('Failed to copy schedule to clipboard.', true);
         }
-        const text = encodeURIComponent(data.message);
-        const waUrl = phone ? `https://wa.me/${phone}?text=${text}` : `https://wa.me/?text=${text}`;
-        window.open(waUrl, '_blank');
     });
 
     // ── PDF Generation: Clinical Assessment Report ───────────
