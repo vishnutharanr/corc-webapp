@@ -468,7 +468,10 @@ document.addEventListener('DOMContentLoaded', () => {
             ['input[name="age"]',                     ageVal],
             ['textarea[name="address"]',              rd.address || ''],
             ['textarea[name="medical_history_dev"]',  rd.medical_history || ''],
+            ['textarea[name="previous_therapies"]',   rd.medical_history || ''],
+            ['textarea[name="parent_expectations"]',  rd.symptoms || ''],
             ['input[name="parent_expectations"]',     rd.symptoms || ''],
+            ['textarea[name="available_aids_appliances"]', rd.po_observation || ''],
             ['input[name="dev_diagnosis"]',           rd.diagnosis || ''],
             ['input[name="father_contact"]',          activeChild.mobile || rd.father_contact || rd.mobile || ''],
             ['input[name="mother_contact"]',          rd.mother_contact || activeChild.mobile || rd.mobile || ''],
@@ -4154,16 +4157,25 @@ document.addEventListener('DOMContentLoaded', () => {
             ].filter(t => t.obs || t.sug)
         };
 
-        // 2. Child Development
+        // 2. Child Development / Child Assessment Sheet
         const dData = dev?.data || {};
         const delays = [
+            dData.cognitive_delay_speech ? `Speech Delay: ${dData.cognitive_delay_speech}` : (dData.speech_delay ? `Speech: ${dData.speech_delay}` : ''),
+            dData.cognitive_delay_schooling ? `Schooling: ${dData.cognitive_delay_schooling}` : '',
             dData.gross_motor_delay ? `Gross Motor: ${dData.gross_motor_delay}` : '',
             dData.fine_motor_delay ? `Fine Motor: ${dData.fine_motor_delay}` : '',
-            dData.speech_delay ? `Speech: ${dData.speech_delay}` : '',
             dData.cognitive_delay ? `Cognitive: ${dData.cognitive_delay}` : ''
         ].filter(Boolean);
 
         const conditions = [
+            dData.known_cp && dData.known_cp !== 'No' ? `CP: ${dData.known_cp}${dData.known_cp_desc ? ` (${dData.known_cp_desc})` : ''}` : '',
+            dData.known_genetic && dData.known_genetic !== 'No' ? `Genetic: ${dData.known_genetic}${dData.known_genetic_desc ? ` (${dData.known_genetic_desc})` : ''}` : '',
+            dData.known_unknown_disease && dData.known_unknown_disease !== 'No' ? `Unknown Disease: ${dData.known_unknown_disease}` : '',
+            dData.known_talipes && dData.known_talipes !== 'No' ? `Talipes: ${dData.known_talipes}` : '',
+            dData.known_upper_extremity && dData.known_upper_extremity !== 'Normal' ? `Upper Extremity: ${dData.known_upper_extremity}` : '',
+            dData.known_accident && dData.known_accident !== 'No' ? `Accident: ${dData.known_accident} ${dData.known_accident_desc || ''}` : '',
+            dData.known_infection && dData.known_infection !== 'No' ? `Infection: ${dData.known_infection} ${dData.known_infection_desc || ''}` : '',
+            dData.known_other ? `Other: ${dData.known_other}` : '',
             dData.neuromotor_impairment ? `Neuromotor: ${dData.neuromotor_impairment}` : '',
             dData.hearing_impairment ? `Hearing: ${dData.hearing_impairment}` : '',
             dData.vision_impairment ? `Vision: ${dData.vision_impairment}` : '',
@@ -4175,8 +4187,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const deliveryList = [
             dData.delivery_type ? `Type: ${dData.delivery_type}` : '',
+            dData.delivery_place ? `Place: ${dData.delivery_place}` : '',
             dData.delivery_term ? `Term: ${dData.delivery_term}` : '',
             dData.birth_weight ? `Birth Wt: ${dData.birth_weight}` : '',
+            dData.birth_colour ? `Colour: ${dData.birth_colour}` : '',
             dData.birth_cry ? `Birth Cry: ${dData.birth_cry}` : '',
             dData.incubator_support ? `Incubator: ${dData.incubator_support}` : '',
             dData.hospital_stay_days ? `Hospital Stay: ${dData.hospital_stay_days}d` : ''
@@ -4187,20 +4201,22 @@ document.addEventListener('DOMContentLoaded', () => {
             dData.weight ? `Weight: ${dData.weight}kg` : '',
             dData.bmi ? `BMI: ${dData.bmi}` : '',
             dData.head_circ ? `Head Circ: ${dData.head_circ}cm` : '',
-            dData.chest_circ ? `Chest: ${dData.chest_circ}cm` : ''
+            dData.chest_circ ? `Chest: ${dData.chest_circ}cm` : '',
+            dData.muac_r ? `MUAC(R): ${dData.muac_r}` : '',
+            dData.muac_l ? `MUAC(L): ${dData.muac_l}` : ''
         ].filter(Boolean);
 
         const devMilestones = [];
         const msDefinitions = [
-            { key: 'ms_sitting', label: 'Sitting' },
-            { key: 'ms_crawling', label: 'Crawling' },
-            { key: 'ms_standing', label: 'Standing' },
-            { key: 'ms_walking', label: 'Walking' },
-            { key: 'ms_babbling', label: 'Babbling' },
-            { key: 'ms_words', label: 'Words' },
-            { key: 'ms_sentences', label: 'Sentences' },
-            { key: 'ms_social_smile', label: 'Social Smile' },
-            { key: 'ms_eye_contact', label: 'Eye Contact' }
+            { key: 'ms_social_smile', label: 'Social Smile (< 3m)' },
+            { key: 'ms_eye_contact', label: 'Eye Contact (< 3m)' },
+            { key: 'ms_babbling', label: 'Babbling (< 5m)' },
+            { key: 'ms_words', label: 'Words (< 12m)' },
+            { key: 'ms_sentences', label: 'Sentences (< 24m)' },
+            { key: 'ms_sitting', label: 'Sitting (< 8m)' },
+            { key: 'ms_crawling', label: 'Crawling (< 10m)' },
+            { key: 'ms_standing', label: 'Standing (< 14m)' },
+            { key: 'ms_walking', label: 'Walking (< 18m)' }
         ];
         msDefinitions.forEach(m => {
             const val = dData[m.key];
@@ -4218,15 +4234,15 @@ document.addEventListener('DOMContentLoaded', () => {
             exists: !!dev,
             id: dev?.id,
             date: dev?.created_at ? new Date(dev.created_at).toLocaleDateString('en-IN') : null,
-            diagnosis: dData.dev_diagnosis || dData.developmental_diagnosis || dData.clinical_impression || dData.diagnosis || 'Developmental Profile Recorded',
-            chief_complaints: dData.chief_complaints || dData.chief_complaint || 'Developmental evaluation conducted',
-            informant: dData.informant ? `${dData.informant} (${dData.relationship || 'Guardian'})` : 'Parents',
-            delivery: deliveryList.join(' · ') || 'Uneventful perinatal history',
+            diagnosis: (dData.known_cp && dData.known_cp !== 'No' ? `CP: ${dData.known_cp} ${dData.known_cp_desc || ''}` : '') || dData.dev_diagnosis || dData.developmental_diagnosis || dData.clinical_impression || dData.diagnosis || 'Child Assessment Completed',
+            chief_complaints: dData.chief_complaints || dData.chief_complaint || (dData.grade ? `Grade: ${dData.grade}` : 'Child developmental evaluation conducted'),
+            informant: dData.informant ? `${dData.informant} (${dData.relationship || 'Guardian'})` : (dData.guardian_type ? dData.guardian_type : 'Parents'),
+            delivery: deliveryList.join(' · ') || 'Perinatal history documented',
             anthropometry: anthropometryList.join(' · ') || '',
             delays,
             conditions,
             milestones: devMilestones,
-            goals: dData.treatment_goal || dData.treatment_plan || dData.parent_expectations || '',
+            goals: dData.previous_therapies || dData.available_aids_appliances || dData.parent_expectations || dData.previous_corc_interventions || dData.treatment_goal || dData.treatment_plan || '',
             assessed_by: dData.assessed_by || ''
         };
 

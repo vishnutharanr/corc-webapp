@@ -247,27 +247,28 @@
                 </form>
             </section>
 
-            <!-- Assessment: Child Development -->
+            <!-- Assessment: Child Development / Child Assessment Sheet -->
             <section id="child-development" class="assessment-pane">
-                <div class="tab-header" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px;">
+                <div class="tab-header" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%); border: 1px solid #bfdbfe; border-radius: 10px; padding: 16px 20px; margin-bottom: 20px;">
                     <div>
-                        <h2>Child Development Assessment</h2>
-                        <p>Comprehensive developmental history and profile.</p>
+                        <div style="display: inline-block; font-size: 0.72rem; font-weight: 700; color: #1e40af; background: #dbeafe; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Early Intervention Centre for Children with Cerebral Palsy Mylaudy</div>
+                        <h2 style="margin: 0; color: #0f172a; font-size: 1.4rem;">Child Assessment Sheet</h2>
+                        <p style="margin: 4px 0 0; color: #475569; font-size: 0.88rem;">Comprehensive pediatric developmental assessment, clinical history, and intervention objectives.</p>
                     </div>
                     <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                        <button type="button" id="btn-import-rapid" class="btn-secondary" style="display: inline-flex; align-items: center; gap: 6px; font-weight: 600; padding: 8px 14px; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; border-radius: 6px; cursor: pointer;" title="Auto-fill basic details, medical history, and parent concerns from Consultation Form">
+                        <button type="button" id="btn-import-rapid" class="btn-secondary" style="display: inline-flex; align-items: center; gap: 6px; font-weight: 600; padding: 8px 14px; background: #fff; color: #1d4ed8; border: 1px solid #93c5fd; border-radius: 6px; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05);" title="Auto-fill basic details, anthropometry, and history from Consultation Form">
                             ⚡ Auto-fill from Consultation Form
                         </button>
                     </div>
                 </div>
                 <div id="dev-form-edit-banner" style="display: none; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 10px 14px; margin-bottom: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
-                    <span style="font-size: 0.88rem; color: #1e40af; font-weight: 500;">✏️ <strong>Editing Mode:</strong> Loaded existing Child Development assessment for <strong id="dev-editing-child-name">—</strong>. Saving will update this record.</span>
+                    <span style="font-size: 0.88rem; color: #1e40af; font-weight: 500;">✏️ <strong>Editing Mode:</strong> Loaded existing Child Assessment for <strong id="dev-editing-child-name">—</strong>. Saving will update this record.</span>
                     <button type="button" id="btn-dev-new-version" class="btn-secondary btn-sm" style="background: #fff; border-color: #93c5fd; color: #1e40af; font-weight: 600;">+ Start Fresh Assessment</button>
                 </div>
                 <form class="assessment-form" id="form-development">
-                    <!-- Assessment Details & Photo -->
+                    <!-- Header Row & Photo -->
                     <div class="form-section" style="position: relative; min-height: 250px;">
-                        <h3 style="margin-right: 160px;">Assessment Details</h3>
+                        <h3 style="margin-right: 160px;">Assessment Header</h3>
 
                         <!-- Top Right Photo Box -->
                         <div class="photo-upload-box"
@@ -280,24 +281,27 @@
                                     style="width: 100%; height: 100%; object-fit: cover; display: none;">
                             </div>
                             <label for="dev-photo" class="btn-secondary"
-                                style="padding: 6px 12px; font-size: 0.8rem; text-align: center; width: 100%; cursor: pointer;">Upload
-                                Photo</label>
+                                style="padding: 6px 12px; font-size: 0.8rem; text-align: center; width: 100%; cursor: pointer;">Upload Photo</label>
                             <input type="file" id="dev-photo" accept="image/*" style="display: none;">
                             <input type="hidden" id="dev-photo-base64" name="photo_base64">
                         </div>
 
                         <div class="form-grid" style="margin-right: 160px;">
                             <div class="input-group">
-                                <label>Sl. NO.</label>
-                                <input type="text" name="sl_no">
-                            </div>
-                            <div class="input-group">
                                 <label>Date of Assessment</label>
                                 <input type="date" name="assessment_date">
                             </div>
                             <div class="input-group">
+                                <label>SL. NO.</label>
+                                <input type="text" name="sl_no" placeholder="Sl. No">
+                            </div>
+                            <div class="input-group">
+                                <label>Admission No</label>
+                                <input type="text" name="admission_no" placeholder="e.g. ADM-001">
+                            </div>
+                            <div class="input-group">
                                 <label>Informant</label>
-                                <input type="text" name="informant">
+                                <input type="text" name="informant" placeholder="e.g. Father, Mother, Guardian">
                             </div>
                             <div class="input-group">
                                 <label>Relationship to child</label>
@@ -313,17 +317,13 @@
                         </div>
                     </div>
 
-                    <!-- Child Identification Profile -->
+                    <!-- Information Sheet -->
                     <div class="form-section">
-                        <h3>Child Identification Profile</h3>
+                        <h3>Information Sheet</h3>
                         <div class="form-grid">
                             <div class="input-group">
-                                <label>1. Name *</label>
-                                <input type="text" name="child_name" required>
-                            </div>
-                            <div class="input-group">
-                                <label>Admission No</label>
-                                <input type="text" name="admission_no" placeholder="e.g. ADM-001">
+                                <label>Name *</label>
+                                <input type="text" name="child_name" required placeholder="Child's full name">
                             </div>
                             <div class="input-group">
                                 <label>Sex</label>
@@ -335,33 +335,39 @@
                                 </select>
                             </div>
                             <div class="input-group">
-                                <label>2. Date of Birth</label>
+                                <label>Date of Birth</label>
                                 <input type="date" name="dob">
                             </div>
                             <div class="input-group">
                                 <label>Age</label>
-                                <input type="text" name="age">
+                                <input type="text" name="age" placeholder="e.g. 3y 4m">
                             </div>
                             <div class="input-group">
                                 <label>Grade</label>
-                                <input type="text" name="grade">
+                                <input type="text" name="grade" placeholder="Class / Grade (e.g. Pre-KG, 1st Std)">
                             </div>
                             <div class="input-group full-width">
-                                <label>3. Address</label>
-                                <textarea name="address" rows="2"></textarea>
+                                <label>Address</label>
+                                <textarea name="address" rows="2" placeholder="Residential address"></textarea>
+                            </div>
+                            
+                            <!-- Anthropometry Subsection -->
+                            <div class="input-group" style="grid-column: 1 / -1; margin-top: 8px; margin-bottom: 4px;">
+                                <span style="font-weight: 700; color: #1e40af; font-size: 0.92rem; text-transform: uppercase; letter-spacing: 0.5px;">Anthropometry &amp; Physical Growth</span>
+                            </div>
+
+                            <div class="input-group">
+                                <label>Height in CM</label>
+                                <input type="number" step="0.1" name="height" placeholder="cm">
                             </div>
                             <div class="input-group">
-                                <label>4. Height (cm)</label>
-                                <input type="number" name="height">
-                            </div>
-                            <div class="input-group">
-                                <label>Weight</label>
-                                <input type="number" name="weight">
+                                <label>Weight (kg)</label>
+                                <input type="number" step="0.1" name="weight" placeholder="kg">
                             </div>
                             <div class="input-group">
                                 <label>BMI</label>
                                 <div style="display: flex; align-items: center; gap: 10px;">
-                                    <input type="text" name="bmi" style="flex: 1;">
+                                    <input type="text" name="bmi" placeholder="Calculated" style="flex: 1;">
                                     <div class="bmi-gauge-wrapper" id="bmi-gauge-wrapper">
                                         <div class="bmi-gauge"></div>
                                         <div class="bmi-inner-circle"></div>
@@ -370,56 +376,62 @@
                                 </div>
                             </div>
                             <div class="input-group">
-                                <label>5. Head Circumference</label>
-                                <input type="text" name="head_circ">
+                                <label>Head Circumference (cm)</label>
+                                <input type="text" name="head_circ" placeholder="cm">
                             </div>
                             <div class="input-group">
-                                <label>Chest circumference</label>
-                                <input type="text" name="chest_circ">
+                                <label>Chest circumference (cm)</label>
+                                <input type="text" name="chest_circ" placeholder="cm">
                             </div>
                             <div class="input-group">
                                 <label>MUAC (R)</label>
-                                <input type="text" name="muac_r">
+                                <input type="text" name="muac_r" placeholder="Right arm">
                             </div>
                             <div class="input-group">
                                 <label>MUAC (L)</label>
-                                <input type="text" name="muac_l">
+                                <input type="text" name="muac_l" placeholder="Left arm">
                             </div>
+
+                            <!-- Guardian Subsection -->
+                            <div class="input-group" style="grid-column: 1 / -1; margin-top: 10px; margin-bottom: 4px;">
+                                <span style="font-weight: 700; color: #1e40af; font-size: 0.92rem; text-transform: uppercase; letter-spacing: 0.5px;">Guardian &amp; Family Profile</span>
+                            </div>
+
                             <div class="input-group">
-                                <label>6. Guardian Type</label>
+                                <label>Guardian</label>
                                 <select name="guardian_type">
                                     <option value="">Select...</option>
-                                    <option value="Father">1. Father</option>
-                                    <option value="Mother">2. Mother</option>
-                                    <option value="Other">3. Other Care taker</option>
+                                    <option value="1. Father">1. Father</option>
+                                    <option value="2. Mother">2. Mother</option>
+                                    <option value="3. Other Care taker">3. Other Care taker</option>
                                 </select>
                             </div>
                             <div class="input-group">
-                                <label>7. Name of Father</label>
-                                <input type="text" name="father_name">
+                                <label>Name of father</label>
+                                <input type="text" name="father_name" placeholder="Father's name">
                             </div>
                             <div class="input-group">
                                 <label>Contact Number (Father)</label>
-                                <input type="text" name="father_contact">
+                                <input type="text" name="father_contact" placeholder="Mobile number">
                             </div>
                             <div class="input-group">
-                                <label>8. Name of Mother</label>
-                                <input type="text" name="mother_name">
+                                <label>Name of Mother</label>
+                                <input type="text" name="mother_name" placeholder="Mother's name">
                             </div>
                             <div class="input-group">
                                 <label>Contact Number (Mother)</label>
-                                <input type="text" name="mother_contact">
+                                <input type="text" name="mother_contact" placeholder="Mobile number">
                             </div>
                             <div class="input-group">
-                                <label>9. Other Caretaker</label>
-                                <input type="text" name="other_caretaker">
+                                <label>Other Caretaker</label>
+                                <input type="text" name="other_caretaker" placeholder="Caretaker name if applicable">
                             </div>
                             <div class="input-group">
-                                <label>Contact Number (Other)</label>
-                                <input type="text" name="other_contact">
+                                <label>Contact Number (Caretaker)</label>
+                                <input type="text" name="other_contact" placeholder="Mobile number">
                             </div>
                             <div class="input-group">
-                                <label>10. Consanguinity</label>
+                                <label>Consanguinity</label>
                                 <select name="consanguinity">
                                     <option value="">Select...</option>
                                     <option value="Yes">Yes</option>
@@ -428,7 +440,7 @@
                                 </select>
                             </div>
                             <div class="input-group">
-                                <label>11. Type of family</label>
+                                <label>Type of family</label>
                                 <select name="family_type">
                                     <option value="">Select...</option>
                                     <option value="Nuclear">Nuclear</option>
@@ -437,20 +449,32 @@
                                 </select>
                             </div>
                             <div class="input-group" style="grid-column: span 2;">
-                                <label>12. Siblings (Brothers / Sisters / Total) <span style="font-size:0.75rem; color:#2563eb; font-weight:600; background:#eff6ff; padding:1px 6px; border-radius:4px; border:1px solid #bfdbfe;">Auto-calculated</span></label>
+                                <label>Siblings (Brothers / Sisters / Total) <span style="font-size:0.75rem; color:#2563eb; font-weight:600; background:#eff6ff; padding:1px 6px; border-radius:4px; border:1px solid #bfdbfe;">Auto-calculated</span></label>
                                 <div style="display:flex; gap:10px;">
-                                    <input type="number" name="siblings_brothers" placeholder="Bros" min="0">
-                                    <input type="number" name="siblings_sisters" placeholder="Sis" min="0">
+                                    <input type="number" name="siblings_brothers" placeholder="Brothers" min="0">
+                                    <input type="number" name="siblings_sisters" placeholder="Sisters" min="0">
                                     <input type="number" name="siblings_total" placeholder="Total" min="0" readonly style="background:#f1f5f9; font-weight:600; cursor:not-allowed;" title="Total = Brothers + Sisters">
                                 </div>
                             </div>
-                            <div class="input-group full-width">
-                                <label>13. History of disability in family</label>
-                                <textarea name="family_disability_history" rows="2"></textarea>
+                            <div class="input-group">
+                                <label>Birth order</label>
+                                <input type="text" name="birth_order" placeholder="e.g. 1st, 2nd">
+                            </div>
+                            <div class="input-group">
+                                <label>No. of pregnancies</label>
+                                <input type="number" name="no_of_pregnancies" min="0" placeholder="Gravida (e.g. 1, 2)">
+                            </div>
+                            <div class="input-group">
+                                <label>No of deliveries</label>
+                                <input type="number" name="no_of_deliveries" min="0" placeholder="Para (e.g. 1, 2)">
                             </div>
                             <div class="input-group full-width">
-                                <label>14. ID card No, if any</label>
-                                <input type="text" name="id_card_no">
+                                <label>History of disability in the family</label>
+                                <textarea name="family_disability_history" rows="2" placeholder="Record any known history of physical, neurological, or developmental disability in maternal or paternal family"></textarea>
+                            </div>
+                            <div class="input-group full-width">
+                                <label>ID card No, if any</label>
+                                <input type="text" name="id_card_no" placeholder="e.g. UDID / Govt ID card number">
                             </div>
                         </div>
                     </div>
@@ -460,11 +484,11 @@
                         <h3>Pre-Natal History</h3>
                         <div class="form-grid">
                             <div class="input-group">
-                                <label>15. Age of mother at delivery</label>
-                                <input type="text" name="mother_age_delivery">
+                                <label>Age of mother at delivery</label>
+                                <input type="text" name="mother_age_delivery" placeholder="e.g. 24 yrs">
                             </div>
                             <div class="input-group">
-                                <label>16. Health during pregnancy</label>
+                                <label>Health of mother during pregnancy</label>
                                 <select name="pregnancy_health">
                                     <option value="">Select...</option>
                                     <option value="Normal">Normal</option>
@@ -473,12 +497,12 @@
                                 </select>
                             </div>
                             <div class="input-group">
-                                <label>17. RH incompatibility</label>
-                                <input type="text" name="rh_incompatibility">
+                                <label>RH incompatibility</label>
+                                <input type="text" name="rh_incompatibility" placeholder="Yes / No / Details (e.g. Rh -ve)">
                             </div>
                             <div class="input-group">
-                                <label>18. Any infectious disease</label>
-                                <input type="text" name="infectious_disease">
+                                <label>Any infectious disease</label>
+                                <input type="text" name="infectious_disease" placeholder="Any infection during pregnancy (fever, TORCH, jaundice...)">
                             </div>
                         </div>
                     </div>
@@ -488,7 +512,7 @@
                         <h3>Peri-Natal History</h3>
                         <div class="form-grid">
                             <div class="input-group">
-                                <label>19. Type of delivery</label>
+                                <label>Type of delivery</label>
                                 <select name="delivery_type">
                                     <option value="">Select...</option>
                                     <option value="Normal">Normal</option>
@@ -499,7 +523,7 @@
                                 </select>
                             </div>
                             <div class="input-group">
-                                <label>20. Place of delivery</label>
+                                <label>Place of delivery</label>
                                 <select name="delivery_place">
                                     <option value="">Select...</option>
                                     <option value="Hospital">Hospital</option>
@@ -507,7 +531,7 @@
                                 </select>
                             </div>
                             <div class="input-group">
-                                <label>21. Term</label>
+                                <label>Term</label>
                                 <select name="delivery_term">
                                     <option value="">Select...</option>
                                     <option value="Full term">Full term</option>
@@ -515,7 +539,11 @@
                                 </select>
                             </div>
                             <div class="input-group">
-                                <label>22. Birth cry</label>
+                                <label>Pre-matured (month)</label>
+                                <input type="text" name="pre_mature_months" placeholder="If pre-mature, specify months / gestational age">
+                            </div>
+                            <div class="input-group">
+                                <label>Birth cry</label>
                                 <select name="birth_cry">
                                     <option value="">Select...</option>
                                     <option value="Cried">Cried</option>
@@ -523,35 +551,40 @@
                                 </select>
                             </div>
                             <div class="input-group">
-                                <label>Birth order</label>
-                                <input type="text" name="birth_order">
-                            </div>
-                            <div class="input-group">
-                                <label>23. Birth weight</label>
+                                <label>Birth weight</label>
                                 <select name="birth_weight">
                                     <option value="">Select...</option>
                                     <option value="Normal">Normal</option>
-                                    <option value="Below normal">Below normal</option>
-                                    <option value="Above normal">Above normal</option>
+                                    <option value="Below normal">Below normal (&lt; 2.5 kg)</option>
+                                    <option value="Above normal">Above normal (&gt; 4.0 kg)</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label>Birth colour</label>
+                                <select name="birth_colour">
+                                    <option value="">Select...</option>
+                                    <option value="Pink">Pink</option>
+                                    <option value="Blue">Blue</option>
+                                    <option value="Blue exubenist">Blue exubenist</option>
                                 </select>
                             </div>
                             <div class="input-group full-width">
-                                <label>24. Others</label>
-                                <input type="text" name="perinatal_others">
+                                <label>Others</label>
+                                <input type="text" name="perinatal_others" placeholder="Any cord around neck, meconium aspiration, neonatal resuscitation...">
                             </div>
                         </div>
                     </div>
 
-                    <!-- Post-Natal History -->
+                    <!-- Post Natal History -->
                     <div class="form-section">
-                        <h3>Post-Natal History</h3>
+                        <h3>Post Natal History</h3>
                         <div class="form-grid">
                             <div class="input-group">
-                                <label>25. Days of hospital stay</label>
-                                <input type="number" name="hospital_stay_days">
+                                <label>Days stay in hospital</label>
+                                <input type="number" name="hospital_stay_days" min="0" placeholder="Number of days">
                             </div>
                             <div class="input-group">
-                                <label>26. Incubator support</label>
+                                <label>Incubator support</label>
                                 <select name="incubator_support" class="yes-no-select">
                                     <option value="">Select...</option>
                                     <option value="No">No</option>
@@ -561,7 +594,7 @@
                                     placeholder="Provide description..." style="display: none; margin-top: 8px;">
                             </div>
                             <div class="input-group">
-                                <label>27. Oxygens</label>
+                                <label>Oxygens</label>
                                 <select name="oxygens" class="yes-no-select">
                                     <option value="">Select...</option>
                                     <option value="No">No</option>
@@ -571,7 +604,7 @@
                                     placeholder="Provide description..." style="display: none; margin-top: 8px;">
                             </div>
                             <div class="input-group">
-                                <label>28. Fits / convulsions</label>
+                                <label>Fits / convulsions</label>
                                 <select name="convulsions" class="yes-no-select">
                                     <option value="">Select...</option>
                                     <option value="No">No</option>
@@ -581,17 +614,7 @@
                                     placeholder="Provide description..." style="display: none; margin-top: 8px;">
                             </div>
                             <div class="input-group">
-                                <label>29. Any major diseases</label>
-                                <select name="major_diseases" class="yes-no-select">
-                                    <option value="">Select...</option>
-                                    <option value="No">No</option>
-                                    <option value="Yes">Yes</option>
-                                </select>
-                                <input type="text" name="major_diseases_desc" class="conditional-desc"
-                                    placeholder="Provide description..." style="display: none; margin-top: 8px;">
-                            </div>
-                            <div class="input-group">
-                                <label>30. Any major surgery</label>
+                                <label>Any major surgery</label>
                                 <select name="major_surgery" class="yes-no-select">
                                     <option value="">Select...</option>
                                     <option value="No">No</option>
@@ -600,77 +623,331 @@
                                 <input type="text" name="major_surgery_desc" class="conditional-desc"
                                     placeholder="Provide description..." style="display: none; margin-top: 8px;">
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Known Diagnosis (From CHILD ASSESSMENT.docx) -->
+                    <div class="form-section">
+                        <h3>Known Diagnosis</h3>
+                        <div class="form-grid">
                             <div class="input-group">
-                                <label>31. Any major accident</label>
-                                <select name="major_accident" class="yes-no-select">
+                                <label>Cerebral Palsy</label>
+                                <select name="known_cp">
+                                    <option value="">Select...</option>
+                                    <option value="No">No</option>
+                                    <option value="Yes">Yes</option>
+                                    <option value="Suspected">Suspected</option>
+                                </select>
+                                <input type="text" name="known_cp_desc" placeholder="Specify CP type / details..." style="margin-top: 6px;">
+                            </div>
+                            <div class="input-group">
+                                <label>Genetic disorder</label>
+                                <select name="known_genetic">
+                                    <option value="">Select...</option>
+                                    <option value="No">No</option>
+                                    <option value="Yes">Yes</option>
+                                    <option value="Suspected">Suspected</option>
+                                </select>
+                                <input type="text" name="known_genetic_desc" placeholder="Specify genetic condition..." style="margin-top: 6px;">
+                            </div>
+                            <div class="input-group">
+                                <label>Unknown underlying disease</label>
+                                <select name="known_unknown_disease">
+                                    <option value="">Select...</option>
+                                    <option value="No">No</option>
+                                    <option value="Yes">Yes</option>
+                                    <option value="Under Investigation">Under Investigation</option>
+                                </select>
+                                <input type="text" name="known_unknown_disease_desc" placeholder="Details of investigations..." style="margin-top: 6px;">
+                            </div>
+                            <div class="input-group">
+                                <label>Talipes (club foot)</label>
+                                <select name="known_talipes">
+                                    <option value="">Select...</option>
+                                    <option value="No">No</option>
+                                    <option value="Yes (Bilateral)">Yes (Bilateral)</option>
+                                    <option value="Yes (Right)">Yes (Right)</option>
+                                    <option value="Yes (Left)">Yes (Left)</option>
+                                </select>
+                                <input type="text" name="known_talipes_desc" placeholder="Splints / casting / surgery status..." style="margin-top: 6px;">
+                            </div>
+                            <div class="input-group">
+                                <label>Upper extremity</label>
+                                <select name="known_upper_extremity">
+                                    <option value="">Select...</option>
+                                    <option value="Normal">Normal</option>
+                                    <option value="Impaired">Impaired</option>
+                                </select>
+                                <input type="text" name="known_upper_extremity_desc" placeholder="Details of impairment / fine motor deficit..." style="margin-top: 6px;">
+                            </div>
+                            <div class="input-group">
+                                <label>Any major accident</label>
+                                <select name="known_accident" class="yes-no-select">
                                     <option value="">Select...</option>
                                     <option value="No">No</option>
                                     <option value="Yes">Yes</option>
                                 </select>
-                                <input type="text" name="major_accident_desc" class="conditional-desc"
-                                    placeholder="Provide description..." style="display: none; margin-top: 8px;">
+                                <input type="text" name="known_accident_desc" class="conditional-desc" placeholder="Provide accident details..." style="display: none; margin-top: 8px;">
+                            </div>
+                            <div class="input-group">
+                                <label>Any infectious disease</label>
+                                <select name="known_infection" class="yes-no-select">
+                                    <option value="">Select...</option>
+                                    <option value="No">No</option>
+                                    <option value="Yes">Yes</option>
+                                </select>
+                                <input type="text" name="known_infection_desc" class="conditional-desc" placeholder="Provide infection details..." style="display: none; margin-top: 8px;">
+                            </div>
+                            <div class="input-group full-width">
+                                <label>Any other</label>
+                                <input type="text" name="known_other" placeholder="Any other known medical condition or physical finding">
                             </div>
                         </div>
+
+                        <!-- Backward compatibility collapsible for previously recorded congenital anomalies checklist -->
+                        <details style="margin-top: 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px;">
+                            <summary style="font-size: 0.88rem; font-weight: 600; color: #475569; cursor: pointer;">+ Additional Congenital Anomalies Checklist (Optional / Prior Records)</summary>
+                            <div style="margin-top: 12px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+                                <label><input type="checkbox" name="anomalies" value="Neural Tube Defect"> Neural Tube Defect</label>
+                                <label><input type="checkbox" name="anomalies" value="Down's Syndrome"> Down's Syndrome</label>
+                                <label><input type="checkbox" name="anomalies" value="Cleft lip & Palate"> Cleft lip & Palate</label>
+                                <label><input type="checkbox" name="anomalies" value="Talipes (club foot)"> Talipes (club foot)</label>
+                                <label><input type="checkbox" name="anomalies" value="Developmental Dysplasia of Hip"> DD of Hip</label>
+                                <label><input type="checkbox" name="anomalies" value="Congenital cataract"> Congenital cataract</label>
+                                <label><input type="checkbox" name="anomalies" value="Congenital Deafness"> Congenital Deafness</label>
+                                <label><input type="checkbox" name="anomalies" value="Congenital Heart Diseases"> Congenital Heart Diseases</label>
+                                <label><input type="checkbox" name="anomalies" value="Retinopathy of Prematurity"> Retinopathy of Prematurity</label>
+                            </div>
+                            <div class="input-group full-width" style="margin-top: 10px;">
+                                <label style="font-size: 0.8rem; color: #64748b;">Other anomalies note:</label>
+                                <input type="text" name="anomalies_other" placeholder="Additional notes...">
+                            </div>
+                        </details>
                     </div>
 
-                    <!-- Congenital Anomalies -->
+                    <!-- Cognitive Development (From CHILD ASSESSMENT.docx) -->
                     <div class="form-section">
-                        <h3>Congenital Anomalies</h3>
-
-                        <div style="margin-bottom: 16px;">
-                            <strong
-                                style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--text-dark);">32.</strong>
-                            <div class="checkbox-group"
-                                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
-                                <label><input type="checkbox" name="anomalies" value="Neural Tube Defect"> Neural Tube
-                                    Defect</label>
-                                <label><input type="checkbox" name="anomalies" value="Down's Syndrome"> Down's
-                                    Syndrome</label>
-                                <label><input type="checkbox" name="anomalies" value="Cleft lip & Palate"> Cleft lip &
-                                    Palate</label>
+                        <h3>Cognitive Development</h3>
+                        
+                        <!-- Cognitive Delay Row -->
+                        <div style="background: #fdf4ff; border: 1px solid #f0abfc; border-radius: 8px; padding: 14px; margin-bottom: 20px;">
+                            <strong style="display: block; margin-bottom: 10px; color: #86198f; font-size: 0.95rem;">Cognitive Delay</strong>
+                            <div class="form-grid" style="margin: 0;">
+                                <div class="input-group">
+                                    <label>Speech</label>
+                                    <input type="text" name="cognitive_delay_speech" placeholder="e.g. Delayed, Age-appropriate, Non-verbal">
+                                </div>
+                                <div class="input-group">
+                                    <label>Schooling</label>
+                                    <input type="text" name="cognitive_delay_schooling" placeholder="e.g. Regular school, Special school, Not enrolled">
+                                </div>
                             </div>
                         </div>
 
-                        <div style="margin-bottom: 16px;">
-                            <strong
-                                style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--text-dark);">33.</strong>
-                            <div class="checkbox-group"
-                                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
-                                <label><input type="checkbox" name="anomalies" value="Talipes (club foot)"> Talipes
-                                    (club foot)</label>
-                                <label><input type="checkbox" name="anomalies" value="Developmental Dysplasia of Hip">
-                                    DD of Hip</label>
-                                <label><input type="checkbox" name="anomalies" value="Congenital cataract"> Congenital
-                                    cataract</label>
-                            </div>
-                        </div>
+                        <!-- Key Milestones -->
+                        <div class="milestones-container" style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 20px;">
+                            <!-- Cognitive & Speech Milestones from Document -->
+                            <div class="milestones-category" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px;">
+                                <strong style="display: block; margin-bottom: 10px; color: #7c3aed; font-size: 0.95rem;">Milestones (Child Assessment Sheet)</strong>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px;">
+                                    
+                                    <!-- Social smile < 3 m -->
+                                    <div class="milestone-card" style="background: #fff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 12px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                            <strong style="color: #0f172a; font-size: 0.9rem;">Social smile &lt; 3 m</strong>
+                                            <span style="font-size: 0.72rem; color: #475569; background: #e2e8f0; padding: 1px 6px; border-radius: 4px; font-weight: 500;">Threshold: 3 m</span>
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+                                            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; margin: 0;">
+                                                <input type="radio" name="ms_social_smile" value="< 3 m"> &lt; 3 m
+                                            </label>
+                                            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; margin: 0;">
+                                                <input type="radio" name="ms_social_smile" value="> 3 m"> &gt; 3 m
+                                            </label>
+                                        </div>
+                                        <div class="ms-delayed-box" style="display: none; align-items: center; gap: 6px; margin-top: 8px; padding-top: 6px; border-top: 1px dashed #e2e8f0;">
+                                            <span style="font-size: 0.78rem; color: #b91c1c; font-weight: 600; white-space: nowrap;">If &gt; 3 m, specify:</span>
+                                            <input type="text" name="ms_social_smile_detail" placeholder="Month / Year (e.g. 5 m)" style="padding: 4px 8px; font-size: 0.82rem; border: 1px solid #fca5a5; border-radius: 4px; flex: 1; background: #fef2f2;">
+                                        </div>
+                                    </div>
 
-                        <div style="margin-bottom: 16px;">
-                            <strong
-                                style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--text-dark);">34.</strong>
-                            <div class="checkbox-group"
-                                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
-                                <label><input type="checkbox" name="anomalies" value="Congenital Deafness"> Congenital
-                                    Deafness</label>
-                                <label><input type="checkbox" name="anomalies" value="Congenital Heart Diseases">
-                                    Congenital Heart Diseases</label>
-                                <label><input type="checkbox" name="anomalies" value="Retinopathy of Prematurity">
-                                    Retinopathy of Prematurity</label>
-                            </div>
-                        </div>
+                                    <!-- Eye contact < 3 m -->
+                                    <div class="milestone-card" style="background: #fff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 12px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                            <strong style="color: #0f172a; font-size: 0.9rem;">Eye contact &lt; 3 m</strong>
+                                            <span style="font-size: 0.72rem; color: #475569; background: #e2e8f0; padding: 1px 6px; border-radius: 4px; font-weight: 500;">Threshold: 3 m</span>
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+                                            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; margin: 0;">
+                                                <input type="radio" name="ms_eye_contact" value="< 3 m"> &lt; 3 m
+                                            </label>
+                                            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; margin: 0;">
+                                                <input type="radio" name="ms_eye_contact" value="> 3 m"> &gt; 3 m
+                                            </label>
+                                        </div>
+                                        <div class="ms-delayed-box" style="display: none; align-items: center; gap: 6px; margin-top: 8px; padding-top: 6px; border-top: 1px dashed #e2e8f0;">
+                                            <span style="font-size: 0.78rem; color: #b91c1c; font-weight: 600; white-space: nowrap;">If &gt; 3 m, specify:</span>
+                                            <input type="text" name="ms_eye_contact_detail" placeholder="Month / Year (e.g. 6 m)" style="padding: 4px 8px; font-size: 0.82rem; border: 1px solid #fca5a5; border-radius: 4px; flex: 1; background: #fef2f2;">
+                                        </div>
+                                    </div>
 
-                        <div class="input-group full-width" style="margin-top: 15px;">
-                            <label>35. Any other</label>
-                            <input type="text" name="anomalies_other">
+                                    <!-- Babbling < 5 m -->
+                                    <div class="milestone-card" style="background: #fff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 12px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                            <strong style="color: #0f172a; font-size: 0.9rem;">Babbling &lt; 5 m</strong>
+                                            <span style="font-size: 0.72rem; color: #475569; background: #e2e8f0; padding: 1px 6px; border-radius: 4px; font-weight: 500;">Threshold: 5 m</span>
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+                                            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; margin: 0;">
+                                                <input type="radio" name="ms_babbling" value="< 5 m"> &lt; 5 m
+                                            </label>
+                                            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; margin: 0;">
+                                                <input type="radio" name="ms_babbling" value="> 5 m"> &gt; 5 m
+                                            </label>
+                                        </div>
+                                        <div class="ms-delayed-box" style="display: none; align-items: center; gap: 6px; margin-top: 8px; padding-top: 6px; border-top: 1px dashed #e2e8f0;">
+                                            <span style="font-size: 0.78rem; color: #b91c1c; font-weight: 600; white-space: nowrap;">If &gt; 5 m, specify:</span>
+                                            <input type="text" name="ms_babbling_detail" placeholder="Month / Year (e.g. 8 m)" style="padding: 4px 8px; font-size: 0.82rem; border: 1px solid #fca5a5; border-radius: 4px; flex: 1; background: #fef2f2;">
+                                        </div>
+                                    </div>
+
+                                    <!-- Words < 12 m -->
+                                    <div class="milestone-card" style="background: #fff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 12px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                            <strong style="color: #0f172a; font-size: 0.9rem;">Words &lt; 12 m</strong>
+                                            <span style="font-size: 0.72rem; color: #475569; background: #e2e8f0; padding: 1px 6px; border-radius: 4px; font-weight: 500;">Threshold: 12 m</span>
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+                                            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; margin: 0;">
+                                                <input type="radio" name="ms_words" value="< 12 m"> &lt; 12 m
+                                            </label>
+                                            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; margin: 0;">
+                                                <input type="radio" name="ms_words" value="> 12 m"> &gt; 12 m
+                                            </label>
+                                        </div>
+                                        <div class="ms-delayed-box" style="display: none; align-items: center; gap: 6px; margin-top: 8px; padding-top: 6px; border-top: 1px dashed #e2e8f0;">
+                                            <span style="font-size: 0.78rem; color: #b91c1c; font-weight: 600; white-space: nowrap;">If &gt; 12 m, specify:</span>
+                                            <input type="text" name="ms_words_detail" placeholder="Month / Year (e.g. 18 m)" style="padding: 4px 8px; font-size: 0.82rem; border: 1px solid #fca5a5; border-radius: 4px; flex: 1; background: #fef2f2;">
+                                        </div>
+                                    </div>
+
+                                    <!-- Sentences < 24 m -->
+                                    <div class="milestone-card" style="background: #fff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 12px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                            <strong style="color: #0f172a; font-size: 0.9rem;">Sentences &lt; 24 m</strong>
+                                            <span style="font-size: 0.72rem; color: #475569; background: #e2e8f0; padding: 1px 6px; border-radius: 4px; font-weight: 500;">Threshold: 24 m</span>
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+                                            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; margin: 0;">
+                                                <input type="radio" name="ms_sentences" value="< 24 m"> &lt; 24 m
+                                            </label>
+                                            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; margin: 0;">
+                                                <input type="radio" name="ms_sentences" value="> 24 m"> &gt; 24 m
+                                            </label>
+                                        </div>
+                                        <div class="ms-delayed-box" style="display: none; align-items: center; gap: 6px; margin-top: 8px; padding-top: 6px; border-top: 1px dashed #e2e8f0;">
+                                            <span style="font-size: 0.78rem; color: #b91c1c; font-weight: 600; white-space: nowrap;">If &gt; 24 m, specify:</span>
+                                            <input type="text" name="ms_sentences_detail" placeholder="Month / Year (e.g. 36 m)" style="padding: 4px 8px; font-size: 0.82rem; border: 1px solid #fca5a5; border-radius: 4px; flex: 1; background: #fef2f2;">
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
+
+                            <!-- Motor Milestones (Sitting, Crawling, Standing, Walking) -->
+                            <details style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 14px;">
+                                <summary style="font-size: 0.92rem; font-weight: 600; color: #1e40af; cursor: pointer;">+ Motor Milestones (Sitting, Crawling, Standing, Walking)</summary>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; margin-top: 12px;">
+                                    <!-- Sitting -->
+                                    <div class="milestone-card" style="background: #fff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 12px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                            <strong style="color: #0f172a; font-size: 0.9rem;">Sitting</strong>
+                                            <span style="font-size: 0.72rem; color: #475569; background: #e2e8f0; padding: 1px 6px; border-radius: 4px; font-weight: 500;">Threshold: 8 m</span>
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+                                            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; margin: 0;">
+                                                <input type="radio" name="ms_sitting" value="< 8 m"> &lt; 8 m
+                                            </label>
+                                            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; margin: 0;">
+                                                <input type="radio" name="ms_sitting" value="> 8 m"> &gt; 8 m
+                                            </label>
+                                        </div>
+                                        <div class="ms-delayed-box" style="display: none; align-items: center; gap: 6px; margin-top: 8px; padding-top: 6px; border-top: 1px dashed #e2e8f0;">
+                                            <span style="font-size: 0.78rem; color: #b91c1c; font-weight: 600; white-space: nowrap;">If &gt; 8 m, specify:</span>
+                                            <input type="text" name="ms_sitting_detail" placeholder="Month / Year (e.g. 10 m)" style="padding: 4px 8px; font-size: 0.82rem; border: 1px solid #fca5a5; border-radius: 4px; flex: 1; background: #fef2f2;">
+                                        </div>
+                                    </div>
+
+                                    <!-- Crawling -->
+                                    <div class="milestone-card" style="background: #fff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 12px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                            <strong style="color: #0f172a; font-size: 0.9rem;">Crawling</strong>
+                                            <span style="font-size: 0.72rem; color: #475569; background: #e2e8f0; padding: 1px 6px; border-radius: 4px; font-weight: 500;">Threshold: 10 m</span>
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+                                            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; margin: 0;">
+                                                <input type="radio" name="ms_crawling" value="< 10 m"> &lt; 10 m
+                                            </label>
+                                            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; margin: 0;">
+                                                <input type="radio" name="ms_crawling" value="> 10 m"> &gt; 10 m
+                                            </label>
+                                        </div>
+                                        <div class="ms-delayed-box" style="display: none; align-items: center; gap: 6px; margin-top: 8px; padding-top: 6px; border-top: 1px dashed #e2e8f0;">
+                                            <span style="font-size: 0.78rem; color: #b91c1c; font-weight: 600; white-space: nowrap;">If &gt; 10 m, specify:</span>
+                                            <input type="text" name="ms_crawling_detail" placeholder="Month / Year (e.g. 12 m)" style="padding: 4px 8px; font-size: 0.82rem; border: 1px solid #fca5a5; border-radius: 4px; flex: 1; background: #fef2f2;">
+                                        </div>
+                                    </div>
+
+                                    <!-- Standing -->
+                                    <div class="milestone-card" style="background: #fff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 12px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                            <strong style="color: #0f172a; font-size: 0.9rem;">Standing</strong>
+                                            <span style="font-size: 0.72rem; color: #475569; background: #e2e8f0; padding: 1px 6px; border-radius: 4px; font-weight: 500;">Threshold: 14 m</span>
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+                                            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; margin: 0;">
+                                                <input type="radio" name="ms_standing" value="< 14 m"> &lt; 14 m
+                                            </label>
+                                            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; margin: 0;">
+                                                <input type="radio" name="ms_standing" value="> 14 m"> &gt; 14 m
+                                            </label>
+                                        </div>
+                                        <div class="ms-delayed-box" style="display: none; align-items: center; gap: 6px; margin-top: 8px; padding-top: 6px; border-top: 1px dashed #e2e8f0;">
+                                            <span style="font-size: 0.78rem; color: #b91c1c; font-weight: 600; white-space: nowrap;">If &gt; 14 m, specify:</span>
+                                            <input type="text" name="ms_standing_detail" placeholder="Month / Year (e.g. 16 m)" style="padding: 4px 8px; font-size: 0.82rem; border: 1px solid #fca5a5; border-radius: 4px; flex: 1; background: #fef2f2;">
+                                        </div>
+                                    </div>
+
+                                    <!-- Walking -->
+                                    <div class="milestone-card" style="background: #fff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 12px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                            <strong style="color: #0f172a; font-size: 0.9rem;">Walking</strong>
+                                            <span style="font-size: 0.72rem; color: #475569; background: #e2e8f0; padding: 1px 6px; border-radius: 4px; font-weight: 500;">Threshold: 18 m</span>
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+                                            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; margin: 0;">
+                                                <input type="radio" name="ms_walking" value="< 18 m"> &lt; 18 m
+                                            </label>
+                                            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; margin: 0;">
+                                                <input type="radio" name="ms_walking" value="> 18 m"> &gt; 18 m
+                                            </label>
+                                        </div>
+                                        <div class="ms-delayed-box" style="display: none; align-items: center; gap: 6px; margin-top: 8px; padding-top: 6px; border-top: 1px dashed #e2e8f0;">
+                                            <span style="font-size: 0.78rem; color: #b91c1c; font-weight: 600; white-space: nowrap;">If &gt; 18 m, specify:</span>
+                                            <input type="text" name="ms_walking_detail" placeholder="Month / Year (e.g. 24 m)" style="padding: 4px 8px; font-size: 0.82rem; border: 1px solid #fca5a5; border-radius: 4px; flex: 1; background: #fef2f2;">
+                                        </div>
+                                    </div>
+                                </div>
+                            </details>
                         </div>
                     </div>
 
-                    <!-- Developmental Delay and Disability -->
+                    <!-- Developmental Delay and Disability (From CHILD ASSESSMENT.docx) -->
                     <div class="form-section">
                         <h3>Developmental Delay and Disability</h3>
                         <div class="form-grid">
                             <div class="input-group">
-                                <label>36. Vision Impairment</label>
+                                <label>Vision Impairment</label>
                                 <select name="vision_impairment">
                                     <option value="">Select...</option>
                                     <option value="Absent">Absent</option>
@@ -698,210 +975,10 @@
                             </div>
                         </div>
 
-                        <h4 style="margin: 24px 0 12px; font-weight: 600; color: var(--primary); font-size: 1.05rem;">37. Milestones</h4>
-                        <div class="milestones-container" style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 20px;">
-                            <!-- Motor Milestones -->
-                            <div class="milestones-category" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px;">
-                                <strong style="display: block; margin-bottom: 10px; color: #1e40af; font-size: 0.95rem;">Motor Milestones</strong>
-                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px;">
-                                    <!-- Sitting -->
-                                    <div class="milestone-card" style="background: #fff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 12px;">
-                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                                            <strong style="color: #0f172a; font-size: 0.9rem;">Sitting</strong>
-                                            <span style="font-size: 0.72rem; color: #475569; background: #e2e8f0; padding: 1px 6px; border-radius: 4px; font-weight: 500;">Threshold: 8 m</span>
-                                        </div>
-                                        <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
-                                            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; margin: 0;">
-                                                <input type="radio" name="ms_sitting" value="< 8 m"> &lt; 8 m
-                                            </label>
-                                            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; margin: 0;">
-                                                <input type="radio" name="ms_sitting" value="> 8 m"> &gt; 8 m
-                                            </label>
-                                        </div>
-                                        <div class="ms-delayed-box" style="display: none; align-items: center; gap: 6px; margin-top: 8px; padding-top: 6px; border-top: 1px dashed #e2e8f0;">
-                                            <span style="font-size: 0.78rem; color: #b91c1c; font-weight: 600; white-space: nowrap;">If &gt; 8 m, specify:</span>
-                                            <input type="text" name="ms_sitting_detail" placeholder="Month / Year (e.g. 10 m, 1 yr)" style="padding: 4px 8px; font-size: 0.82rem; border: 1px solid #fca5a5; border-radius: 4px; flex: 1; background: #fef2f2;">
-                                        </div>
-                                    </div>
-
-                                    <!-- Crawling -->
-                                    <div class="milestone-card" style="background: #fff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 12px;">
-                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                                            <strong style="color: #0f172a; font-size: 0.9rem;">Crawling</strong>
-                                            <span style="font-size: 0.72rem; color: #475569; background: #e2e8f0; padding: 1px 6px; border-radius: 4px; font-weight: 500;">Threshold: 10 m</span>
-                                        </div>
-                                        <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
-                                            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; margin: 0;">
-                                                <input type="radio" name="ms_crawling" value="< 10 m"> &lt; 10 m
-                                            </label>
-                                            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; margin: 0;">
-                                                <input type="radio" name="ms_crawling" value="> 10 m"> &gt; 10 m
-                                            </label>
-                                        </div>
-                                        <div class="ms-delayed-box" style="display: none; align-items: center; gap: 6px; margin-top: 8px; padding-top: 6px; border-top: 1px dashed #e2e8f0;">
-                                            <span style="font-size: 0.78rem; color: #b91c1c; font-weight: 600; white-space: nowrap;">If &gt; 10 m, specify:</span>
-                                            <input type="text" name="ms_crawling_detail" placeholder="Month / Year (e.g. 12 m, 1.5 yr)" style="padding: 4px 8px; font-size: 0.82rem; border: 1px solid #fca5a5; border-radius: 4px; flex: 1; background: #fef2f2;">
-                                        </div>
-                                    </div>
-
-                                    <!-- Standing -->
-                                    <div class="milestone-card" style="background: #fff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 12px;">
-                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                                            <strong style="color: #0f172a; font-size: 0.9rem;">Standing</strong>
-                                            <span style="font-size: 0.72rem; color: #475569; background: #e2e8f0; padding: 1px 6px; border-radius: 4px; font-weight: 500;">Threshold: 14 m</span>
-                                        </div>
-                                        <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
-                                            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; margin: 0;">
-                                                <input type="radio" name="ms_standing" value="< 14 m"> &lt; 14 m
-                                            </label>
-                                            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; margin: 0;">
-                                                <input type="radio" name="ms_standing" value="> 14 m"> &gt; 14 m
-                                            </label>
-                                        </div>
-                                        <div class="ms-delayed-box" style="display: none; align-items: center; gap: 6px; margin-top: 8px; padding-top: 6px; border-top: 1px dashed #e2e8f0;">
-                                            <span style="font-size: 0.78rem; color: #b91c1c; font-weight: 600; white-space: nowrap;">If &gt; 14 m, specify:</span>
-                                            <input type="text" name="ms_standing_detail" placeholder="Month / Year (e.g. 16 m, 1.8 yr)" style="padding: 4px 8px; font-size: 0.82rem; border: 1px solid #fca5a5; border-radius: 4px; flex: 1; background: #fef2f2;">
-                                        </div>
-                                    </div>
-
-                                    <!-- Walking -->
-                                    <div class="milestone-card" style="background: #fff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 12px;">
-                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                                            <strong style="color: #0f172a; font-size: 0.9rem;">Walking</strong>
-                                            <span style="font-size: 0.72rem; color: #475569; background: #e2e8f0; padding: 1px 6px; border-radius: 4px; font-weight: 500;">Threshold: 18 m</span>
-                                        </div>
-                                        <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
-                                            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; margin: 0;">
-                                                <input type="radio" name="ms_walking" value="< 18 m"> &lt; 18 m
-                                            </label>
-                                            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; margin: 0;">
-                                                <input type="radio" name="ms_walking" value="> 18 m"> &gt; 18 m
-                                            </label>
-                                        </div>
-                                        <div class="ms-delayed-box" style="display: none; align-items: center; gap: 6px; margin-top: 8px; padding-top: 6px; border-top: 1px dashed #e2e8f0;">
-                                            <span style="font-size: 0.78rem; color: #b91c1c; font-weight: 600; white-space: nowrap;">If &gt; 18 m, specify:</span>
-                                            <input type="text" name="ms_walking_detail" placeholder="Month / Year (e.g. 24 m, 2.5 yr)" style="padding: 4px 8px; font-size: 0.82rem; border: 1px solid #fca5a5; border-radius: 4px; flex: 1; background: #fef2f2;">
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Language Milestones -->
-                            <div class="milestones-category" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px;">
-                                <strong style="display: block; margin-bottom: 10px; color: #0284c7; font-size: 0.95rem;">Language Milestones</strong>
-                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px;">
-                                    <!-- Babbling -->
-                                    <div class="milestone-card" style="background: #fff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 12px;">
-                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                                            <strong style="color: #0f172a; font-size: 0.9rem;">Babbling</strong>
-                                            <span style="font-size: 0.72rem; color: #475569; background: #e2e8f0; padding: 1px 6px; border-radius: 4px; font-weight: 500;">Threshold: 5 m</span>
-                                        </div>
-                                        <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
-                                            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; margin: 0;">
-                                                <input type="radio" name="ms_babbling" value="< 5 m"> &lt; 5 m
-                                            </label>
-                                            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; margin: 0;">
-                                                <input type="radio" name="ms_babbling" value="> 5 m"> &gt; 5 m
-                                            </label>
-                                        </div>
-                                        <div class="ms-delayed-box" style="display: none; align-items: center; gap: 6px; margin-top: 8px; padding-top: 6px; border-top: 1px dashed #e2e8f0;">
-                                            <span style="font-size: 0.78rem; color: #b91c1c; font-weight: 600; white-space: nowrap;">If &gt; 5 m, specify:</span>
-                                            <input type="text" name="ms_babbling_detail" placeholder="Month / Year (e.g. 8 m, 1 yr)" style="padding: 4px 8px; font-size: 0.82rem; border: 1px solid #fca5a5; border-radius: 4px; flex: 1; background: #fef2f2;">
-                                        </div>
-                                    </div>
-
-                                    <!-- Words -->
-                                    <div class="milestone-card" style="background: #fff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 12px;">
-                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                                            <strong style="color: #0f172a; font-size: 0.9rem;">Words</strong>
-                                            <span style="font-size: 0.72rem; color: #475569; background: #e2e8f0; padding: 1px 6px; border-radius: 4px; font-weight: 500;">Threshold: 12 m</span>
-                                        </div>
-                                        <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
-                                            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; margin: 0;">
-                                                <input type="radio" name="ms_words" value="< 12 m"> &lt; 12 m
-                                            </label>
-                                            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; margin: 0;">
-                                                <input type="radio" name="ms_words" value="> 12 m"> &gt; 12 m
-                                            </label>
-                                        </div>
-                                        <div class="ms-delayed-box" style="display: none; align-items: center; gap: 6px; margin-top: 8px; padding-top: 6px; border-top: 1px dashed #e2e8f0;">
-                                            <span style="font-size: 0.78rem; color: #b91c1c; font-weight: 600; white-space: nowrap;">If &gt; 12 m, specify:</span>
-                                            <input type="text" name="ms_words_detail" placeholder="Month / Year (e.g. 18 m, 2 yr)" style="padding: 4px 8px; font-size: 0.82rem; border: 1px solid #fca5a5; border-radius: 4px; flex: 1; background: #fef2f2;">
-                                        </div>
-                                    </div>
-
-                                    <!-- Sentences -->
-                                    <div class="milestone-card" style="background: #fff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 12px;">
-                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                                            <strong style="color: #0f172a; font-size: 0.9rem;">Sentences</strong>
-                                            <span style="font-size: 0.72rem; color: #475569; background: #e2e8f0; padding: 1px 6px; border-radius: 4px; font-weight: 500;">Threshold: 24 m</span>
-                                        </div>
-                                        <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
-                                            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; margin: 0;">
-                                                <input type="radio" name="ms_sentences" value="< 24 m"> &lt; 24 m
-                                            </label>
-                                            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; margin: 0;">
-                                                <input type="radio" name="ms_sentences" value="> 24 m"> &gt; 24 m
-                                            </label>
-                                        </div>
-                                        <div class="ms-delayed-box" style="display: none; align-items: center; gap: 6px; margin-top: 8px; padding-top: 6px; border-top: 1px dashed #e2e8f0;">
-                                            <span style="font-size: 0.78rem; color: #b91c1c; font-weight: 600; white-space: nowrap;">If &gt; 24 m, specify:</span>
-                                            <input type="text" name="ms_sentences_detail" placeholder="Month / Year (e.g. 36 m, 3.5 yr)" style="padding: 4px 8px; font-size: 0.82rem; border: 1px solid #fca5a5; border-radius: 4px; flex: 1; background: #fef2f2;">
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Cognitive Delay Milestones -->
-                            <div class="milestones-category" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px;">
-                                <strong style="display: block; margin-bottom: 10px; color: #7c3aed; font-size: 0.95rem;">Cognitive Delay Milestones</strong>
-                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px;">
-                                    <!-- Social smile -->
-                                    <div class="milestone-card" style="background: #fff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 12px;">
-                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                                            <strong style="color: #0f172a; font-size: 0.9rem;">Social smile</strong>
-                                            <span style="font-size: 0.72rem; color: #475569; background: #e2e8f0; padding: 1px 6px; border-radius: 4px; font-weight: 500;">Threshold: 3 m</span>
-                                        </div>
-                                        <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
-                                            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; margin: 0;">
-                                                <input type="radio" name="ms_social_smile" value="< 3 m"> &lt; 3 m
-                                            </label>
-                                            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; margin: 0;">
-                                                <input type="radio" name="ms_social_smile" value="> 3 m"> &gt; 3 m
-                                            </label>
-                                        </div>
-                                        <div class="ms-delayed-box" style="display: none; align-items: center; gap: 6px; margin-top: 8px; padding-top: 6px; border-top: 1px dashed #e2e8f0;">
-                                            <span style="font-size: 0.78rem; color: #b91c1c; font-weight: 600; white-space: nowrap;">If &gt; 3 m, specify:</span>
-                                            <input type="text" name="ms_social_smile_detail" placeholder="Month / Year (e.g. 5 m, 6 m)" style="padding: 4px 8px; font-size: 0.82rem; border: 1px solid #fca5a5; border-radius: 4px; flex: 1; background: #fef2f2;">
-                                        </div>
-                                    </div>
-
-                                    <!-- Eye contact -->
-                                    <div class="milestone-card" style="background: #fff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 12px;">
-                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                                            <strong style="color: #0f172a; font-size: 0.9rem;">Eye contact</strong>
-                                            <span style="font-size: 0.72rem; color: #475569; background: #e2e8f0; padding: 1px 6px; border-radius: 4px; font-weight: 500;">Threshold: 3 m</span>
-                                        </div>
-                                        <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
-                                            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; margin: 0;">
-                                                <input type="radio" name="ms_eye_contact" value="< 3 m"> &lt; 3 m
-                                            </label>
-                                            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; margin: 0;">
-                                                <input type="radio" name="ms_eye_contact" value="> 3 m"> &gt; 3 m
-                                            </label>
-                                        </div>
-                                        <div class="ms-delayed-box" style="display: none; align-items: center; gap: 6px; margin-top: 8px; padding-top: 6px; border-top: 1px dashed #e2e8f0;">
-                                            <span style="font-size: 0.78rem; color: #b91c1c; font-weight: 600; white-space: nowrap;">If &gt; 3 m, specify:</span>
-                                            <input type="text" name="ms_eye_contact_detail" placeholder="Month / Year (e.g. 6 m, 1 yr)" style="padding: 4px 8px; font-size: 0.82rem; border: 1px solid #fca5a5; border-radius: 4px; flex: 1; background: #fef2f2;">
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="form-grid" style="margin-top: 20px;">
+                        <!-- Associated Neurodevelopmental Conditions -->
+                        <div class="form-grid" style="margin-top: 16px;">
                             <div class="input-group">
-                                <label>38. Behaviour Disorder (e.g. Autism)</label>
+                                <label>Behaviour Disorder (e.g. Autism)</label>
                                 <select name="behaviour_disorder">
                                     <option value="">Select...</option>
                                     <option value="Absent">Absent</option>
@@ -928,50 +1005,60 @@
                                 </select>
                             </div>
                         </div>
+                    </div>
 
-                        <div class="form-grid" style="margin-top: 20px;">
+                    <!-- Objectives (From CHILD ASSESSMENT.docx) -->
+                    <div class="form-section">
+                        <h3>Objectives</h3>
+                        <div class="form-grid">
                             <div class="input-group full-width">
-                                <label>39. Schooling</label>
-                                <input type="text" name="schooling">
+                                <label>Previous reports from doctors</label>
+                                <textarea name="previous_doctor_reports" rows="3" placeholder="Summary of previous consultations, pediatric neurologist notes, orthopedic evaluations..."></textarea>
                             </div>
                             <div class="input-group full-width">
-                                <label>40. Medical history (Surgery, Medical treatment, Physiotherapy)</label>
-                                <textarea name="medical_history_dev" rows="2"></textarea>
+                                <label>Previous reports from imaging</label>
+                                <textarea name="previous_imaging_reports" rows="3" placeholder="MRI brain, CT scan, EEG, X-Rays, hip ultrasound findings..."></textarea>
                             </div>
                             <div class="input-group full-width">
-                                <label>41. Use of aids and appliances (CP chairs, wheel chairs, splints, etc.)</label>
-                                <textarea name="aids_appliances" rows="2"></textarea>
+                                <label>Previous therapies (Surgery, Physiotherapy, OT, Speech…)</label>
+                                <textarea name="previous_therapies" rows="3" placeholder="Details of surgeries, prior or ongoing physiotherapy, occupational therapy, speech therapy..."></textarea>
                             </div>
                             <div class="input-group full-width">
-                                <label>42. Diagnosis</label>
-                                <input type="text" name="dev_diagnosis">
+                                <label>Availability of aids and appliances (CP chairs, standing frame, wheel chairs, night splints, day splints, walking aids – walker, crutches, tripod crutches -)</label>
+                                <textarea name="available_aids_appliances" rows="3" placeholder="List existing assistive devices available to the child (CP chair, standing frame, wheel chairs, night/day splints, walker, crutches...)"></textarea>
                             </div>
                             <div class="input-group full-width">
-                                <label>43. Expectations of the parents</label>
-                                <input type="text" name="parent_expectations">
+                                <label>Expectations of the parents</label>
+                                <textarea name="parent_expectations" rows="3" placeholder="Parent expectations, goals for child's independence, ambulation, communication, schooling..."></textarea>
                             </div>
                             <div class="input-group full-width">
-                                <label>44. Treatment goal</label>
-                                <input type="text" name="treatment_goal">
+                                <label>Note on Previous interventions in CORC:</label>
+                                <textarea name="previous_corc_interventions" rows="3" placeholder="Record previous therapies received at CORC, response to treatment, attendance history..."></textarea>
                             </div>
-                            <div class="input-group full-width">
-                                <label>45. Treatment plan</label>
-                                <input type="text" name="treatment_plan">
+
+                            <!-- Optional Clinical Treatment Plan -->
+                            <div class="input-group">
+                                <label>Treatment Goal</label>
+                                <input type="text" name="treatment_goal" placeholder="Therapeutic goal (short-term / long-term)">
+                            </div>
+                            <div class="input-group">
+                                <label>Treatment Plan</label>
+                                <input type="text" name="treatment_plan" placeholder="Recommended multidisciplinary plan">
                             </div>
 
                             <div class="input-group">
                                 <label>Assessed By</label>
-                                <input type="text" name="assessed_by">
+                                <input type="text" name="assessed_by" placeholder="Name and designation of therapist / evaluator">
                             </div>
                             <div class="input-group">
                                 <label>Signature</label>
-                                <input type="text" name="signature">
+                                <input type="text" name="signature" placeholder="Signature / Digital sign">
                             </div>
                         </div>
                     </div>
 
                     <div class="form-actions">
-                        <button type="submit" class="btn-primary">Save Assessment</button>
+                        <button type="submit" class="btn-primary">💾 Save Child Assessment</button>
                     </div>
                 </form>
             </section>
