@@ -4086,18 +4086,68 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Modal Close Handlers
     document.getElementById('close-child-summary-modal')?.addEventListener('click', () => {
-        document.getElementById('child-summary-modal')?.classList.remove('show');
+        const csm = document.getElementById('child-summary-modal');
+        csm?.classList.remove('show');
+        csm?.classList.add('hidden');
         if (childSummaryOpenedFromMatrix) {
-            document.getElementById('all-summary-modal')?.classList.add('show');
+            const asm = document.getElementById('all-summary-modal');
+            asm?.classList.add('show');
+            asm?.classList.remove('hidden');
         }
     });
     document.getElementById('close-all-summary-modal')?.addEventListener('click', () => {
-        document.getElementById('all-summary-modal')?.classList.remove('show');
+        const asm = document.getElementById('all-summary-modal');
+        asm?.classList.remove('show');
+        asm?.classList.add('hidden');
         childSummaryOpenedFromMatrix = false;
     });
     document.getElementById('btn-back-to-matrix')?.addEventListener('click', () => {
-        document.getElementById('child-summary-modal')?.classList.remove('show');
-        document.getElementById('all-summary-modal')?.classList.add('show');
+        const csm = document.getElementById('child-summary-modal');
+        csm?.classList.remove('show');
+        csm?.classList.add('hidden');
+        const asm = document.getElementById('all-summary-modal');
+        asm?.classList.add('show');
+        asm?.classList.remove('hidden');
+    });
+
+    // View Switcher Tabs inside Child Summary Modal
+    document.getElementById('tab-child-summary-sheet')?.addEventListener('click', () => {
+        document.getElementById('tab-child-summary-sheet')?.classList.add('active');
+        document.getElementById('tab-child-summary-dossier')?.classList.remove('active');
+        const viewSheet = document.getElementById('child-summary-sheet-view');
+        const viewDossier = document.getElementById('child-summary-dossier-view');
+        if (viewSheet) {
+            viewSheet.classList.remove('hidden');
+            viewSheet.style.display = 'block';
+        }
+        if (viewDossier) {
+            viewDossier.classList.add('hidden');
+            viewDossier.style.display = 'none';
+        }
+    });
+
+    document.getElementById('tab-child-summary-dossier')?.addEventListener('click', () => {
+        document.getElementById('tab-child-summary-dossier')?.classList.add('active');
+        document.getElementById('tab-child-summary-sheet')?.classList.remove('active');
+        const viewSheet = document.getElementById('child-summary-sheet-view');
+        const viewDossier = document.getElementById('child-summary-dossier-view');
+        if (viewDossier) {
+            viewDossier.classList.remove('hidden');
+            viewDossier.style.display = 'flex';
+        }
+        if (viewSheet) {
+            viewSheet.classList.add('hidden');
+            viewSheet.style.display = 'none';
+        }
+    });
+
+    // Print Button in Child Summary Modal
+    document.getElementById('btn-print-child-summary-sheet')?.addEventListener('click', () => {
+        if (!currentSummaryChild) {
+            showToast('No child summary profile loaded', true);
+            return;
+        }
+        printChildSummarySheet(currentSummaryChild, currentSummaryAssessments);
     });
     window.addEventListener('click', (e) => {
         const csm = document.getElementById('child-summary-modal');
@@ -4115,7 +4165,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // ── Consolidated Multi-Disciplinary Assessment Summaries ────────────────
-    let currentMainSummaryView = 'cards'; // 'cards' | 'matrix'
+    let currentMainSummaryView = 'sheet'; // 'sheet' | 'cards' | 'matrix'
     let allCardsExpanded = false;
 
     // Helper: Clean label for key-value display
@@ -4337,8 +4387,770 @@ document.addEventListener('DOMContentLoaded', () => {
             progress: progressList,
             coreCount,
             totalCount: assessments.length,
-            workupStatus
+            workupStatus,
+            raw: {
+                rapid: rData,
+                dev: dData,
+                physio: pData,
+                speech: sData,
+                rapidAssessment: rapid,
+                devAssessment: dev,
+                physioAssessment: physio
+            }
         };
+    }
+
+    // Helper: Normalize and aggregate fields across all clinical assessments for the Germany Summary Sheet
+    function getSummaryFields(child, assessments = []) {
+        const s = extractAssessmentSummaries(child, assessments);
+        const rData = s.raw?.rapid || {};
+        const dData = s.raw?.dev || {};
+        const pData = s.raw?.physio || {};
+        const sData = s.raw?.speech || {};
+
+        const ageYears = extractChildAge(child);
+        const ageStr = ageYears ? `${ageYears} yrs` : (child.dob ? `DOB: ${child.dob}` : '—');
+        const assessmentDate = rData.assessment_date || dData.assessment_date || pData.assessment_date || s.rapid.date || s.dev.date || s.physio.date || new Date().toLocaleDateString('en-IN');
+        const slNo = child.admission_no || `#${child.id}`;
+
+        const cleanVal = (v, defaultVal = '—') => {
+            if (v === undefined || v === null || String(v).trim() === '') return defaultVal;
+            return String(v).trim();
+        };
+
+        return {
+            assessmentDate,
+            slNo,
+            name: cleanVal(child.name),
+            sex: cleanVal(child.sex),
+            dob: cleanVal(child.dob),
+            age: ageStr,
+            grade: cleanVal(child.grade || dData.grade || rData.grade),
+            address: cleanVal(child.address || dData.address || rData.address),
+
+            // Anthropometry
+            height: cleanVal(dData.height || rData.height),
+            weight: cleanVal(dData.weight || rData.weight),
+            bmi: cleanVal(dData.bmi || rData.bmi),
+            headCirc: cleanVal(dData.head_circ || dData.head_circumference || rData.head_circ),
+            chestCirc: cleanVal(dData.chest_circ || dData.chest_circumference || rData.chest_circ),
+            muacR: cleanVal(dData.muac_r),
+            muacL: cleanVal(dData.muac_l),
+
+            // Family History
+            consanguinity: cleanVal(dData.consanguinity || rData.consanguinity),
+            siblingsBrothers: cleanVal(dData.siblings_brothers || rData.siblings_brothers, '0'),
+            siblingsSisters: cleanVal(dData.siblings_sisters || rData.siblings_sisters, '0'),
+            siblingsTotal: cleanVal(dData.siblings_count || rData.siblings_count, '0'),
+            birthOrder: cleanVal(dData.birth_order || rData.birth_order),
+            pregnancies: cleanVal(dData.no_of_pregnancies || rData.no_of_pregnancies),
+            deliveries: cleanVal(dData.no_of_deliveries || rData.no_of_deliveries),
+            disabilityInFamily: cleanVal(dData.family_disability || rData.family_disability),
+
+            // Pre-natal
+            motherPregnancyHealth: cleanVal(dData.mother_pregnancy_health || rData.mother_health, 'Normal'),
+            rhIncompatibility: cleanVal(dData.rh_incompatibility || rData.rh_incompatibility, 'No'),
+            pregnancyInfections: cleanVal(dData.pregnancy_infections || rData.pregnancy_infections, 'None'),
+
+            // Peri-natal
+            deliveryType: cleanVal(dData.delivery_type || rData.delivery_type, 'Normal'),
+            deliveryPlace: cleanVal(dData.delivery_place || rData.delivery_place, 'Hospital'),
+            deliveryTerm: cleanVal(dData.delivery_term || rData.delivery_term, 'Full term'),
+            prematureMonth: cleanVal(dData.premature_month, ''),
+            birthCry: cleanVal(dData.birth_cry || rData.birth_cry, 'Cried'),
+            birthWeight: cleanVal(dData.birth_weight || rData.birth_weight, 'Normal'),
+            birthColour: cleanVal(dData.birth_colour || rData.birth_colour, 'Pink'),
+
+            // Post-natal
+            hospitalStayDays: cleanVal(dData.hospital_stay_days || rData.hospital_stay_days),
+            incubatorSupport: cleanVal(dData.incubator_support || rData.incubator_support, 'No'),
+            oxygenSupport: cleanVal(dData.oxygen_support || rData.oxygen_support, 'No'),
+            convulsions: cleanVal(dData.convulsions || rData.convulsions, 'No'),
+            majorSurgeries: cleanVal(dData.major_surgeries || rData.major_surgeries, 'None'),
+
+            // Known Diagnosis
+            knownCp: cleanVal(dData.known_cp || (rData.diagnosis?.includes('CP') ? 'Yes' : 'No'), 'No'),
+            knownGenetic: cleanVal(dData.known_genetic, 'No'),
+            knownUnknownDisease: cleanVal(dData.known_unknown_disease, 'No'),
+            diagnosis: cleanVal(rData.diagnosis || rData.observations || dData.dev_diagnosis || 'Provisional evaluation'),
+
+            // Cognitive Development
+            speechDelay: cleanVal(dData.cognitive_delay_speech || dData.speech_delay, 'Normal'),
+            schoolingDelay: cleanVal(dData.cognitive_delay_schooling, 'Regular'),
+            msSmile: cleanVal(dData.ms_social_smile, 'Normal'),
+            msBabbling: cleanVal(dData.ms_babbling, 'Normal'),
+            msEyeContact: cleanVal(dData.ms_eye_contact, 'Normal'),
+            msWords: cleanVal(dData.ms_words, 'Normal'),
+            msSentences: cleanVal(dData.ms_sentences, 'Normal'),
+
+            // Developmental Delay and Disability
+            visionImpairment: cleanVal(dData.vision_impairment, 'None'),
+            hearingImpairment: cleanVal(dData.hearing_impairment, 'None'),
+            neuromotorImpairment: cleanVal(dData.neuromotor_impairment, 'None'),
+
+            // Objectives
+            doctorReports: cleanVal(dData.doctor_reports || rData.doctor_reports, 'None'),
+            imagingReports: cleanVal(dData.imaging_reports || rData.imaging_reports, 'None'),
+            previousTherapies: cleanVal(dData.previous_therapies || pData.previous_therapies || rData.previous_therapies, 'None'),
+            parentExpectations: cleanVal(dData.parent_expectations || rData.parent_expectations, 'Improve functional independence'),
+
+            // Part 2: Physiotherapy Assessment
+            // Motor Milestones
+            msSitting: cleanVal(pData.gm_sit_support || pData.gm_sit_no_support || dData.ms_sitting, 'Normal'),
+            msCrawling: cleanVal(pData.gm_alt_crawling || dData.ms_crawling, 'Normal'),
+            msStanding: cleanVal(pData.gm_stand_support || pData.gm_stand_no_support || dData.ms_standing, 'Normal'),
+            msWalking: cleanVal(pData.gait_without_support || pData.gait_with_support || dData.ms_walking, 'Normal'),
+            useOfAids: cleanVal(pData.use_of_aids || pData.aids_used, 'None'),
+
+            // Visible Deformity (Right / Left)
+            knockKneesR: cleanVal(pData.knock_knees_right, 'No'), knockKneesL: cleanVal(pData.knock_knees_left, 'No'),
+            bowLegsR: cleanVal(pData.bow_legs_right, 'No'), bowLegsL: cleanVal(pData.bow_legs_left, 'No'),
+            flatFootR: cleanVal(pData.flat_foot_right, 'No'), flatFootL: cleanVal(pData.flat_foot_left, 'No'),
+            equinesR: cleanVal(pData.equines_right, 'No'), equinesL: cleanVal(pData.equines_left, 'No'),
+            elbowDefR: cleanVal(pData.elbow_def_right, 'No'), elbowDefL: cleanVal(pData.elbow_def_left, 'No'),
+            handDefR: cleanVal(pData.hand_def_right, 'No'), handDefL: cleanVal(pData.hand_def_left, 'No'),
+            deformityOthers: cleanVal(pData.deformity_others || pData.impairment_others, 'None'),
+
+            // Impairment of Body Structure
+            scoliosis: cleanVal(pData.scoliosis, 'No'),
+            kyphosis: cleanVal(pData.kyphosis, 'No'),
+            hyperLordosis: cleanVal(pData.hyper_lordosis, 'No'),
+            impairmentOthers: cleanVal(pData.impairment_others, 'None'),
+
+            // Gross Motor
+            gmHeadControl: cleanVal(pData.gm_head_control, 'Yes'),
+            gmSitSupport: cleanVal(pData.gm_sit_support, 'Yes'),
+            gmRolling: cleanVal(pData.gm_rolling, 'Yes'),
+            gmSitNoSupport: cleanVal(pData.gm_sit_no_support, 'Yes'),
+            gmAltCrawling: cleanVal(pData.gm_alt_crawling, 'Yes'),
+            gm4PointKneel: cleanVal(pData.gm_4_point_knell, 'Yes'),
+            gmBunnyHopping: cleanVal(pData.gm_bunny_hopping, 'Yes'),
+            gm2PointKneel: cleanVal(pData.gm_2_point_knell, 'Yes'),
+            gmHalfKneel: cleanVal(pData.gm_half_knell, 'Yes'),
+            gmStandNoSupport: cleanVal(pData.gm_stand_no_support, 'Yes'),
+            gmStandSupport: cleanVal(pData.gm_stand_support, 'Yes'),
+            gmStandTiptoes: cleanVal(pData.gm_stand_tiptoes, 'Yes'),
+            gmStandHeels: cleanVal(pData.gm_stand_heels, 'Yes'),
+            gmJumpOneLeg: cleanVal(pData.gm_jump_one_leg, 'Yes'),
+            gmStandOneLeg: cleanVal(pData.gm_stand_one_leg, 'Yes'),
+            gmJumpTwoLegs: cleanVal(pData.gm_jump_two_legs, 'Yes'),
+            gmStairSupport: cleanVal(pData.gm_stair_support, 'Yes'),
+            gmRunningRegular: cleanVal(pData.gm_regular || pData.gm_running, 'Yes'),
+            gmStairNoSupport: cleanVal(pData.gm_stair_no_support, 'Yes'),
+            gmRunningIssues: cleanVal(pData.gm_running_issues, 'None'),
+
+            // Transitions without support
+            trSupineProneSit: cleanVal(pData.tr_supine_prone_sit, 'Yes'),
+            trProneSupineRoll: cleanVal(pData.tr_prone_supine_roll, 'Yes'),
+            trSitSupport: cleanVal(pData.tr_sit_support, 'Yes'),
+            trSitNoSupport: cleanVal(pData.tr_sit_no_support, 'Yes'),
+            trSitStand: cleanVal(pData.tr_sit_stand, 'Yes'),
+            trStandSit: cleanVal(pData.tr_stand_sit, 'Yes'),
+            trCrawlKneelStand: cleanVal(pData.tr_crawl_kneel_stand, 'Yes'),
+            trStandKneelCrawl: cleanVal(pData.tr_stand_kneel_crawl, 'Yes'),
+            trQuadSideSit: cleanVal(pData.tr_quad_side_sit, 'Yes'),
+
+            // Gait Patterns
+            gaitWithoutSupport: cleanVal(pData.gait_without_support, 'Yes'),
+            gaitWithSupport: cleanVal(pData.gait_with_support, 'No'),
+            gaitNoWalk: cleanVal(pData.gait_no_walk, 'No'),
+            gaitPattern: cleanVal(pData.gait_pattern, 'Functional reciprocal gait pattern'),
+
+            // ROM Passive
+            romHipHorizR: cleanVal(pData.rom_hip_horiz_r, 'Normal'), romHipHorizL: cleanVal(pData.rom_hip_horiz_l, 'Normal'),
+            romHipVertR: cleanVal(pData.rom_hip_vert_r, 'Normal'), romHipVertL: cleanVal(pData.rom_hip_vert_l, 'Normal'),
+            romHipFlexR: cleanVal(pData.rom_hip_flex_r, 'Normal'), romHipFlexL: cleanVal(pData.rom_hip_flex_l, 'Normal'),
+            romHipRotR: cleanVal(pData.rom_hip_rot_r, 'Normal'), romHipRotL: cleanVal(pData.rom_hip_rot_l, 'Normal'),
+            romKneeFlexR: cleanVal(pData.rom_knee_flex_r, 'Normal'), romKneeFlexL: cleanVal(pData.rom_knee_flex_l, 'Normal'),
+            romAnkleBendR: cleanVal(pData.rom_ankle_bend_r, 'Normal'), romAnkleBendL: cleanVal(pData.rom_ankle_bend_l, 'Normal'),
+            romAnkleStrR: cleanVal(pData.rom_ankle_str_r, 'Normal'), romAnkleStrL: cleanVal(pData.rom_ankle_str_l, 'Normal'),
+            romElbowFlexR: cleanVal(pData.rom_elbow_flex_r, 'Normal'), romElbowFlexL: cleanVal(pData.rom_elbow_flex_l, 'Normal'),
+            romHandR: cleanVal(pData.rom_hand_r, 'Normal'), romHandL: cleanVal(pData.rom_hand_l, 'Normal'),
+
+            // Muscle Strength
+            strHipR: cleanVal(pData.strength_hip_r, '4/5'), strHipL: cleanVal(pData.strength_hip_l, '4/5'),
+            strKneeR: cleanVal(pData.strength_knee_r, '4/5'), strKneeL: cleanVal(pData.strength_knee_l, '4/5'),
+            strAnkleR: cleanVal(pData.strength_ankle_r, '4/5'), strAnkleL: cleanVal(pData.strength_ankle_l, '4/5'),
+            strShoulderR: cleanVal(pData.strength_shoulder_r, '4/5'), strShoulderL: cleanVal(pData.strength_shoulder_l, '4/5'),
+            strElbowR: cleanVal(pData.strength_elbow_r, '4/5'), strElbowL: cleanVal(pData.strength_elbow_l, '4/5'),
+            strWristR: cleanVal(pData.strength_wrist_r, '4/5'), strWristL: cleanVal(pData.strength_wrist_l, '4/5'),
+
+            // Neurological & Reflexes
+            muscleToneGeneral: cleanVal(pData.muscle_tone_general, 'Normal'),
+            clonus: cleanVal(pData.clonus, 'Absent'),
+            reflexPatellarR: cleanVal(pData.reflex_patellar_r, 'Normal'), reflexPatellarL: cleanVal(pData.reflex_patellar_l, 'Normal'),
+            reflexAchillesR: cleanVal(pData.reflex_achilles_r, 'Normal'), reflexAchillesL: cleanVal(pData.reflex_achilles_l, 'Normal'),
+            reflexBabinskiR: cleanVal(pData.reflex_babinski_r, 'Negative'), reflexBabinskiL: cleanVal(pData.reflex_babinski_l, 'Negative'),
+            limbLengthR: cleanVal(pData.limb_length_right || pData.reflex_limb_length_r, 'Equal'),
+            limbLengthL: cleanVal(pData.limb_length_left || pData.reflex_limb_length_l, 'Equal'),
+            coordinationMidline: cleanVal(pData.coordination_midline, 'Yes'),
+            fineMotorPinch: cleanVal(pData.fine_motor_pinch, 'Present'),
+            fineMotorSupination: cleanVal(pData.fine_motor_supination, 'Present'),
+
+            // Plan & Devices
+            physioOtherComments: cleanVal(pData.physio_other_comments, 'Child is cooperative with clinical assessment'),
+            physioTreatmentPlan: cleanVal(pData.physio_treatment_plan, 'Targeted motor retraining, gait conditioning and balance therapy'),
+            externalDevices: cleanVal(pData.external_devices || pData.use_of_aids, 'As indicated for positioning and gait support'),
+            furtherInvestigations: cleanVal(pData.further_investigations, 'German therapist / doctor consultation, periodic review')
+        };
+    }
+
+    // Helper: Escape HTML strings
+    function escapeHtml(str) {
+        if (str === null || str === undefined) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    // Helper: Render official Germany Team Child Summary Sheet format in HTML
+    function renderChildSummarySheetHtml(child, assessments = []) {
+        const f = getSummaryFields(child, assessments);
+
+        return `
+            <div class="summary-sheet-doc" id="summary-sheet-doc-printable">
+                <div class="summary-sheet-header">
+                    <span class="org-badge">CHITRA ORTHO & REHAB CLINIC (CORC)</span>
+                    <h2>EARLY INTERVENTION CENTRE FOR CHILDREN WITH CEREBRAL PALSY Mylaudy</h2>
+                    <div style="font-size: 1.18rem; font-weight: 800; color: #1e3a8a; margin: 4px 0 2px 0;">CHILD SUMMARY SHEET</div>
+                    <div class="sub-badge">Suggestions from Germany Team</div>
+                </div>
+
+                <!-- PART 1: INFORMATION SHEET & DEVELOPMENTAL HISTORY -->
+                <div class="summary-sheet-section-banner">
+                    <span>PART 1: INFORMATION SHEET & DEVELOPMENTAL HISTORY</span>
+                    <span style="font-size: 0.72rem; font-weight: 600; opacity: 0.95; background: rgba(255,255,255,0.15); padding: 2px 8px; border-radius: 4px;">Table 0 Format</span>
+                </div>
+
+                <table class="summary-sheet-table">
+                    <tr>
+                        <td class="label-col" style="width: 25%;">DATE OF ASSESSMENT</td>
+                        <td class="val-col" style="width: 25%; font-weight: 700; color: #1e40af;">${escapeHtml(f.assessmentDate)}</td>
+                        <td class="label-col" style="width: 25%;">SL.NO</td>
+                        <td class="val-col" style="width: 25%; font-weight: 700; color: #1e40af;">${escapeHtml(f.slNo)}</td>
+                    </tr>
+                    <tr>
+                        <th colspan="4" class="table-subhead">INFORMATION SHEET</th>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Name</td>
+                        <td class="val-col" style="font-weight: 700;">${escapeHtml(f.name)}</td>
+                        <td class="label-col">Sex</td>
+                        <td class="val-col">${escapeHtml(f.sex)}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Date of Birth</td>
+                        <td class="val-col">${escapeHtml(f.dob)}</td>
+                        <td class="label-col">Age / Grade</td>
+                        <td class="val-col">${escapeHtml(f.age)} / Grade: ${escapeHtml(f.grade)}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Address</td>
+                        <td colspan="3" class="val-col">${escapeHtml(f.address)}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Anthropometry</td>
+                        <td colspan="3" class="val-col">
+                            <strong>Height:</strong> ${escapeHtml(f.height)} cm &nbsp;|&nbsp;
+                            <strong>Weight:</strong> ${escapeHtml(f.weight)} kg &nbsp;|&nbsp;
+                            <strong>BMI:</strong> ${escapeHtml(f.bmi)} &nbsp;|&nbsp;
+                            <strong>Head Circ:</strong> ${escapeHtml(f.headCirc)} cm &nbsp;|&nbsp;
+                            <strong>Chest Circ:</strong> ${escapeHtml(f.chestCirc)} cm &nbsp;|&nbsp;
+                            <strong>MUAC:</strong> R: ${escapeHtml(f.muacR)}, L: ${escapeHtml(f.muacL)}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Consanguinity</td>
+                        <td colspan="3" class="val-col">${escapeHtml(f.consanguinity)}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Siblings</td>
+                        <td class="val-col">Brothers: ${escapeHtml(f.siblingsBrothers)} | Sisters: ${escapeHtml(f.siblingsSisters)} | Total: ${escapeHtml(f.siblingsTotal)}</td>
+                        <td class="label-col">Birth Order / Pregnancies</td>
+                        <td class="val-col">Order: ${escapeHtml(f.birthOrder)} | Pregnancies: ${escapeHtml(f.pregnancies)} | Deliveries: ${escapeHtml(f.deliveries)}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">History of disability in family</td>
+                        <td colspan="3" class="val-col">${escapeHtml(f.disabilityInFamily)}</td>
+                    </tr>
+
+                    <tr>
+                        <th colspan="4" class="table-subhead">PRE-NATAL HISTORY</th>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Health of mother during pregnancy</td>
+                        <td class="val-col">${escapeHtml(f.motherPregnancyHealth)}</td>
+                        <td class="label-col">RH incompatibility</td>
+                        <td class="val-col">${escapeHtml(f.rhIncompatibility)}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Any infectious disease</td>
+                        <td colspan="3" class="val-col">${escapeHtml(f.pregnancyInfections)}</td>
+                    </tr>
+
+                    <tr>
+                        <th colspan="4" class="table-subhead">PERI-NATAL HISTORY</th>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Type of delivery</td>
+                        <td class="val-col">${escapeHtml(f.deliveryType)}</td>
+                        <td class="label-col">Place of delivery</td>
+                        <td class="val-col">${escapeHtml(f.deliveryPlace)}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Term</td>
+                        <td class="val-col">${escapeHtml(f.deliveryTerm)} ${f.prematureMonth ? `(${escapeHtml(f.prematureMonth)})` : ''}</td>
+                        <td class="label-col">Birth cry</td>
+                        <td class="val-col">${escapeHtml(f.birthCry)}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Birth weight</td>
+                        <td class="val-col">${escapeHtml(f.birthWeight)}</td>
+                        <td class="label-col">Birth colour</td>
+                        <td class="val-col">${escapeHtml(f.birthColour)}</td>
+                    </tr>
+
+                    <tr>
+                        <th colspan="4" class="table-subhead">POST NATAL HISTORY</th>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Days stay in hospital</td>
+                        <td class="val-col">${escapeHtml(f.hospitalStayDays)}</td>
+                        <td class="label-col">Incubator support</td>
+                        <td class="val-col">${escapeHtml(f.incubatorSupport)}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Oxygens</td>
+                        <td class="val-col">${escapeHtml(f.oxygenSupport)}</td>
+                        <td class="label-col">Fits / convulsions</td>
+                        <td class="val-col">${escapeHtml(f.convulsions)}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Any major surgery</td>
+                        <td colspan="3" class="val-col">${escapeHtml(f.majorSurgeries)}</td>
+                    </tr>
+
+                    <tr>
+                        <th colspan="4" class="table-subhead">KNOWN DIAGNOSIS</th>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Cerebral Palsy</td>
+                        <td class="val-col">${escapeHtml(f.knownCp)}</td>
+                        <td class="label-col">Genetic disorder</td>
+                        <td class="val-col">${escapeHtml(f.knownGenetic)}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Unknown underlying disease</td>
+                        <td class="val-col">${escapeHtml(f.knownUnknownDisease)}</td>
+                        <td class="label-col">Clinical Diagnosis</td>
+                        <td class="val-col" style="font-weight: 700; color: #1e3a8a;">${escapeHtml(f.diagnosis)}</td>
+                    </tr>
+
+                    <tr>
+                        <th colspan="4" class="table-subhead">COGNITIVE DEVELOPMENT</th>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Cognitive Delay</td>
+                        <td colspan="3" class="val-col">Speech: ${escapeHtml(f.speechDelay)} &nbsp;|&nbsp; Schooling: ${escapeHtml(f.schoolingDelay)}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Social smile &lt; 3 m</td>
+                        <td class="val-col">${escapeHtml(f.msSmile)}</td>
+                        <td class="label-col">Babbling &lt; 5 m</td>
+                        <td class="val-col">${escapeHtml(f.msBabbling)}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Eye contact &lt; 3 m</td>
+                        <td class="val-col">${escapeHtml(f.msEyeContact)}</td>
+                        <td class="label-col">Words &lt; 12 m</td>
+                        <td class="val-col">${escapeHtml(f.msWords)}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Sentences &lt; 24 m</td>
+                        <td colspan="3" class="val-col">${escapeHtml(f.msSentences)}</td>
+                    </tr>
+
+                    <tr>
+                        <th colspan="4" class="table-subhead">DEVELOPMENTAL DELAY AND DISABILITY</th>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Vision Impairment</td>
+                        <td class="val-col">${escapeHtml(f.visionImpairment)}</td>
+                        <td class="label-col">Hearing impairment</td>
+                        <td class="val-col">${escapeHtml(f.hearingImpairment)}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Neuro-motor impairment</td>
+                        <td colspan="3" class="val-col">${escapeHtml(f.neuromotorImpairment)}</td>
+                    </tr>
+
+                    <tr>
+                        <th colspan="4" class="table-subhead">OBJECTIVES</th>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Previous reports from doctors</td>
+                        <td colspan="3" class="val-col">${escapeHtml(f.doctorReports)}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Previous reports from imaging</td>
+                        <td colspan="3" class="val-col">${escapeHtml(f.imagingReports)}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Previous therapies</td>
+                        <td colspan="3" class="val-col">${escapeHtml(f.previousTherapies)}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Expectations of the parents</td>
+                        <td colspan="3" class="val-col" style="color: #1e40af; font-weight: 600;">${escapeHtml(f.parentExpectations)}</td>
+                    </tr>
+                </table>
+
+                <!-- PART 2: PHYSIOTHERAPY ASSESSMENT & FUNCTIONAL EVALUATION -->
+                <div class="summary-sheet-section-banner" style="margin-top: 25px;">
+                    <span>PART 2: PHYSIOTHERAPY ASSESSMENT & FUNCTIONAL EVALUATION</span>
+                    <span style="font-size: 0.72rem; font-weight: 600; opacity: 0.95; background: rgba(255,255,255,0.15); padding: 2px 8px; border-radius: 4px;">Table 1 Format</span>
+                </div>
+
+                <table class="summary-sheet-table">
+                    <tr>
+                        <th colspan="4" class="table-subhead">MOTOR MILESTONES</th>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Sitting &lt; 8 months</td>
+                        <td class="val-col">${escapeHtml(f.msSitting)}</td>
+                        <td class="label-col">Crawling &lt; 10 m</td>
+                        <td class="val-col">${escapeHtml(f.msCrawling)}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Standing &lt; 14 m</td>
+                        <td class="val-col">${escapeHtml(f.msStanding)}</td>
+                        <td class="label-col">Walking &lt; 18 m</td>
+                        <td class="val-col">${escapeHtml(f.msWalking)}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Use of aids</td>
+                        <td colspan="3" class="val-col">${escapeHtml(f.useOfAids)}</td>
+                    </tr>
+
+                    <tr>
+                        <th colspan="4" class="table-subhead">VISIBLE DEFORMITY</th>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Knock knees</td>
+                        <td class="val-col">Rt: ${escapeHtml(f.knockKneesR)} | Lt: ${escapeHtml(f.knockKneesL)}</td>
+                        <td class="label-col">Bow legs</td>
+                        <td class="val-col">Rt: ${escapeHtml(f.bowLegsR)} | Lt: ${escapeHtml(f.bowLegsL)}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Flat foot</td>
+                        <td class="val-col">Rt: ${escapeHtml(f.flatFootR)} | Lt: ${escapeHtml(f.flatFootL)}</td>
+                        <td class="label-col">Equines</td>
+                        <td class="val-col">Rt: ${escapeHtml(f.equinesR)} | Lt: ${escapeHtml(f.equinesL)}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Elbow deformity</td>
+                        <td class="val-col">Rt: ${escapeHtml(f.elbowDefR)} | Lt: ${escapeHtml(f.elbowDefL)}</td>
+                        <td class="label-col">Hand deformity</td>
+                        <td class="val-col">Rt: ${escapeHtml(f.handDefR)} | Lt: ${escapeHtml(f.handDefL)}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Others</td>
+                        <td colspan="3" class="val-col">${escapeHtml(f.deformityOthers)}</td>
+                    </tr>
+
+                    <tr>
+                        <th colspan="4" class="table-subhead">IMPAIRMENT OF BODY STRUCTURE</th>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Scoliosis</td>
+                        <td class="val-col">${escapeHtml(f.scoliosis)}</td>
+                        <td class="label-col">Kyphosis</td>
+                        <td class="val-col">${escapeHtml(f.kyphosis)}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Hyper lordosis</td>
+                        <td class="val-col">${escapeHtml(f.hyperLordosis)}</td>
+                        <td class="label-col">Others</td>
+                        <td class="val-col">${escapeHtml(f.impairmentOthers)}</td>
+                    </tr>
+
+                    <tr>
+                        <th colspan="4" class="table-subhead">GROSS MOTOR</th>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Head control</td>
+                        <td class="val-col">${escapeHtml(f.gmHeadControl)}</td>
+                        <td class="label-col">Sitting with support</td>
+                        <td class="val-col">${escapeHtml(f.gmSitSupport)}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Rolling</td>
+                        <td class="val-col">${escapeHtml(f.gmRolling)}</td>
+                        <td class="label-col">Sitting without support</td>
+                        <td class="val-col">${escapeHtml(f.gmSitNoSupport)}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Alternating crawling</td>
+                        <td class="val-col">${escapeHtml(f.gmAltCrawling)}</td>
+                        <td class="label-col">4 point kneeling</td>
+                        <td class="val-col">${escapeHtml(f.gm4PointKneel)}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Bunny hopping</td>
+                        <td class="val-col">${escapeHtml(f.gmBunnyHopping)}</td>
+                        <td class="label-col">2 point kneeling</td>
+                        <td class="val-col">${escapeHtml(f.gm2PointKneel)}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Half kneeling</td>
+                        <td class="val-col">${escapeHtml(f.gmHalfKneel)}</td>
+                        <td class="label-col">Standing without support</td>
+                        <td class="val-col">${escapeHtml(f.gmStandNoSupport)}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Standing with support</td>
+                        <td class="val-col">${escapeHtml(f.gmStandSupport)}</td>
+                        <td class="label-col">Standing on tip toes</td>
+                        <td class="val-col">${escapeHtml(f.gmStandTiptoes)}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Standing on heels</td>
+                        <td class="val-col">${escapeHtml(f.gmStandHeels)}</td>
+                        <td class="label-col">Jumping on one leg</td>
+                        <td class="val-col">${escapeHtml(f.gmJumpOneLeg)}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Standing on one leg</td>
+                        <td class="val-col">${escapeHtml(f.gmStandOneLeg)}</td>
+                        <td class="label-col">Jumping on two legs</td>
+                        <td class="val-col">${escapeHtml(f.gmJumpTwoLegs)}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Stair climbing with support</td>
+                        <td class="val-col">${escapeHtml(f.gmStairSupport)}</td>
+                        <td class="label-col">Running regular</td>
+                        <td class="val-col">${escapeHtml(f.gmRunningRegular)}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Stair climbing without support</td>
+                        <td class="val-col">${escapeHtml(f.gmStairNoSupport)}</td>
+                        <td class="label-col">Running Issues</td>
+                        <td class="val-col">${escapeHtml(f.gmRunningIssues)}</td>
+                    </tr>
+
+                    <tr>
+                        <th colspan="4" class="table-subhead">TRANSITION WITHOUT SUPPORT</th>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Supine - prone - sitting</td>
+                        <td class="val-col">${escapeHtml(f.trSupineProneSit)}</td>
+                        <td class="label-col">Prone - supine - rolling</td>
+                        <td class="val-col">${escapeHtml(f.trProneSupineRoll)}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Sitting with support</td>
+                        <td class="val-col">${escapeHtml(f.trSitSupport)}</td>
+                        <td class="label-col">Sitting without support</td>
+                        <td class="val-col">${escapeHtml(f.trSitNoSupport)}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Sitting - Standing</td>
+                        <td class="val-col">${escapeHtml(f.trSitStand)}</td>
+                        <td class="label-col">Standing - Sitting</td>
+                        <td class="val-col">${escapeHtml(f.trStandSit)}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Crawling - Kneeling - Half kneeling - Standing</td>
+                        <td class="val-col">${escapeHtml(f.trCrawlKneelStand)}</td>
+                        <td class="label-col">Standing - Half kneeling - Kneeling - Crawling</td>
+                        <td class="val-col">${escapeHtml(f.trStandKneelCrawl)}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Quadruped - side sitting</td>
+                        <td colspan="3" class="val-col">${escapeHtml(f.trQuadSideSit)}</td>
+                    </tr>
+
+                    <tr>
+                        <th colspan="4" class="table-subhead">GAIT PATTERNS</th>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Without support</td>
+                        <td class="val-col">${escapeHtml(f.gaitWithoutSupport)}</td>
+                        <td class="label-col">With support</td>
+                        <td class="val-col">${escapeHtml(f.gaitWithSupport)}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">No walk</td>
+                        <td colspan="3" class="val-col">${escapeHtml(f.gaitNoWalk)}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Gait pattern details</td>
+                        <td colspan="3" class="val-col">${escapeHtml(f.gaitPattern)}</td>
+                    </tr>
+
+                    <tr>
+                        <th colspan="4" class="table-subhead">JOINT RANGE OF MOTION (ROM) PASSIVE & ACTIVE</th>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Hip ROM (Passive)</td>
+                        <td colspan="3" class="val-col">
+                            Horiz. abd/add: Rt (${escapeHtml(f.romHipHorizR)}) Lt (${escapeHtml(f.romHipHorizL)}) &nbsp;|&nbsp;
+                            Vert. abd/add: Rt (${escapeHtml(f.romHipVertR)}) Lt (${escapeHtml(f.romHipVertL)}) &nbsp;|&nbsp;
+                            Flex/Ext: Rt (${escapeHtml(f.romHipFlexR)}) Lt (${escapeHtml(f.romHipFlexL)}) &nbsp;|&nbsp;
+                            Rotation: Rt (${escapeHtml(f.romHipRotR)}) Lt (${escapeHtml(f.romHipRotL)})
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Knee & Ankle ROM</td>
+                        <td colspan="3" class="val-col">
+                            Knee Flex/Ext: Rt (${escapeHtml(f.romKneeFlexR)}) Lt (${escapeHtml(f.romKneeFlexL)}) &nbsp;|&nbsp;
+                            Ankle (Bended): Rt (${escapeHtml(f.romAnkleBendR)}) Lt (${escapeHtml(f.romAnkleBendL)}) &nbsp;|&nbsp;
+                            Ankle (Straight): Rt (${escapeHtml(f.romAnkleStrR)}) Lt (${escapeHtml(f.romAnkleStrL)})
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Upper Limb ROM</td>
+                        <td colspan="3" class="val-col">
+                            Elbow Flex/Ext: Rt (${escapeHtml(f.romElbowFlexR)}) Lt (${escapeHtml(f.romElbowFlexL)}) &nbsp;|&nbsp;
+                            Hand/Wrist: Rt (${escapeHtml(f.romHandR)}) Lt (${escapeHtml(f.romHandL)})
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th colspan="4" class="table-subhead">MUSCLE STRENGTH (1/5 - 5/5)</th>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Hip / Knee / Ankle</td>
+                        <td colspan="3" class="val-col">
+                            Hip: Rt (${escapeHtml(f.strHipR)}) Lt (${escapeHtml(f.strHipL)}) &nbsp;|&nbsp;
+                            Knee: Rt (${escapeHtml(f.strKneeR)}) Lt (${escapeHtml(f.strKneeL)}) &nbsp;|&nbsp;
+                            Ankle: Rt (${escapeHtml(f.strAnkleR)}) Lt (${escapeHtml(f.strAnkleL)})
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Shoulder / Elbow / Wrist</td>
+                        <td colspan="3" class="val-col">
+                            Shoulder: Rt (${escapeHtml(f.strShoulderR)}) Lt (${escapeHtml(f.strShoulderL)}) &nbsp;|&nbsp;
+                            Elbow: Rt (${escapeHtml(f.strElbowR)}) Lt (${escapeHtml(f.strElbowL)}) &nbsp;|&nbsp;
+                            Wrist & Fingers: Rt (${escapeHtml(f.strWristR)}) Lt (${escapeHtml(f.strWristL)})
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <th colspan="4" class="table-subhead">NEUROLOGICAL & REFLEXES</th>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Muscle tone in general</td>
+                        <td class="val-col">${escapeHtml(f.muscleToneGeneral)}</td>
+                        <td class="label-col">Clonus</td>
+                        <td class="val-col">${escapeHtml(f.clonus)}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Patellar reflex</td>
+                        <td class="val-col">Rt: ${escapeHtml(f.reflexPatellarR)} | Lt: ${escapeHtml(f.reflexPatellarL)}</td>
+                        <td class="label-col">Achilles reflex</td>
+                        <td class="val-col">Rt: ${escapeHtml(f.reflexAchillesR)} | Lt: ${escapeHtml(f.reflexAchillesL)}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Babinski reflex</td>
+                        <td class="val-col">Rt: ${escapeHtml(f.reflexBabinskiR)} | Lt: ${escapeHtml(f.reflexBabinskiL)}</td>
+                        <td class="label-col">Limb length measurement</td>
+                        <td class="val-col">Rt: ${escapeHtml(f.limbLengthR)} | Lt: ${escapeHtml(f.limbLengthL)}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Co-ordination</td>
+                        <td class="val-col">Able to cross midline: ${escapeHtml(f.coordinationMidline)}</td>
+                        <td class="label-col">Fine Motor Assessment</td>
+                        <td class="val-col">Pinch: ${escapeHtml(f.fineMotorPinch)} | Pro/supination: ${escapeHtml(f.fineMotorSupination)}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Other comments</td>
+                        <td colspan="3" class="val-col">${escapeHtml(f.physioOtherComments)}</td>
+                    </tr>
+
+                    <tr>
+                        <th colspan="4" class="table-subhead">TREATMENT PLAN</th>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Targeted Treatment Plan</td>
+                        <td colspan="3" class="val-col" style="font-weight: 600; color: #1e3a8a;">${escapeHtml(f.physioTreatmentPlan)}</td>
+                    </tr>
+
+                    <tr>
+                        <th colspan="4" class="table-subhead">EXTERNAL DEVICES</th>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Splints / CP Chair / Wheelchair / Walker</td>
+                        <td colspan="3" class="val-col">${escapeHtml(f.externalDevices)}</td>
+                    </tr>
+
+                    <tr>
+                        <th colspan="4" class="table-subhead">FURTHER INVESTIGATIONS NEEDED</th>
+                    </tr>
+                    <tr>
+                        <td class="label-col">(Sree Chitra, General pediatrician, German therapist, German doctors)</td>
+                        <td colspan="3" class="val-col" style="font-weight: 600; color: #0f172a;">${escapeHtml(f.furtherInvestigations)}</td>
+                    </tr>
+                </table>
+            </div>
+        `;
+    }
+
+    // Helper: Print Child Summary Sheet directly
+    function printChildSummarySheet(child, assessments = []) {
+        if (!child) return;
+        const sheetHtml = renderChildSummarySheetHtml(child, assessments);
+        const printWin = window.open('', '_blank', 'width=950,height=850');
+        if (!printWin) {
+            window.print();
+            return;
+        }
+
+        printWin.document.write(`<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Child Summary Sheet - ${escapeHtml(child.name || 'Patient')}</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        body {
+            background: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: #0f172a;
+            padding: 12px;
+            margin: 0;
+        }
+        .summary-sheet-doc {
+            box-shadow: none !important;
+            border: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+        @media print {
+            body { padding: 0; }
+            @page {
+                size: A4 portrait;
+                margin: 10mm;
+            }
+        }
+    </style>
+</head>
+<body>
+    ${sheetHtml}
+    <script>
+        window.onload = function() {
+            setTimeout(function() {
+                window.focus();
+                window.print();
+            }, 300);
+        };
+    </script>
+</body>
+</html>`);
+        printWin.document.close();
     }
 
     // Helper: Build the complete Multi-Disciplinary Dossier HTML for a child (all forms together!)
@@ -4914,8 +5726,34 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
         }
 
-        // Render Cards View
+        const sheetsContainer = document.getElementById('summary-sheets-container');
+        const btnToggleAllCards = document.getElementById('btn-toggle-all-cards');
+
+        // Apply container visibility based on currentMainSummaryView
+        if (sheetsContainer) {
+            sheetsContainer.style.display = currentMainSummaryView === 'sheet' ? 'flex' : 'none';
+        }
+        if (cardsContainer) {
+            cardsContainer.style.display = currentMainSummaryView === 'cards' ? 'flex' : 'none';
+        }
+        const matrixContainer = document.getElementById('summary-matrix-container');
+        if (matrixContainer) {
+            matrixContainer.style.display = currentMainSummaryView === 'matrix' ? 'block' : 'none';
+        }
+        if (btnToggleAllCards) {
+            btnToggleAllCards.style.display = currentMainSummaryView === 'cards' ? 'inline-flex' : 'none';
+        }
+
         if (!list.length) {
+            if (sheetsContainer) {
+                sheetsContainer.innerHTML = `
+                    <div style="text-align: center; padding: 45px 20px; background: white; border-radius: 8px; border: 1px dashed #cbd5e1;">
+                        <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">📭</span>
+                        <strong style="color: #334155; font-size: 1.05rem;">No child profiles match current search or filters.</strong>
+                        <p style="color: #64748b; font-size: 0.85rem; margin-top: 4px;">Try adjusting the status or age filters above.</p>
+                    </div>
+                `;
+            }
             cardsContainer.innerHTML = `
                 <div style="text-align: center; padding: 45px 20px; background: white; border-radius: 8px; border: 1px dashed #cbd5e1;">
                     <span style="font-size: 2.5rem; display: block; margin-bottom: 8px;">📭</span>
@@ -4925,6 +5763,53 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
             matrixTbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 30px; color: var(--text-light);">No matching children found.</td></tr>';
             return;
+        }
+
+        // Render Germany Summary Sheets
+        if (sheetsContainer) {
+            sheetsContainer.innerHTML = list.map(c => `
+                <div style="background: white; border-radius: 8px; border: 1px solid #cbd5e1; padding: 18px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #e2e8f0; flex-wrap: wrap; gap: 8px;">
+                        <div style="font-weight: 700; color: #1e3a8a; font-size: 1.05rem;">
+                            ${c.name} ${c.admission_no ? `<span style="font-size: 0.82rem; color: #0284c7; background: #e0f2fe; padding: 2px 8px; border-radius: 4px; margin-left: 6px;">Adm: ${c.admission_no}</span>` : ''}
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button type="button" class="btn-main-sheet-print btn-secondary btn-sm" data-child-id="${c.id}" style="display: flex; align-items: center; gap: 4px; font-weight: 600;">
+                                🖨️ Print Sheet
+                            </button>
+                            <button type="button" class="btn-main-sheet-pdf btn-primary btn-sm" data-child-id="${c.id}" style="display: flex; align-items: center; gap: 4px; font-weight: 600;">
+                                📄 Export PDF
+                            </button>
+                            <button type="button" class="btn-main-sheet-details btn-secondary btn-sm" data-child-id="${c.id}" style="display: flex; align-items: center; gap: 4px; font-weight: 600; color: #1e40af; border-color: #bfdbfe;">
+                                📋 Full Dossier
+                            </button>
+                        </div>
+                    </div>
+                    ${renderChildSummarySheetHtml(c, c.assessments || [])}
+                </div>
+            `).join('');
+
+            sheetsContainer.querySelectorAll('.btn-main-sheet-print').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const cid = btn.getAttribute('data-child-id');
+                    const ch = allSummaryChildrenList.find(x => String(x.id) === String(cid));
+                    if (ch) printChildSummarySheet(ch, ch.assessments || []);
+                });
+            });
+            sheetsContainer.querySelectorAll('.btn-main-sheet-pdf').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const cid = btn.getAttribute('data-child-id');
+                    const ch = allSummaryChildrenList.find(x => String(x.id) === String(cid));
+                    if (ch) generateChildSummaryPdf(ch, ch.assessments || []);
+                });
+            });
+            sheetsContainer.querySelectorAll('.btn-main-sheet-details').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const cid = btn.getAttribute('data-child-id');
+                    const ch = allSummaryChildrenList.find(x => String(x.id) === String(cid));
+                    if (ch) openChildSummaryModal(ch);
+                });
+            });
         }
 
         cardsContainer.innerHTML = list.map(c => renderChildConsolidatedCardHtml(c, c.assessments || [])).join('');
@@ -5041,6 +5926,7 @@ document.addEventListener('DOMContentLoaded', () => {
         domainsEl.innerHTML = '';
         detailsEl.innerHTML = '';
         modal.classList.add('show');
+        modal.classList.remove('hidden');
 
         try {
             const res = await fetch(`/api/children/${child.id}`);
@@ -5061,6 +5947,27 @@ document.addEventListener('DOMContentLoaded', () => {
             currentSummaryAssessments = assessments;
 
             const summary = extractAssessmentSummaries(childData, assessments);
+
+            // 0. Render Germany Official Summary Sheet by default
+            const sheetContainer = document.getElementById('child-summary-sheet-container');
+            if (sheetContainer) {
+                sheetContainer.innerHTML = renderChildSummarySheetHtml(childData, assessments);
+            }
+
+            // Ensure tab 1 (Summary Sheet) is active by default
+            const tabSheet = document.getElementById('tab-child-summary-sheet');
+            const tabDossier = document.getElementById('tab-child-summary-dossier');
+            const viewSheet = document.getElementById('child-summary-sheet-view');
+            const viewDossier = document.getElementById('child-summary-dossier-view');
+
+            if (tabSheet && tabDossier && viewSheet && viewDossier) {
+                tabSheet.classList.add('active');
+                tabDossier.classList.remove('active');
+                viewSheet.classList.remove('hidden');
+                viewSheet.style.display = 'block';
+                viewDossier.classList.add('hidden');
+                viewDossier.style.display = 'none';
+            }
 
             // 1. Render Top KPI Badges
             kpisEl.innerHTML = `
@@ -5149,6 +6056,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (tbody) tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 25px; color: var(--text-light);">Loading center assessment records...</td></tr>';
         if (kpisEl) kpisEl.innerHTML = '';
         modal.classList.add('show');
+        modal.classList.remove('hidden');
 
         try {
             const res = await fetch('/api/children');
@@ -5250,7 +6158,84 @@ document.addEventListener('DOMContentLoaded', () => {
             };
 
             if (searchInput) searchInput.oninput = handleFilterChange;
-            if (filterSelect) filterSelect.onchange = handleFilterChange;
+            // Wire Tabs in All Summary Modal
+            const tabMatrix = document.getElementById('tab-all-summary-matrix');
+            const tabSheets = document.getElementById('tab-all-summary-sheets');
+            const viewMatrix = document.getElementById('all-summary-matrix-view');
+            const viewSheets = document.getElementById('all-summary-sheets-view');
+            const childPicker = document.getElementById('all-summary-child-picker');
+            const sheetRender = document.getElementById('all-summary-sheet-render');
+            let activeSheetChild = null;
+
+            const updateActiveSheet = async (child) => {
+                if (!child || !sheetRender) return;
+                activeSheetChild = child;
+                sheetRender.innerHTML = '<div style="text-align: center; padding: 25px; color: var(--text-light);">Loading child assessment sheet...</div>';
+                try {
+                    let fullChild = child;
+                    const res = await fetch(`/api/children/${child.id}`);
+                    if (res.ok) fullChild = await res.json();
+                    activeSheetChild = fullChild;
+                    sheetRender.innerHTML = renderChildSummarySheetHtml(fullChild, fullChild.assessments || []);
+                } catch (e) {
+                    sheetRender.innerHTML = renderChildSummarySheetHtml(child, child.assessments || []);
+                }
+            };
+
+            if (tabMatrix && tabSheets && viewMatrix && viewSheets) {
+                tabMatrix.onclick = () => {
+                    tabMatrix.classList.add('active');
+                    tabSheets.classList.remove('active');
+                    viewMatrix.classList.remove('hidden');
+                    viewMatrix.style.display = 'block';
+                    viewSheets.classList.add('hidden');
+                    viewSheets.style.display = 'none';
+                };
+
+                tabSheets.onclick = () => {
+                    tabSheets.classList.add('active');
+                    tabMatrix.classList.remove('active');
+                    viewSheets.classList.remove('hidden');
+                    viewSheets.style.display = 'block';
+                    viewMatrix.classList.add('hidden');
+                    viewMatrix.style.display = 'none';
+
+                    if (childPicker) {
+                        childPicker.innerHTML = allSummaryChildrenList.map(c => 
+                            `<option value="${c.id}">${c.name} (${c.admission_no || '#' + c.id})</option>`
+                        ).join('');
+
+                        if (allSummaryChildrenList.length > 0) {
+                            childPicker.value = allSummaryChildrenList[0].id;
+                            updateActiveSheet(allSummaryChildrenList[0]);
+                        } else {
+                            sheetRender.innerHTML = '<div style="text-align: center; padding: 30px; color: #64748b;">No children records available.</div>';
+                        }
+
+                        childPicker.onchange = () => {
+                            const selectedId = childPicker.value;
+                            const found = allSummaryChildrenList.find(c => String(c.id) === String(selectedId));
+                            if (found) updateActiveSheet(found);
+                        };
+                    }
+                };
+            }
+
+            document.getElementById('btn-print-active-sheet')?.addEventListener('click', () => {
+                if (activeSheetChild) {
+                    printChildSummarySheet(activeSheetChild, activeSheetChild.assessments || []);
+                } else if (allSummaryChildrenList.length > 0) {
+                    printChildSummarySheet(allSummaryChildrenList[0], allSummaryChildrenList[0].assessments || []);
+                }
+            });
+
+            document.getElementById('btn-pdf-active-sheet')?.addEventListener('click', () => {
+                if (activeSheetChild) {
+                    generateChildSummaryPdf(activeSheetChild, activeSheetChild.assessments || []);
+                } else if (allSummaryChildrenList.length > 0) {
+                    generateChildSummaryPdf(allSummaryChildrenList[0], allSummaryChildrenList[0].assessments || []);
+                }
+            });
 
             // Modal Export handlers
             const btnPdf = document.getElementById('btn-export-all-summary-pdf');
@@ -5332,7 +6317,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // ── Generate Comprehensive Child Summary PDF (All Forms Together!) ───────
+    // ── Generate Official Germany Summary Sheet PDF (Table 0 & Table 1 Format) ─────
     function generateChildSummaryPdf(child, assessments = []) {
         if (!window.jspdf || !window.jspdf.jsPDF) {
             showToast('PDF generator is initializing, please try again in a moment', true);
@@ -5343,178 +6328,508 @@ document.addEventListener('DOMContentLoaded', () => {
             const doc = new window.jspdf.jsPDF('portrait', 'mm', 'a4');
             const pageWidth = doc.internal.pageSize.getWidth();
             const pageHeight = doc.internal.pageSize.getHeight();
-            const margin = 14;
+            const margin = 12;
 
             // Brand Header Banner
             doc.setFillColor(30, 58, 138); // Deep Navy
-            doc.rect(margin, 10, pageWidth - (margin * 2), 2.5, 'F');
+            doc.rect(margin, 8, pageWidth - (margin * 2), 2, 'F');
 
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(14);
+            doc.setFontSize(10.5);
             doc.setTextColor(30, 58, 138);
-            doc.text('CHITRA ORTHO & REHAB CLINIC', pageWidth / 2, 17, { align: 'center' });
+            doc.text('EARLY INTERVENTION CENTRE FOR CHILDREN WITH CEREBRAL PALSY Mylaudy', pageWidth / 2, 14, { align: 'center' });
 
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(8.5);
-            doc.setTextColor(71, 85, 105);
-            doc.text('CHILD DEVELOPMENT & EARLY INTERVENTION CENTRE', pageWidth / 2, 21.5, { align: 'center' });
-            doc.setFontSize(7.5);
-            doc.text('Comprehensive Multi-Disciplinary Clinical Assessment Dossier', pageWidth / 2, 25.5, { align: 'center' });
-
-            // Child Demographics Table
-            const ageYears = extractChildAge(child);
-            const ageStr = ageYears ? `${ageYears} yrs` : (child.dob ? `DOB: ${child.dob}` : 'N/A');
-            const summaryDate = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-            const summary = extractAssessmentSummaries(child, assessments);
-
-            doc.autoTable({
-                startY: 29,
-                head: [['PATIENT CLINICAL SUMMARY RECORD', '']],
-                body: [
-                    ['Child Name:', child.name || 'N/A', 'Admission No:', child.admission_no || 'N/A'],
-                    ['Patient ID:', '#' + (child.id || '-'), 'Date of Birth:', child.dob || 'Not specified'],
-                    ['Age / Sex:', `${ageStr} / ${child.sex || '-'}`, 'Contact Phone:', child.mobile || 'None'],
-                    ['Dossier Generated:', summaryDate, 'Workup Status:', summary.coreCount === 4 ? 'Complete Multi-Disciplinary Workup (4/4)' : `${summary.coreCount}/4 Disciplines Completed`]
-                ],
-                theme: 'plain',
-                styles: { fontSize: 8, cellPadding: 2, textColor: [30, 41, 59] },
-                headStyles: {
-                    fillColor: [241, 245, 249],
-                    textColor: [30, 58, 138],
-                    fontStyle: 'bold',
-                    fontSize: 8.5
-                },
-                columnStyles: {
-                    0: { fontStyle: 'bold', width: 32 },
-                    1: { width: 58 },
-                    2: { fontStyle: 'bold', width: 34 },
-                    3: { width: 58 }
-                },
-                margin: { left: margin, right: margin }
-            });
-
-            // Executive Assessment Matrix Table
-            const matrixRows = [
-                ['1', 'Consultation Form', summary.rapid.exists ? summary.rapid.date : '-', summary.rapid.exists ? (summary.rapid.observations || summary.rapid.diagnosis) : 'Pending assessment', summary.rapid.exists ? 'Completed' : 'Pending'],
-                ['2', 'Child Development', summary.dev.exists ? summary.dev.date : '-', summary.dev.exists ? summary.dev.diagnosis : 'Pending assessment', summary.dev.exists ? 'Completed' : 'Pending'],
-                ['3', 'Physiotherapy', summary.physio.exists ? summary.physio.date : '-', summary.physio.exists ? summary.physio.diagnosis : 'Pending assessment', summary.physio.exists ? 'Completed' : 'Pending'],
-                ['4', 'Speech Assessment', summary.speech.exists ? summary.speech.date : '-', summary.speech.exists ? summary.speech.diagnosis : 'Pending assessment', summary.speech.exists ? 'Completed' : 'Pending'],
-                ['5', 'Quarterly Progress Reviews', summary.progress.length ? `${summary.progress.length} Review(s)` : '-', summary.progress.length ? summary.progress[0].achievement : 'No reviews recorded', summary.progress.length ? 'Completed' : 'Pending']
-            ];
-
-            doc.autoTable({
-                startY: doc.lastAutoTable.finalY + 4,
-                head: [['#', 'Assessment Discipline', 'Date', 'Primary Clinical Finding / Impression', 'Status']],
-                body: matrixRows,
-                theme: 'striped',
-                styles: { fontSize: 7.5, cellPadding: 2.2, textColor: [30, 41, 59] },
-                headStyles: { fillColor: [37, 99, 235], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
-                columnStyles: {
-                    0: { width: 10, halign: 'center' },
-                    1: { width: 45, fontStyle: 'bold' },
-                    2: { width: 25 },
-                    3: { width: 82 },
-                    4: { width: 20, halign: 'center' }
-                },
-                margin: { left: margin, right: margin }
-            });
-
-            // Detailed Findings Breakdown Table across ALL 5 forms
-            const domainFindings = [];
-
-            if (summary.rapid.exists) {
-                const r = summary.rapid;
-                let teamStr = r.teamObservations.map(t => `${t.role}: ${t.obs || ''} (Sug: ${t.sug || '-'})`).join('\n');
-                domainFindings.push([
-                    '1. Consultation Form\n(' + r.date + ')',
-                    `Diagnosis: ${r.diagnosis}\nSymptoms: ${r.symptoms}\nBirth History: ${r.birth_history} | Med: ${r.medical_history}\n${teamStr ? 'Team Observations:\n' + teamStr + '\n' : ''}Finalized By: ${r.finalized_by}`
-                ]);
-            }
-
-            if (summary.dev.exists) {
-                const d = summary.dev;
-                const msStr = d.milestones && d.milestones.length ? `\nMilestones (0-2y): ${d.milestones.join(', ')}` : '';
-                domainFindings.push([
-                    '2. Child Development\n(' + d.date + ')',
-                    `Developmental Impression: ${d.diagnosis}\nChief Complaints: ${d.chief_complaints} (Informant: ${d.informant})\nPerinatal: ${d.delivery}\nIdentified Delays: ${d.delays.join(', ') || 'None stated'}\nConditions: ${d.conditions.join(', ') || 'None noted'}${msStr}\nGoals & Plan: ${d.goals || 'Targeted early intervention'}`
-                ]);
-            }
-
-            if (summary.physio.exists) {
-                const p = summary.physio;
-                domainFindings.push([
-                    '3. Physiotherapy\n(' + p.date + ')',
-                    `Diagnosis: ${p.diagnosis}\nGait & Mobility: ${p.gait}\nMuscle Tone & Clonus: Tone: ${p.tone} | Clonus: ${p.clonus}\nDeformities: ${p.deformities.join(', ') || 'None visible'}\nMilestones: ${p.milestones.join(', ') || 'Evaluated'}\nTreatment Plan: ${p.plan}`
-                ]);
-            }
-
-            if (summary.speech.exists) {
-                const s = summary.speech;
-                domainFindings.push([
-                    '4. Speech Assessment\n(' + s.date + ')',
-                    `Diagnosis: ${s.diagnosis}\nArticulation: ${s.articulation}\nVoice: ${s.voice} | Rhythm: ${s.rhythm}\nIntelligibility: ${s.intelligibility}\nTherapy Plan: ${s.plan}`
-                ]);
-            }
-
-            if (summary.progress.length > 0) {
-                const prText = summary.progress.map(pr => `${pr.quarter} (${pr.date}): Achieved: ${pr.achievement} | Next: ${pr.next_plan}`).join('\n');
-                domainFindings.push([
-                    '5. Progress Reviews\n(' + summary.progress.length + ' Recorded)',
-                    prText
-                ]);
-            }
-
-            if (domainFindings.length > 0) {
-                doc.autoTable({
-                    startY: doc.lastAutoTable.finalY + 4,
-                    head: [['Clinical Discipline & Date', 'Multidisciplinary Summary of Findings & Action Plan']],
-                    body: domainFindings,
-                    theme: 'grid',
-                    styles: { fontSize: 7.5, cellPadding: 2.8, textColor: [30, 41, 59], overflow: 'linebreak' },
-                    headStyles: { fillColor: [71, 85, 105], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
-                    columnStyles: {
-                        0: { width: 55, fontStyle: 'bold' },
-                        1: { width: pageWidth - (margin * 2) - 55 }
-                    },
-                    margin: { left: margin, right: margin }
-                });
-            }
-
-            // Clinician Sign-off Block
-            let sigY = doc.lastAutoTable.finalY + 14;
-            if (sigY + 28 > pageHeight - 14) {
-                doc.addPage();
-                sigY = 24;
-            }
+            doc.setFontSize(12.5);
+            doc.setTextColor(15, 23, 42);
+            doc.text('CHILD SUMMARY SHEET', pageWidth / 2, 20, { align: 'center' });
 
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(8);
             doc.setTextColor(71, 85, 105);
-            doc.text('Multidisciplinary Therapy Team:', margin, sigY);
-            doc.text('Clinical In-Charge / Medical Supervisor:', pageWidth - margin - 60, sigY);
+            doc.text('Suggestions from Germany Team', pageWidth / 2, 24.5, { align: 'center' });
+
+            const f = getSummaryFields(child, assessments);
+
+            // Table 0: Part 1 - Information Sheet & Developmental History
+            const table0Body = [
+                // Top Meta Row
+                [
+                    { content: 'DATE OF ASSESSMENT', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.assessmentDate, styles: { fontStyle: 'bold', textColor: [30, 58, 138] } },
+                    { content: 'SL.NO', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.slNo, styles: { fontStyle: 'bold', textColor: [30, 58, 138] } }
+                ],
+                // Header: INFORMATION SHEET
+                [{ content: 'INFORMATION SHEET', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
+                [
+                    { content: 'Name', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.name, styles: { fontStyle: 'bold' } },
+                    { content: 'Sex', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.sex }
+                ],
+                [
+                    { content: 'Date of Birth', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.dob },
+                    { content: 'Age / Grade', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: `${f.age} / Grade: ${f.grade}` }
+                ],
+                [
+                    { content: 'Address', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.address, colSpan: 3 }
+                ],
+                [
+                    { content: 'Anthropometry', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: `Height: ${f.height} cm  |  Weight: ${f.weight} kg  |  BMI: ${f.bmi}\nHead Circ: ${f.headCirc} cm  |  Chest: ${f.chestCirc} cm  |  MUAC: R(${f.muacR}) L(${f.muacL})`, colSpan: 3 }
+                ],
+                [
+                    { content: 'Consanguinity', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.consanguinity, colSpan: 3 }
+                ],
+                [
+                    { content: 'Siblings', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: `Brothers: ${f.siblingsBrothers} | Sisters: ${f.siblingsSisters} | Total: ${f.siblingsTotal}` },
+                    { content: 'Birth Order / Preg.', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: `Order: ${f.birthOrder} | Preg: ${f.pregnancies} | Deliv: ${f.deliveries}` }
+                ],
+                [
+                    { content: 'History of disability in family', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.disabilityInFamily, colSpan: 3 }
+                ],
+
+                // Pre-Natal History
+                [{ content: 'PRE-NATAL HISTORY', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
+                [
+                    { content: 'Health of mother during preg.', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.motherPregnancyHealth },
+                    { content: 'RH incompatibility', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.rhIncompatibility }
+                ],
+                [
+                    { content: 'Any infectious disease', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.pregnancyInfections, colSpan: 3 }
+                ],
+
+                // Peri-Natal History
+                [{ content: 'PERI-NATAL HISTORY', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
+                [
+                    { content: 'Type of delivery', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.deliveryType },
+                    { content: 'Place of delivery', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.deliveryPlace }
+                ],
+                [
+                    { content: 'Term', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: `${f.deliveryTerm} ${f.prematureMonth ? `(${f.prematureMonth})` : ''}` },
+                    { content: 'Birth cry', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.birthCry }
+                ],
+                [
+                    { content: 'Birth weight', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.birthWeight },
+                    { content: 'Birth colour', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.birthColour }
+                ],
+
+                // Post Natal History
+                [{ content: 'POST NATAL HISTORY', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
+                [
+                    { content: 'Days stay in hospital', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.hospitalStayDays },
+                    { content: 'Incubator support', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.incubatorSupport }
+                ],
+                [
+                    { content: 'Oxygens', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.oxygenSupport },
+                    { content: 'Fits / convulsions', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.convulsions }
+                ],
+                [
+                    { content: 'Any major surgery', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.majorSurgeries, colSpan: 3 }
+                ],
+
+                // Known Diagnosis
+                [{ content: 'KNOWN DIAGNOSIS', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
+                [
+                    { content: 'Cerebral Palsy', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.knownCp },
+                    { content: 'Genetic disorder', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.knownGenetic }
+                ],
+                [
+                    { content: 'Unknown underlying disease', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.knownUnknownDisease },
+                    { content: 'Clinical Impression', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.diagnosis, styles: { fontStyle: 'bold', textColor: [30, 58, 138] } }
+                ],
+
+                // Cognitive Development
+                [{ content: 'COGNITIVE DEVELOPMENT', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
+                [
+                    { content: 'Cognitive Delay', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: `Speech: ${f.speechDelay}  |  Schooling: ${f.schoolingDelay}`, colSpan: 3 }
+                ],
+                [
+                    { content: 'Social smile < 3 m', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.msSmile },
+                    { content: 'Babbling < 5 m', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.msBabbling }
+                ],
+                [
+                    { content: 'Eye contact < 3 m', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.msEyeContact },
+                    { content: 'Words < 12 m', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.msWords }
+                ],
+                [
+                    { content: 'Sentences < 24 m', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.msSentences, colSpan: 3 }
+                ],
+
+                // Developmental Delay and Disability
+                [{ content: 'DEVELOPMENTAL DELAY AND DISABILITY', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
+                [
+                    { content: 'Vision Impairment', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.visionImpairment },
+                    { content: 'Hearing impairment', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.hearingImpairment }
+                ],
+                [
+                    { content: 'Neuro-motor impairment', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.neuromotorImpairment, colSpan: 3 }
+                ],
+
+                // Objectives
+                [{ content: 'OBJECTIVES', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
+                [
+                    { content: 'Previous reports from doctors', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.doctorReports, colSpan: 3 }
+                ],
+                [
+                    { content: 'Previous reports from imaging', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.imagingReports, colSpan: 3 }
+                ],
+                [
+                    { content: 'Previous therapies', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.previousTherapies, colSpan: 3 }
+                ],
+                [
+                    { content: 'Expectations of the parents', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.parentExpectations, colSpan: 3, styles: { fontStyle: 'bold', textColor: [30, 58, 138] } }
+                ]
+            ];
+
+            doc.autoTable({
+                startY: 27,
+                head: [[{ content: 'PART 1: INFORMATION SHEET & DEVELOPMENTAL HISTORY', colSpan: 4, styles: { halign: 'left', fillColor: [30, 58, 138], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 } }]],
+                body: table0Body,
+                theme: 'grid',
+                styles: { fontSize: 7, cellPadding: 1.6, textColor: [15, 23, 42], overflow: 'linebreak' },
+                columnStyles: {
+                    0: { width: 44 },
+                    1: { width: 48 },
+                    2: { width: 44 },
+                    3: { width: 50 }
+                },
+                margin: { left: margin, right: margin }
+            });
+
+            // Table 1: Part 2 - Physiotherapy Assessment & Functional Evaluation
+            const table1Body = [
+                // Motor Milestones
+                [{ content: 'MOTOR MILESTONES', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
+                [
+                    { content: 'Sitting < 8 months', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.msSitting },
+                    { content: 'Crawling < 10 m', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.msCrawling }
+                ],
+                [
+                    { content: 'Standing < 14 m', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.msStanding },
+                    { content: 'Walking < 18 m', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.msWalking }
+                ],
+                [
+                    { content: 'Use of aids', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.useOfAids, colSpan: 3 }
+                ],
+
+                // Visible Deformity
+                [{ content: 'VISIBLE DEFORMITY', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
+                [
+                    { content: 'Knock knees', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: `Rt: ${f.knockKneesR} | Lt: ${f.knockKneesL}` },
+                    { content: 'Bow legs', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: `Rt: ${f.bowLegsR} | Lt: ${f.bowLegsL}` }
+                ],
+                [
+                    { content: 'Flat foot', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: `Rt: ${f.flatFootR} | Lt: ${f.flatFootL}` },
+                    { content: 'Equines', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: `Rt: ${f.equinesR} | Lt: ${f.equinesL}` }
+                ],
+                [
+                    { content: 'Elbow deformity', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: `Rt: ${f.elbowDefR} | Lt: ${f.elbowDefL}` },
+                    { content: 'Hand deformity', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: `Rt: ${f.handDefR} | Lt: ${f.handDefL}` }
+                ],
+                [
+                    { content: 'Others', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.deformityOthers, colSpan: 3 }
+                ],
+
+                // Impairment of Body Structure
+                [{ content: 'IMPAIRMENT OF BODY STRUCTURE', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
+                [
+                    { content: 'Scoliosis', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.scoliosis },
+                    { content: 'Kyphosis', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.kyphosis }
+                ],
+                [
+                    { content: 'Hyper lordosis', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.hyperLordosis },
+                    { content: 'Others', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.impairmentOthers }
+                ],
+
+                // Gross Motor
+                [{ content: 'GROSS MOTOR', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
+                [
+                    { content: 'Head control', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.gmHeadControl },
+                    { content: 'Sitting with support', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.gmSitSupport }
+                ],
+                [
+                    { content: 'Rolling', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.gmRolling },
+                    { content: 'Sitting without support', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.gmSitNoSupport }
+                ],
+                [
+                    { content: 'Alternating crawling', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.gmAltCrawling },
+                    { content: '4 point kneeling', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.gm4PointKneel }
+                ],
+                [
+                    { content: 'Bunny hopping', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.gmBunnyHopping },
+                    { content: '2 point kneeling', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.gm2PointKneel }
+                ],
+                [
+                    { content: 'Half kneeling', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.gmHalfKneel },
+                    { content: 'Standing without support', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.gmStandNoSupport }
+                ],
+                [
+                    { content: 'Standing with support', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.gmStandSupport },
+                    { content: 'Standing on tip toes', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.gmStandTiptoes }
+                ],
+                [
+                    { content: 'Standing on heels', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.gmStandHeels },
+                    { content: 'Jumping on one leg', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.gmJumpOneLeg }
+                ],
+                [
+                    { content: 'Standing on one leg', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.gmStandOneLeg },
+                    { content: 'Jumping on two legs', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.gmJumpTwoLegs }
+                ],
+                [
+                    { content: 'Stair climbing with support', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.gmStairSupport },
+                    { content: 'Running regular', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.gmRunningRegular }
+                ],
+                [
+                    { content: 'Stair climbing without support', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.gmStairNoSupport },
+                    { content: 'Running Issues', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.gmRunningIssues }
+                ],
+
+                // Transitions without support
+                [{ content: 'TRANSITION WITHOUT SUPPORT', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
+                [
+                    { content: 'Supine - prone - sitting', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.trSupineProneSit },
+                    { content: 'Prone - supine - rolling', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.trProneSupineRoll }
+                ],
+                [
+                    { content: 'Sitting with support', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.trSitSupport },
+                    { content: 'Sitting without support', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.trSitNoSupport }
+                ],
+                [
+                    { content: 'Sitting - Standing', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.trSitStand },
+                    { content: 'Standing - Sitting', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.trStandSit }
+                ],
+                [
+                    { content: 'Crawling - Kneeling - Standing', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.trCrawlKneelStand },
+                    { content: 'Standing - Kneeling - Crawling', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.trStandKneelCrawl }
+                ],
+                [
+                    { content: 'Quadruped - side sitting', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.trQuadSideSit, colSpan: 3 }
+                ],
+
+                // Gait Patterns
+                [{ content: 'GAIT PATTERNS', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
+                [
+                    { content: 'Without support', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.gaitWithoutSupport },
+                    { content: 'With support', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.gaitWithSupport }
+                ],
+                [
+                    { content: 'No walk', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.gaitNoWalk, colSpan: 3 }
+                ],
+                [
+                    { content: 'Gait pattern details', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.gaitPattern, colSpan: 3 }
+                ],
+
+                // ROM & Strength
+                [{ content: 'JOINT RANGE OF MOTION (ROM) PASSIVE & ACTIVE', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
+                [
+                    { content: 'Hip ROM (Passive)', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: `Horiz. abd/add: Rt(${f.romHipHorizR}) Lt(${f.romHipHorizL}) | Vert. abd/add: Rt(${f.romHipVertR}) Lt(${f.romHipVertL})\nFlex/Ext: Rt(${f.romHipFlexR}) Lt(${f.romHipFlexL}) | Rotation: Rt(${f.romHipRotR}) Lt(${f.romHipRotL})`, colSpan: 3 }
+                ],
+                [
+                    { content: 'Knee & Ankle ROM', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: `Knee Flex/Ext: Rt(${f.romKneeFlexR}) Lt(${f.romKneeFlexL})\nAnkle (Bended): Rt(${f.romAnkleBendR}) Lt(${f.romAnkleBendL}) | Ankle (Straight): Rt(${f.romAnkleStrR}) Lt(${f.romAnkleStrL})`, colSpan: 3 }
+                ],
+                [
+                    { content: 'Upper Limb ROM', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: `Elbow Flex/Ext: Rt(${f.romElbowFlexR}) Lt(${f.romElbowFlexL}) | Hand/Wrist: Rt(${f.romHandR}) Lt(${f.romHandL})`, colSpan: 3 }
+                ],
+                [{ content: 'MUSCLE STRENGTH (1/5 - 5/5)', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
+                [
+                    { content: 'Hip / Knee / Ankle', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: `Hip: Rt(${f.strHipR}) Lt(${f.strHipL}) | Knee: Rt(${f.strKneeR}) Lt(${f.strKneeL}) | Ankle: Rt(${f.strAnkleR}) Lt(${f.strAnkleL})`, colSpan: 3 }
+                ],
+                [
+                    { content: 'Shoulder / Elbow / Wrist', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: `Shoulder: Rt(${f.strShoulderR}) Lt(${f.strShoulderL}) | Elbow: Rt(${f.strElbowR}) Lt(${f.strElbowL}) | Wrist & Fingers: Rt(${f.strWristR}) Lt(${f.strWristL})`, colSpan: 3 }
+                ],
+
+                // Neurological & Reflexes
+                [{ content: 'NEUROLOGICAL & REFLEXES', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
+                [
+                    { content: 'Muscle tone in general', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.muscleToneGeneral },
+                    { content: 'Clonus', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.clonus }
+                ],
+                [
+                    { content: 'Patellar reflex', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: `Rt: ${f.reflexPatellarR} | Lt: ${f.reflexPatellarL}` },
+                    { content: 'Achilles reflex', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: `Rt: ${f.reflexAchillesR} | Lt: ${f.reflexAchillesL}` }
+                ],
+                [
+                    { content: 'Babinski reflex', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: `Rt: ${f.reflexBabinskiR} | Lt: ${f.reflexBabinskiL}` },
+                    { content: 'Limb length meas.', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: `Rt: ${f.limbLengthR} | Lt: ${f.limbLengthL}` }
+                ],
+                [
+                    { content: 'Co-ordination', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: `Able to cross midline: ${f.coordinationMidline}` },
+                    { content: 'Fine Motor Assessment', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: `Pinch: ${f.fineMotorPinch} | Pro/sup: ${f.fineMotorSupination}` }
+                ],
+                [
+                    { content: 'Other comments', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.physioOtherComments, colSpan: 3 }
+                ],
+
+                // Plan & Recommendations
+                [{ content: 'TREATMENT PLAN', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
+                [
+                    { content: 'Targeted Treatment Plan', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.physioTreatmentPlan, colSpan: 3, styles: { fontStyle: 'bold', textColor: [30, 58, 138] } }
+                ],
+                [{ content: 'EXTERNAL DEVICES', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
+                [
+                    { content: 'Splints / CP Chair / Wheelchair / Walker', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.externalDevices, colSpan: 3 }
+                ],
+                [{ content: 'FURTHER INVESTIGATIONS NEEDED', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
+                [
+                    { content: '(Sree Chitra, General pediatrician, German therapist, German doctors)', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                    { content: f.furtherInvestigations, colSpan: 3, styles: { fontStyle: 'bold', textColor: [15, 23, 42] } }
+                ]
+            ];
+
+            doc.autoTable({
+                startY: doc.lastAutoTable.finalY + 5,
+                head: [[{ content: 'PART 2: PHYSIOTHERAPY ASSESSMENT & FUNCTIONAL EVALUATION', colSpan: 4, styles: { halign: 'left', fillColor: [30, 58, 138], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 } }]],
+                body: table1Body,
+                theme: 'grid',
+                styles: { fontSize: 7, cellPadding: 1.6, textColor: [15, 23, 42], overflow: 'linebreak' },
+                columnStyles: {
+                    0: { width: 44 },
+                    1: { width: 48 },
+                    2: { width: 44 },
+                    3: { width: 50 }
+                },
+                margin: { left: margin, right: margin }
+            });
+
+            // Clinician Signatures Block
+            let sigY = doc.lastAutoTable.finalY + 12;
+            if (sigY + 24 > pageHeight - 12) {
+                doc.addPage();
+                sigY = 20;
+            }
+
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(7.5);
+            doc.setTextColor(71, 85, 105);
+            doc.text('Physiotherapist / German Team Signatures:', margin, sigY);
+            doc.text('Clinical Director / Authorized Signatory:', pageWidth - margin - 60, sigY);
 
             doc.setDrawColor(203, 213, 225);
-            doc.line(margin, sigY + 12, margin + 55, sigY + 12);
-            doc.line(pageWidth - margin - 60, sigY + 12, pageWidth - margin, sigY + 12);
+            doc.line(margin, sigY + 10, margin + 55, sigY + 10);
+            doc.line(pageWidth - margin - 60, sigY + 10, pageWidth - margin, sigY + 10);
 
-            doc.setFontSize(7.5);
-            doc.text('Therapist Signatures & Date', margin, sigY + 16);
-            doc.text('Authorized Signatory & Seal', pageWidth - margin - 60, sigY + 16);
+            doc.setFontSize(7);
+            doc.text('Evaluating Clinician & Date', margin, sigY + 14);
+            doc.text('CORC Centre Seal & In-Charge', pageWidth - margin - 60, sigY + 14);
 
             // Add Header/Footer to each page
             const totalPages = doc.internal.getNumberOfPages();
             for (let i = 1; i <= totalPages; i++) {
                 doc.setPage(i);
-                doc.setFontSize(7.5);
+                doc.setFontSize(7);
                 doc.setTextColor(148, 163, 184);
-                doc.text(`Page ${i} of ${totalPages}`, pageWidth - margin, pageHeight - 6, { align: 'right' });
-                doc.text('Chitra Ortho & Rehab Clinic - Confidential Clinical Assessment Dossier', margin, pageHeight - 6);
+                doc.text(`Page ${i} of ${totalPages}`, pageWidth - margin, pageHeight - 5, { align: 'right' });
+                doc.text('CORC Early Intervention Centre Mylaudy - Child Summary Sheet (Suggestions from Germany Team)', margin, pageHeight - 5);
             }
 
             const cleanName = (child.name || 'Child').replace(/[^a-zA-Z0-9]/g, '_');
-            const filename = `Clinical_Dossier_${cleanName}.pdf`;
+            const filename = `Summary_Sheet_${cleanName}.pdf`;
             saveAndOpenPdf(doc, filename);
-            showToast('Clinical Assessment Summary PDF opened & downloaded!');
+            showToast('Official Germany Summary Sheet PDF generated and downloaded!');
         } catch (err) {
             console.error('PDF generation error:', err);
             showToast('Error generating summary PDF', true);
@@ -5745,38 +7060,53 @@ document.addEventListener('DOMContentLoaded', () => {
         window.print();
     });
 
-    // View Switcher (Cards vs Matrix)
+    // View Switcher (Germany Summary Sheet vs Cards vs Matrix)
+    const btnViewSheet = document.getElementById('btn-view-sheet');
     const btnViewCards = document.getElementById('btn-view-cards');
     const btnViewMatrix = document.getElementById('btn-view-matrix');
+    const sheetsContainerEl = document.getElementById('summary-sheets-container');
     const cardsContainerEl = document.getElementById('summary-cards-container');
     const matrixContainerEl = document.getElementById('summary-matrix-container');
+    const btnToggleAllCards = document.getElementById('btn-toggle-all-cards');
+
+    function updateMainSummaryViewUI() {
+        if (btnViewSheet) {
+            btnViewSheet.classList.toggle('active', currentMainSummaryView === 'sheet');
+            btnViewSheet.style.background = currentMainSummaryView === 'sheet' ? '#fff' : 'transparent';
+            btnViewSheet.style.color = currentMainSummaryView === 'sheet' ? 'var(--primary)' : 'var(--text-light)';
+        }
+        if (btnViewCards) {
+            btnViewCards.classList.toggle('active', currentMainSummaryView === 'cards');
+            btnViewCards.style.background = currentMainSummaryView === 'cards' ? '#fff' : 'transparent';
+            btnViewCards.style.color = currentMainSummaryView === 'cards' ? 'var(--primary)' : 'var(--text-light)';
+        }
+        if (btnViewMatrix) {
+            btnViewMatrix.classList.toggle('active', currentMainSummaryView === 'matrix');
+            btnViewMatrix.style.background = currentMainSummaryView === 'matrix' ? '#fff' : 'transparent';
+            btnViewMatrix.style.color = currentMainSummaryView === 'matrix' ? 'var(--primary)' : 'var(--text-light)';
+        }
+        if (sheetsContainerEl) sheetsContainerEl.style.display = currentMainSummaryView === 'sheet' ? 'flex' : 'none';
+        if (cardsContainerEl) cardsContainerEl.style.display = currentMainSummaryView === 'cards' ? 'flex' : 'none';
+        if (matrixContainerEl) matrixContainerEl.style.display = currentMainSummaryView === 'matrix' ? 'block' : 'none';
+        if (btnToggleAllCards) btnToggleAllCards.style.display = currentMainSummaryView === 'cards' ? 'inline-flex' : 'none';
+    }
+
+    btnViewSheet?.addEventListener('click', () => {
+        currentMainSummaryView = 'sheet';
+        updateMainSummaryViewUI();
+    });
 
     btnViewCards?.addEventListener('click', () => {
         currentMainSummaryView = 'cards';
-        btnViewCards.classList.add('active');
-        btnViewCards.style.background = '#fff';
-        btnViewCards.style.color = 'var(--primary)';
-        btnViewMatrix.classList.remove('active');
-        btnViewMatrix.style.background = 'transparent';
-        btnViewMatrix.style.color = 'var(--text-light)';
-        if (cardsContainerEl) cardsContainerEl.style.display = 'flex';
-        if (matrixContainerEl) matrixContainerEl.style.display = 'none';
+        updateMainSummaryViewUI();
     });
 
     btnViewMatrix?.addEventListener('click', () => {
         currentMainSummaryView = 'matrix';
-        btnViewMatrix.classList.add('active');
-        btnViewMatrix.style.background = '#fff';
-        btnViewMatrix.style.color = 'var(--primary)';
-        btnViewCards.classList.remove('active');
-        btnViewCards.style.background = 'transparent';
-        btnViewCards.style.color = 'var(--text-light)';
-        if (cardsContainerEl) cardsContainerEl.style.display = 'none';
-        if (matrixContainerEl) matrixContainerEl.style.display = 'block';
+        updateMainSummaryViewUI();
     });
 
     // Toggle All Cards (Expand All / Collapse All)
-    const btnToggleAllCards = document.getElementById('btn-toggle-all-cards');
     btnToggleAllCards?.addEventListener('click', () => {
         allCardsExpanded = !allCardsExpanded;
         const iconEl = document.getElementById('toggle-cards-icon');

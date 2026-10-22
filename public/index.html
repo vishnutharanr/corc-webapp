@@ -16,7 +16,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=20">
 </head>
 
 <body>
@@ -2256,8 +2256,12 @@
                     <!-- View Switcher -->
                     <div
                         style="display: flex; background: #f1f5f9; padding: 3px; border-radius: 8px; border: 1px solid #e2e8f0; margin-left: auto;">
-                        <button id="btn-view-cards" class="view-switch-btn active"
+                        <button id="btn-view-sheet" class="view-switch-btn active"
                             style="padding: 6px 14px; border-radius: 6px; border: none; font-size: 0.85rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; background: white; color: var(--primary); box-shadow: 0 1px 2px rgba(0,0,0,0.06);">
+                            <span>📋</span> Summary Sheet (Germany)
+                        </button>
+                        <button id="btn-view-cards" class="view-switch-btn"
+                            style="padding: 6px 14px; border-radius: 6px; border: none; font-size: 0.85rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; background: transparent; color: var(--text-light);">
                             <span>🗂</span> Dossier Cards
                         </button>
                         <button id="btn-view-matrix" class="view-switch-btn"
@@ -2273,9 +2277,15 @@
                     </button>
                 </div>
 
+                <!-- Germany Team Format Summary Sheets Container (Active by Default) -->
+                <div id="summary-sheets-container" class="summary-sheets-list"
+                    style="display: flex; flex-direction: column; gap: 20px;">
+                    <!-- Rendered by JS -->
+                </div>
+
                 <!-- Cards View Container -->
                 <div id="summary-cards-container" class="summary-cards-list"
-                    style="display: flex; flex-direction: column; gap: 16px;">
+                    style="display: none; flex-direction: column; gap: 16px;">
                     <!-- Rendered by JS -->
                 </div>
 
@@ -2982,7 +2992,18 @@
                         </div>
                     </div>
 
-                    <div
+                    <!-- View Switcher Tabs in All Summary Modal -->
+                    <div style="display: flex; gap: 8px; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px; margin-bottom: 12px;">
+                        <button type="button" id="tab-all-summary-matrix" class="summary-tab-btn active">
+                            📊 Assessment Matrix Table
+                        </button>
+                        <button type="button" id="tab-all-summary-sheets" class="summary-tab-btn">
+                            📋 Summary Sheet (Germany Template)
+                        </button>
+                    </div>
+
+                    <!-- 1. Matrix View -->
+                    <div id="all-summary-matrix-view"
                         style="display: flex; flex-direction: column; gap: 15px; overflow-y: auto; padding-right: 6px;">
                         <!-- Summary Metric Cards -->
                         <div id="all-summary-kpis"
@@ -3030,27 +3051,51 @@
                             </table>
                         </div>
                     </div>
+
+                    <!-- 2. Germany Summary Sheets View -->
+                    <div id="all-summary-sheets-view" class="hidden"
+                        style="overflow-y: auto; max-height: calc(92vh - 180px); padding-right: 6px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; background: #f8fafc; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; flex-wrap: wrap; gap: 10px;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <label for="all-summary-child-picker" style="font-weight: 600; font-size: 0.88rem; color: #1e3a8a;">Select Child:</label>
+                                <select id="all-summary-child-picker" style="padding: 6px 12px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.88rem; min-width: 220px; font-weight: 600;"></select>
+                            </div>
+                            <div style="display: flex; gap: 8px;">
+                                <button id="btn-print-active-sheet" class="btn-secondary btn-sm" style="display: flex; align-items: center; gap: 5px; font-weight: 600; background: #fff; border: 1px solid #cbd5e1;">
+                                    🖨️ Print Sheet
+                                </button>
+                                <button id="btn-pdf-active-sheet" class="btn-primary btn-sm" style="display: flex; align-items: center; gap: 5px; font-weight: 600; background: #2563eb; color: #fff;">
+                                    📄 Export PDF
+                                </button>
+                            </div>
+                        </div>
+                        <div id="all-summary-sheet-render"></div>
+                    </div>
                 </div>
             </div>
 
             <!-- Modal for Comprehensive Child Assessment Summary -->
             <div id="child-summary-modal" class="modal hidden">
-                <div class="modal-content" style="max-width: 920px; width: 95vw; max-height: 90vh;">
+                <div class="modal-content" style="max-width: 960px; width: 95vw; max-height: 92vh;">
                     <span class="close-modal" id="close-child-summary-modal">&times;</span>
                     <div
-                        style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; padding-right: 35px; flex-wrap: wrap; gap: 10px;">
+                        style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; padding-right: 35px; flex-wrap: wrap; gap: 10px;">
                         <div>
                             <h3 id="child-summary-title"
                                 style="margin: 0; color: #1e3a8a; display: flex; align-items: center; gap: 8px;">
                                 <span>📋</span> <span id="child-summary-name">Clinical Assessment Summary</span>
                             </h3>
                             <p id="child-summary-subtitle"
-                                style="color: var(--text-light); font-size: 0.9rem; margin: 4px 0 0 0;"></p>
+                                style="color: var(--text-light); font-size: 0.88rem; margin: 4px 0 0 0;"></p>
                         </div>
-                        <div style="display: flex; gap: 8px; align-items: center;">
+                        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
                             <button id="btn-back-to-matrix" class="btn-secondary btn-sm"
                                 style="display: none; align-items: center; gap: 5px; font-weight: 600; background: #f8fafc; border: 1px solid #cbd5e1; color: #1e3a8a;">
                                 ← Back to Matrix
+                            </button>
+                            <button id="btn-print-child-summary-sheet" class="btn-secondary btn-sm"
+                                style="display: flex; align-items: center; gap: 6px; font-weight: 600; background: #fff; border: 1px solid #cbd5e1; color: #1e293b;">
+                                🖨️ Print Sheet
                             </button>
                             <button id="btn-download-child-summary-pdf" class="btn-primary btn-sm"
                                 style="display: flex; align-items: center; gap: 6px; background: #2563eb; color: #fff; font-weight: 600;">
@@ -3059,8 +3104,24 @@
                         </div>
                     </div>
 
-                    <div id="child-summary-content"
-                        style="overflow-y: auto; padding-right: 6px; display: flex; flex-direction: column; gap: 18px;">
+                    <!-- View Switcher Tabs inside Child Summary Modal -->
+                    <div style="display: flex; gap: 8px; border-bottom: 1px solid #cbd5e1; padding-bottom: 8px; margin-bottom: 12px;">
+                        <button type="button" id="tab-child-summary-sheet" class="summary-tab-btn active">
+                            📋 Official Summary Sheet (Germany Template)
+                        </button>
+                        <button type="button" id="tab-child-summary-dossier" class="summary-tab-btn">
+                            🗂 Multi-Disciplinary Dossier
+                        </button>
+                    </div>
+
+                    <!-- 1. Germany Template View (Default) -->
+                    <div id="child-summary-sheet-view" style="overflow-y: auto; max-height: calc(92vh - 170px); padding-right: 4px;">
+                        <div id="child-summary-sheet-container"></div>
+                    </div>
+
+                    <!-- 2. Multi-Disciplinary Dossier View (KPIs & Domain Cards) -->
+                    <div id="child-summary-dossier-view" class="hidden"
+                        style="overflow-y: auto; max-height: calc(92vh - 170px); padding-right: 6px; display: none; flex-direction: column; gap: 18px;">
                         <!-- Child Overview KPI Badges -->
                         <div id="child-summary-kpis"
                             style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px;">
@@ -3141,7 +3202,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="app.js"></script>
+    <script src="app.js?v=20"></script>
 </body>
 
 </html>
