@@ -30,7 +30,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         const response = await originalFetch(url, options);
-        if (response.status === 401 && !String(url).includes('/api/login')) {
+        if ((response.status === 401 || response.status === 403) && !String(url).includes('/api/login')) {
+            console.warn('Session expired or unauthorized request to ' + url + '. Re-authenticating.');
             localStorage.removeItem('authToken');
             localStorage.removeItem('userRole');
             localStorage.removeItem('currentUser');
