@@ -142,6 +142,7 @@ const INIT_SQL = `
 
     UPDATE schedules SET time_slot = '4.00 - 4.30' WHERE time_slot = '4.00 - 5.00';
     UPDATE therapy_attendance SET time_slot = '4.00 - 4.30' WHERE time_slot = '4.00 - 5.00';
+    UPDATE assessments SET form_type = 'Consultation Form' WHERE form_type = 'Rapid Assessment';
 `;
 
 const DEFAULT_THERAPY_FEES = [
@@ -732,8 +733,8 @@ app.put('/api/assessments/:id', async (req, res) => {
             [stringifiedData, req.params.id]
         );
 
-        // Sync basic details to children profile if Rapid Assessment
-        if (child_id && form_type === 'Rapid Assessment' && parsedData) {
+        // Sync basic details to children profile if Consultation Form (or legacy Rapid Assessment)
+        if (child_id && (form_type === 'Consultation Form' || form_type === 'Rapid Assessment') && parsedData) {
             const childName = parsedData.child_name || parsedData.name;
             const admissionNo = parsedData.admission_no !== undefined ? parsedData.admission_no : null;
             const dob = parsedData.dob !== undefined ? parsedData.dob : null;
@@ -813,7 +814,7 @@ app.get('/api/reports/attendance', async (req, res) => {
     try {
         let sql = `
             SELECT t.*, c.name as child_name, c.dob as child_dob, c.admission_no as child_admission_no,
-                   (SELECT data FROM assessments WHERE child_id = c.id AND form_type = 'Rapid Assessment' ORDER BY created_at DESC LIMIT 1) as rapid_data
+                   (SELECT data FROM assessments WHERE child_id = c.id AND (form_type = 'Consultation Form' OR form_type = 'Rapid Assessment') ORDER BY created_at DESC LIMIT 1) as rapid_data
             FROM therapy_attendance t 
             JOIN children c ON t.child_id = c.id 
             WHERE 1=1

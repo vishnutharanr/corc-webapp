@@ -241,8 +241,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (res.ok) {
                 const fullChild = await res.json();
                 activeChild.assessments = fullChild.assessments || [];
-                const ra = fullChild.assessments?.find(a => a.form_type === 'Rapid Assessment');
-                if (ra && ra.data) activeChild._rapidData = ra.data;
+                const ra = fullChild.assessments?.find(a => a.form_type === 'Consultation Form' || a.form_type === 'Rapid Assessment');
+                if (ra && ra.data) { activeChild._consultationData = ra.data; activeChild._consultationData = ra.data; activeChild._rapidData = ra.data; }
                 localStorage.setItem('activeChild', JSON.stringify(activeChild));
                 syncActiveChildAssessments(activeChild);
                 updateFormEditBanners();
@@ -250,8 +250,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const activeTab = document.querySelector('.tab-content.active, .assessment-pane.active');
                 if (activeTab && activeTab.id === 'child-development') {
                     updateDevFormState();
-                } else if (activeTab && activeTab.id === 'rapid-assessment') {
-                    updateRapidFormState();
+                } else if (activeTab && (activeTab.id === 'consultation-form' || activeTab.id === 'rapid-assessment')) {
+                    updateConsultationFormState();
                 }
             }
         } catch (e) {
@@ -260,10 +260,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateFormEditBanners() {
-        // Rapid Assessment Edit Banner
-        const rapidBanner = document.getElementById('rapid-form-edit-banner');
-        const rapidChildName = document.getElementById('rapid-editing-child-name');
-        const btnRapidNew = document.getElementById('btn-rapid-new-child');
+        // Consultation Form Edit Banner
+        const rapidBanner = document.getElementById('consultation-form-edit-banner') || document.getElementById('rapid-form-edit-banner');
+        const rapidChildName = document.getElementById('consultation-editing-child-name') || document.getElementById('rapid-editing-child-name');
+        const btnRapidNew = document.getElementById('btn-consultation-new-child') || document.getElementById('btn-rapid-new-child');
         if (rapidBanner && rapidChildName) {
             if (activeChild && activeChild.id) {
                 rapidBanner.style.display = 'flex';
@@ -304,9 +304,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (targetId === 'user-management') fetchUsers();
         if (targetId === 'therapies-settings') fetchTherapyFees();
         if (targetId === 'therapists-settings') fetchTherapists();
-        if (targetId === 'rapid-assessment') {
-            if (!activeChild) primeRapidAdmissionNo();
-            updateRapidFormState();
+        if (targetId === 'consultation-form' || targetId === 'rapid-assessment') {
+            targetId = 'consultation-form';
+            if (!activeChild) primeConsultationAdmissionNo();
+            updateConsultationFormState();
         }
         if (targetId === 'child-development') {
             updateDevFormState();
@@ -343,13 +344,15 @@ document.addEventListener('DOMContentLoaded', () => {
         activeChild = child;
         if (child) {
             if (!rapidData && child.assessments) {
-                const ra = child.assessments.find(a => a.form_type === 'Rapid Assessment');
+                const ra = child.assessments.find(a => a.form_type === 'Consultation Form' || a.form_type === 'Rapid Assessment');
                 if (ra && ra.data) rapidData = ra.data;
             }
-            if (!rapidData && child._rapidData) {
+            if (!rapidData && child._consultationData) {
+                rapidData = child._consultationData;
+            } else if (!rapidData && child._rapidData) {
                 rapidData = child._rapidData;
             }
-            const toStore = rapidData ? { ...child, _rapidData: rapidData } : child;
+            const toStore = rapidData ? { ...child, _consultationData: rapidData, _rapidData: rapidData } : child;
             localStorage.setItem('activeChild', JSON.stringify(toStore));
             activeChild = toStore;
             syncActiveChildAssessments(toStore);
@@ -371,7 +374,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const admPrefix = activeChild.admission_no ? `[${activeChild.admission_no}] ` : '';
             bannerName.textContent = `${admPrefix}${activeChild.name}`;
             // Show meta details from child profile + rapid assessment data
-            const rd = activeChild._rapidData || {};
+            const rd = activeChild._consultationData || activeChild._rapidData || {};
             const metaParts = [];
             if (activeChild.admission_no)   metaParts.push('Adm #' + activeChild.admission_no);
             if (activeChild.sex || rd.sex)  metaParts.push(activeChild.sex || rd.sex);
@@ -442,7 +445,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const devForm = document.getElementById('form-development');
         if (!devForm) return;
 
-        const rd = (activeChild && activeChild._rapidData) || {};
+        const rd = (activeChild && (activeChild._consultationData || activeChild._rapidData)) || {};
 
         let ageVal = rd.age || '';
         if (!ageVal && (activeChild.dob || rd.dob)) {
@@ -494,7 +497,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         if (force) {
-            showToast(`✅ Generated details from Rapid Assessment (${populatedCount} fields updated)!`);
+            showToast(`✅ Generated details from Consultation Form (${populatedCount} fields updated)!`);
         }
     }
 
@@ -558,7 +561,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!rf) return;
         updateFormEditBanners();
         if (activeChild && activeChild.id) {
-            const rd = activeChild._rapidData || {};
+            const rd = activeChild._consultationData || activeChild._rapidData || {};
             const populate = [
                 ['input[name="child_name"]', activeChild.name || ''],
                 ['input[name="admission_no"]', activeChild.admission_no || ''],
@@ -671,7 +674,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setupMilestoneInteractions(devFormEl);
     }
 
-    document.getElementById('btn-import-rapid')?.addEventListener('click', async () => {
+    (document.getElementById('btn-import-consultation') || document.getElementById('btn-import-rapid'))?.addEventListener('click', async () => {
         if (!activeChild) {
             showToast('Please open or select a child profile first.', true);
             return;
@@ -681,9 +684,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const res = await fetch('/api/children/' + activeChild.id);
                 if (res.ok) {
                     const cd = await res.json();
-                    const ra = cd.assessments?.find(a => a.form_type === 'Rapid Assessment');
+                    const ra = cd.assessments?.find(a => a.form_type === 'Consultation Form' || a.form_type === 'Rapid Assessment');
                     if (ra && ra.data) {
-                        activeChild._rapidData = ra.data;
+                        activeChild._consultationData = ra.data; activeChild._rapidData = ra.data;
                         localStorage.setItem('activeChild', JSON.stringify(activeChild));
                     }
                 }
@@ -706,13 +709,17 @@ document.addEventListener('DOMContentLoaded', () => {
         showToast('Ready to record a fresh Child Development assessment.');
     });
 
-    document.getElementById('btn-rapid-new-child')?.addEventListener('click', async () => {
+    const handleNewChildInConsultation = async () => {
         setActiveChild(null);
-        const rf = document.getElementById('form-rapid');
-        if (rf) rf.reset();
-        await primeRapidAdmissionNo();
+        const cf = document.getElementById('form-consultation') || document.getElementById('form-rapid');
+        if (cf) cf.reset();
+        await primeConsultationAdmissionNo();
+        const dateInp = cf && cf.querySelector('input[name="assessment_date"]');
+        if (dateInp) dateInp.value = new Date().toISOString().split('T')[0];
         showToast('Ready to register a new child.');
-    });
+    };
+    document.getElementById('btn-consultation-new-child')?.addEventListener('click', handleNewChildInConsultation);
+    document.getElementById('btn-rapid-new-child')?.addEventListener('click', handleNewChildInConsultation);
 
     async function fetchNextAdmissionNo() {
         try {
@@ -727,8 +734,8 @@ document.addEventListener('DOMContentLoaded', () => {
         return '';
     }
 
-    async function primeRapidAdmissionNo() {
-        const admInp = document.getElementById('rapid-admission-no');
+    async function primeConsultationAdmissionNo() {
+        const admInp = document.getElementById('consultation-admission-no') || document.getElementById('rapid-admission-no');
         if (!admInp) return;
         if (activeChild && activeChild.admission_no) {
             admInp.value = activeChild.admission_no;
@@ -739,15 +746,18 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     }
+    const primeRapidAdmissionNo = primeConsultationAdmissionNo;
 
     btnNew && btnNew.addEventListener('click', async () => {
         setActiveChild(null);
-        const rf = document.getElementById('form-rapid');
-        rf && rf.reset();
-        switchTab('rapid-assessment');
+        const cf = document.getElementById('form-consultation') || document.getElementById('form-rapid');
+        cf && cf.reset();
+        switchTab('consultation-form');
         const nextAdm = await fetchNextAdmissionNo();
-        const admInp = document.getElementById('rapid-admission-no');
+        const admInp = document.getElementById('consultation-admission-no') || document.getElementById('rapid-admission-no');
         if (admInp && nextAdm) admInp.value = nextAdm;
+        const dateInp = cf && cf.querySelector('input[name="assessment_date"]');
+        if (dateInp) dateInp.value = new Date().toISOString().split('T')[0];
         showToast('New Child registration started' + (nextAdm ? ` · Auto Admission No: ${nextAdm}` : ''));
     });
 
@@ -970,7 +980,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 3. Try assessments array (from /api/children)
         if (Array.isArray(childOrRow.assessments)) {
-            const rapid = childOrRow.assessments.find(a => a.form_type === 'Rapid Assessment');
+            const rapid = childOrRow.assessments.find(a => a.form_type === 'Consultation Form' || a.form_type === 'Rapid Assessment');
             if (rapid && rapid.data) {
                 try {
                     const rd = typeof rapid.data === 'string' ? JSON.parse(rapid.data) : rapid.data;
@@ -983,9 +993,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // 4. Try _rapidData on activeChild
-        if (childOrRow._rapidData) {
-            const rd = childOrRow._rapidData;
+        // 4. Try _consultationData / _rapidData on activeChild
+        if (childOrRow._consultationData || childOrRow._rapidData) {
+            const rd = childOrRow._consultationData || childOrRow._rapidData;
             const yDob = calcAgeYearsFromDob(rd.dob);
             if (yDob !== null) return yDob;
             if (rd.age) return parseAgeStringToYears(rd.age);
@@ -1102,11 +1112,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ── Form Submissions ─────────────────────────────────────
     const FORMS = [
-        { id: 'form-rapid',       type: 'Rapid Assessment',         isRapid: true  },
-        { id: 'form-development', type: 'Child Development',         isRapid: false },
-        { id: 'form-physio',      type: 'Physiotherapy',             isRapid: false },
-        { id: 'form-speech',      type: 'Speech Assessment',         isRapid: false },
-        { id: 'form-progress',    type: 'Quarterly Progress Review', isRapid: false }
+        { id: 'form-consultation', type: 'Consultation Form',         isConsultation: true, isRapid: true  },
+        { id: 'form-rapid',        type: 'Consultation Form',         isConsultation: true, isRapid: true  },
+        { id: 'form-development',  type: 'Child Development',         isConsultation: false, isRapid: false },
+        { id: 'form-physio',       type: 'Physiotherapy',             isConsultation: false, isRapid: false },
+        { id: 'form-speech',       type: 'Speech Assessment',         isConsultation: false, isRapid: false },
+        { id: 'form-progress',     type: 'Quarterly Progress Review', isConsultation: false, isRapid: false }
     ];
 
     FORMS.forEach(fi => {
@@ -1128,12 +1139,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     data[k] = v;
                 }
             }
-            if (fi.isRapid) {
-                await handleRapid(data, el);
+            if (fi.isConsultation || fi.isRapid) {
+                await handleConsultation(data, el);
             } else {
                 const name = activeChild ? activeChild.name : (data.child_name || '');
                 if (!name) {
-                    showToast('Please complete a Rapid Assessment first to create a child profile.', true);
+                    showToast('Please complete a Consultation Form first to create a child profile.', true);
                     return;
                 }
                 await saveAssessment(activeChild && activeChild.id, name, fi.type, data, el);
@@ -1141,10 +1152,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    async function handleRapid(data, el) {
+    async function handleConsultation(data, el) {
         const name = data.child_name;
         if (!name) { showToast('Child name is required.', true); return; }
-        const ageNum = extractChildAge({ dob: data.dob, _rapidData: data });
+        const ageNum = extractChildAge({ dob: data.dob, _consultationData: data, _rapidData: data });
 
         if (userRole === 'staff8' && ageNum < 8) {
             showToast('Staff for older children can only enter details for children aged 8 or above.', true);
@@ -1157,7 +1168,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (activeChild && activeChild.id) {
-            // EDITING existing child profile and Rapid Assessment (Prevents duplicate files)
+            // EDITING existing child profile and Consultation Form
             try {
                 // 1. Update child profile
                 const cr = await fetch('/api/children/' + activeChild.id, {
@@ -1174,10 +1185,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!cr.ok) { showToast('Error updating child: ' + (await cr.json()).error, true); return; }
                 const updatedChild = await cr.json();
 
-                // 2. Update or create Rapid Assessment linked to this child
-                const rapidAssId = currentEditingAssessments['Rapid Assessment'];
-                if (rapidAssId) {
-                    const ar = await fetch('/api/assessments/' + rapidAssId, {
+                // 2. Update or create Consultation Form linked to this child
+                const assId = currentEditingAssessments['Consultation Form'] || currentEditingAssessments['Rapid Assessment'];
+                if (assId) {
+                    const ar = await fetch('/api/assessments/' + assId, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ data })
@@ -1187,16 +1198,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     const ar = await fetch('/api/assessments', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ child_id: activeChild.id, child_name: name, form_type: 'Rapid Assessment', data })
+                        body: JSON.stringify({ child_id: activeChild.id, child_name: name, form_type: 'Consultation Form', data })
                     });
                     if (ar.ok) {
                         const newAss = await ar.json();
-                        currentEditingAssessments['Rapid Assessment'] = newAss.id;
+                        currentEditingAssessments['Consultation Form'] = newAss.id;
                     }
                 }
 
                 setActiveChild({ ...activeChild, ...updatedChild }, data);
-                showToast('✅ Profile and Rapid Assessment updated successfully!');
+                showToast('✅ Profile and Consultation Form updated successfully!');
                 setTimeout(() => switchTab('child-development'), 1000);
                 fetchChildFolders();
                 return;
@@ -1223,18 +1234,18 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!cr.ok) { showToast('Error creating child profile: ' + (await cr.json()).error, true); return; }
             const child = await cr.json();
 
-            // 2. Save Rapid Assessment linked to child
+            // 2. Save Consultation Form linked to child
             const ar = await fetch('/api/assessments', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ child_id: child.id, child_name: name, form_type: 'Rapid Assessment', data })
+                body: JSON.stringify({ child_id: child.id, child_name: name, form_type: 'Consultation Form', data })
             });
             if (ar.ok) {
                 const createdAss = await ar.json();
-                currentEditingAssessments['Rapid Assessment'] = createdAss.id;
+                currentEditingAssessments['Consultation Form'] = createdAss.id;
                 setActiveChild(child, data);
                 el.reset();
-                showToast('\u2705 Child profile created for "' + name + '"! Opening Child Development form...');
+                showToast('✅ Child profile created for "' + name + '"! Opening Child Development form...');
                 setTimeout(() => switchTab('child-development'), 1200);
             } else {
                 showToast('Error saving assessment: ' + (await ar.json()).error, true);
@@ -1244,6 +1255,7 @@ document.addEventListener('DOMContentLoaded', () => {
             showToast('Failed to connect to server.', true);
         }
     }
+    const handleRapid = handleConsultation;
 
     async function saveAssessment(childId, childName, formType, data, el) {
         if ((userRole === 'staff8' || userRole === 'staff') && activeChild) {
@@ -1708,14 +1720,18 @@ document.addEventListener('DOMContentLoaded', () => {
             currentViewingChild = child;
 
             const FORM_MAP = {
-                'Rapid Assessment':          'form-rapid',
+                'Consultation Form':         'form-consultation',
+                'Rapid Assessment':          'form-consultation',
                 'Child Development':         'form-development',
                 'Physiotherapy':             'form-physio',
                 'Speech Assessment':         'form-speech',
                 'Quarterly Progress Review': 'form-progress',
             };
 
-            const originalForm = document.getElementById(FORM_MAP[rec.form_type]);
+            const targetFormId = FORM_MAP[rec.form_type] || (rec.form_type === 'Consultation Form' || rec.form_type === 'Rapid Assessment' ? 'form-consultation' : null);
+            const originalForm = document.getElementById(targetFormId) || 
+                (targetFormId === 'form-consultation' ? document.getElementById('form-rapid') : null) ||
+                (targetFormId === 'form-rapid' ? document.getElementById('form-consultation') : null);
             const mount = document.getElementById('av-form-mount');
             if (!originalForm || !mount) {
                 showToast('Form template not found for ' + rec.form_type, true);
@@ -1920,14 +1936,18 @@ document.addEventListener('DOMContentLoaded', () => {
             currentViewingChild = child;
 
             const FORM_MAP = {
-                'Rapid Assessment':          'form-rapid',
+                'Consultation Form':         'form-consultation',
+                'Rapid Assessment':          'form-consultation',
                 'Child Development':         'form-development',
                 'Physiotherapy':             'form-physio',
                 'Speech Assessment':         'form-speech',
                 'Quarterly Progress Review': 'form-progress',
             };
 
-            const originalForm = document.getElementById(FORM_MAP[rec.form_type]);
+            const targetFormId = FORM_MAP[rec.form_type] || (rec.form_type === 'Consultation Form' || rec.form_type === 'Rapid Assessment' ? 'form-consultation' : null);
+            const originalForm = document.getElementById(targetFormId) || 
+                (targetFormId === 'form-consultation' ? document.getElementById('form-rapid') : null) ||
+                (targetFormId === 'form-rapid' ? document.getElementById('form-consultation') : null);
             const mount = document.getElementById('av-form-mount');
             if (!originalForm || !mount) {
                 showToast('Form template not found for ' + rec.form_type, true);
@@ -4104,23 +4124,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Helper: Extract rich structured clinical summary across all 5 forms
     function extractAssessmentSummaries(child, assessments = []) {
-        const rapid = assessments.find(a => a.form_type === 'Rapid Assessment');
+        const rapid = assessments.find(a => a.form_type === 'Consultation Form' || a.form_type === 'Rapid Assessment');
         const dev = assessments.find(a => a.form_type === 'Child Development');
         const physio = assessments.find(a => a.form_type === 'Physiotherapy');
         const speech = assessments.find(a => a.form_type === 'Speech Assessment');
         const progressReviews = assessments.filter(a => a.form_type === 'Quarterly Progress Review');
 
-        // 1. Rapid Assessment
+        // 1. Consultation Form
         const rData = rapid?.data || {};
         const rapidSummary = {
             exists: !!rapid,
             id: rapid?.id,
-            date: rapid?.created_at ? new Date(rapid.created_at).toLocaleDateString('en-IN') : null,
-            diagnosis: rData.diagnosis || 'Provisional diagnosis not specified',
+            date: rData.assessment_date || (rapid?.created_at ? new Date(rapid.created_at).toLocaleDateString('en-IN') : null),
+            observations: rData.observations || '',
+            suggestions: rData.suggestions || '',
+            diagnosis: rData.observations ? (rData.observations.length > 50 ? rData.observations.slice(0, 50) + '...' : rData.observations) : (rData.diagnosis || 'Consultation conducted'),
             symptoms: rData.symptoms || 'None recorded',
             birth_history: rData.birth_history || 'Not specified',
             medical_history: rData.medical_history || 'Not specified',
-            finalized_by: rData.finalized_by || 'Not specified',
+            consultant_name: rData.consultant_name || rData.finalized_by || 'Not specified',
+            signature: rData.signature || '',
+            finalized_by: rData.consultant_name || rData.finalized_by || 'Not specified',
             teamObservations: [
                 { role: 'Physiotherapist', obs: rData.physio_observation, sug: rData.physio_suggestion },
                 { role: 'Occupational Therapist', obs: rData.occupational_observation, sug: rData.occupational_suggestion },
@@ -4314,13 +4338,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const statusBadgeBg = summary.coreCount === 4 ? '#dcfce7' : (summary.totalCount > 0 ? '#fef9c3' : '#fee2e2');
         const statusBadgeColor = summary.coreCount === 4 ? '#15803d' : (summary.totalCount > 0 ? '#a16207' : '#b91c1c');
 
-        // Form 1 Panel: Rapid Assessment
+        // Form 1 Panel: Consultation Form
         const r = summary.rapid;
         const rapidPanelHtml = `
             <div class="summary-form-panel ${r.exists ? 'panel-done' : 'panel-pending'}">
                 <div class="summary-panel-header">
                     <div class="summary-panel-title">
-                        <span>⚡</span> <span>Rapid Assessment</span>
+                        <span>🩺</span> <span>Consultation Form</span>
                     </div>
                     ${r.exists ? `
                         <div style="display: flex; align-items: center; gap: 8px;">
@@ -4328,15 +4352,28 @@ document.addEventListener('DOMContentLoaded', () => {
                             <button class="btn-summary-view-form btn-secondary btn-sm" data-id="${r.id}" style="padding: 2px 7px; font-size: 0.75rem;">View Form</button>
                         </div>
                     ` : `
-                        <button class="btn-conduct-form btn-secondary btn-sm" data-form="rapid-assessment" data-child-json="${safeChildJson}" style="padding: 2px 8px; font-size: 0.75rem; background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe;">+ Conduct</button>
+                        <button class="btn-conduct-form btn-secondary btn-sm" data-form="consultation-form" data-child-json="${safeChildJson}" style="padding: 2px 8px; font-size: 0.75rem; background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe;">+ Conduct</button>
                     `}
                 </div>
                 ${r.exists ? `
                     <div style="display: flex; flex-direction: column; gap: 8px;">
-                        <div class="summary-field-box" style="background: #eff6ff; border-color: #bfdbfe;">
-                            <div class="field-label" style="color: #1e40af;">Clinical Diagnosis</div>
-                            <div class="field-val" style="font-weight: 700; color: #1e3a8a;">${r.diagnosis}</div>
-                        </div>
+                        ${r.observations ? `
+                            <div class="summary-field-box" style="background: #eff6ff; border-color: #bfdbfe;">
+                                <div class="field-label" style="color: #1e40af;">Observations</div>
+                                <div class="field-val" style="color: #1e3a8a; white-space: pre-wrap;">${r.observations}</div>
+                            </div>
+                        ` : (r.diagnosis ? `
+                            <div class="summary-field-box" style="background: #eff6ff; border-color: #bfdbfe;">
+                                <div class="field-label" style="color: #1e40af;">Clinical Finding</div>
+                                <div class="field-val" style="font-weight: 700; color: #1e3a8a;">${r.diagnosis}</div>
+                            </div>
+                        ` : '')}
+                        ${r.suggestions ? `
+                            <div class="summary-field-box" style="background: #f0fdf4; border-color: #bbf7d0;">
+                                <div class="field-label" style="color: #166534;">Suggestions &amp; Guidance</div>
+                                <div class="field-val" style="color: #14532d; white-space: pre-wrap;">${r.suggestions}</div>
+                            </div>
+                        ` : ''}
                         <div class="summary-field-box">
                             <div class="field-label">Reported Symptoms</div>
                             <div class="field-val">${r.symptoms}</div>
@@ -4357,13 +4394,14 @@ document.addEventListener('DOMContentLoaded', () => {
                                 </div>
                             </div>
                         ` : ''}
-                        <div style="font-size: 0.78rem; color: #64748b; margin-top: 2px;">
-                            <strong>Finalized by:</strong> ${r.finalized_by}
+                        <div style="font-size: 0.78rem; color: #64748b; margin-top: 2px; display: flex; justify-content: space-between; flex-wrap: wrap;">
+                            <span><strong>Consultant:</strong> ${r.consultant_name || r.finalized_by}</span>
+                            ${r.signature ? `<span><strong>Signature:</strong> ${r.signature}</span>` : ''}
                         </div>
                     </div>
                 ` : `
                     <div style="text-align: center; padding: 20px 10px; color: #94a3b8; font-size: 0.85rem;">
-                        <span>⏳ Initial triage assessment not conducted yet</span>
+                        <span>⏳ Initial Consultation &amp; Counselling not conducted yet</span>
                     </div>
                 `}
             </div>
@@ -4602,7 +4640,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     <!-- Discipline Status Badges -->
                     <div class="summary-card-disciplines-bar">
-                        <span class="discipline-pill ${summary.rapid.exists ? 'done' : 'pending'}">⚡ Rapid: ${summary.rapid.exists ? '✓ ' + summary.rapid.date : 'Pending'}</span>
+                        <span class="discipline-pill ${summary.rapid.exists ? 'done' : 'pending'}">🩺 Consultation: ${summary.rapid.exists ? '✓ ' + summary.rapid.date : 'Pending'}</span>
                         <span class="discipline-pill ${summary.dev.exists ? 'done' : 'pending'}">👶 Dev: ${summary.dev.exists ? '✓ ' + summary.dev.date : 'Pending'}</span>
                         <span class="discipline-pill ${summary.physio.exists ? 'done' : 'pending'}">💪 Physio: ${summary.physio.exists ? '✓ ' + summary.physio.date : 'Pending'}</span>
                         <span class="discipline-pill ${summary.speech.exists ? 'done' : 'pending'}">🗣️ Speech: ${summary.speech.exists ? '✓ ' + summary.speech.date : 'Pending'}</span>
@@ -4789,18 +4827,18 @@ document.addEventListener('DOMContentLoaded', () => {
         if (sf === 'completed') {
             list = list.filter(c => {
                 const aList = c.assessments || [];
-                return ['Rapid Assessment', 'Child Development', 'Physiotherapy', 'Speech Assessment'].every(t => aList.some(a => a.form_type === t));
+                return ['Consultation Form', 'Child Development', 'Physiotherapy', 'Speech Assessment'].every(t => aList.some(a => a.form_type === t));
             });
         } else if (sf === 'partial') {
             list = list.filter(c => {
                 const aList = c.assessments || [];
-                const majorDone = ['Rapid Assessment', 'Child Development', 'Physiotherapy', 'Speech Assessment'].filter(t => aList.some(a => a.form_type === t)).length;
+                const majorDone = ['Consultation Form', 'Child Development', 'Physiotherapy', 'Speech Assessment'].filter(t => aList.some(a => a.form_type === t)).length;
                 return majorDone > 0 && majorDone < 4;
             });
         } else if (sf === 'none') {
             list = list.filter(c => !c.assessments || c.assessments.length === 0);
-        } else if (sf === 'missing-rapid') {
-            list = list.filter(c => !((c.assessments || []).some(a => a.form_type === 'Rapid Assessment')));
+        } else if (sf === 'missing-consultation' || sf === 'missing-rapid') {
+            list = list.filter(c => !((c.assessments || []).some(a => a.form_type === 'Consultation Form' || a.form_type === 'Rapid Assessment')));
         } else if (sf === 'missing-dev') {
             list = list.filter(c => !((c.assessments || []).some(a => a.form_type === 'Child Development')));
         } else if (sf === 'missing-physio') {
@@ -4819,7 +4857,7 @@ document.addEventListener('DOMContentLoaded', () => {
         list.forEach(c => {
             const aList = c.assessments || [];
             totalAssessments += aList.length;
-            const hasRapid = aList.some(a => a.form_type === 'Rapid Assessment');
+            const hasRapid = aList.some(a => a.form_type === 'Consultation Form' || a.form_type === 'Rapid Assessment');
             const hasDev = aList.some(a => a.form_type === 'Child Development');
             const hasPhysio = aList.some(a => a.form_type === 'Physiotherapy');
             const hasSpeech = aList.some(a => a.form_type === 'Speech Assessment');
@@ -5036,7 +5074,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // 2. Render Discipline Pills
             const domainDefinitions = [
-                { type: 'Rapid Assessment', label: 'Rapid Assessment', icon: '⚡', record: summary.rapid.exists ? summary.rapid : null },
+                { type: 'Consultation Form', label: 'Consultation Form', icon: '🩺', record: summary.rapid.exists ? summary.rapid : null },
                 { type: 'Child Development', label: 'Child Development', icon: '👶', record: summary.dev.exists ? summary.dev : null },
                 { type: 'Physiotherapy', label: 'Physiotherapy', icon: '💪', record: summary.physio.exists ? summary.physio : null },
                 { type: 'Speech Assessment', label: 'Speech Assessment', icon: '🗣️', record: summary.speech.exists ? summary.speech : null },
@@ -5118,7 +5156,7 @@ document.addEventListener('DOMContentLoaded', () => {
             filteredChildren.forEach(c => {
                 const aList = c.assessments || [];
                 totalAssessments += aList.length;
-                const hasRapid = aList.some(a => a.form_type === 'Rapid Assessment');
+                const hasRapid = aList.some(a => a.form_type === 'Consultation Form' || a.form_type === 'Rapid Assessment');
                 const hasDev = aList.some(a => a.form_type === 'Child Development');
                 const hasPhysio = aList.some(a => a.form_type === 'Physiotherapy');
                 const hasSpeech = aList.some(a => a.form_type === 'Speech Assessment');
@@ -5172,18 +5210,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (f === 'completed') {
                     list = list.filter(c => {
                         const aList = c.assessments || [];
-                        return ['Rapid Assessment', 'Child Development', 'Physiotherapy', 'Speech Assessment'].every(t => aList.some(a => a.form_type === t));
+                        return ['Consultation Form', 'Child Development', 'Physiotherapy', 'Speech Assessment'].every(t => aList.some(a => a.form_type === t));
                     });
                 } else if (f === 'partial') {
                     list = list.filter(c => {
                         const aList = c.assessments || [];
-                        const majorDone = ['Rapid Assessment', 'Child Development', 'Physiotherapy', 'Speech Assessment'].filter(t => aList.some(a => a.form_type === t)).length;
+                        const majorDone = ['Consultation Form', 'Child Development', 'Physiotherapy', 'Speech Assessment'].filter(t => aList.some(a => a.form_type === t)).length;
                         return majorDone > 0 && majorDone < 4;
                     });
                 } else if (f === 'none') {
                     list = list.filter(c => (!c.assessments || c.assessments.length === 0));
-                } else if (f === 'missing-rapid') {
-                    list = list.filter(c => !((c.assessments || []).some(a => a.form_type === 'Rapid Assessment')));
+                } else if (f === 'missing-consultation' || f === 'missing-rapid') {
+                    list = list.filter(c => !((c.assessments || []).some(a => a.form_type === 'Consultation Form' || a.form_type === 'Rapid Assessment')));
                 } else if (f === 'missing-dev') {
                     list = list.filter(c => !((c.assessments || []).some(a => a.form_type === 'Child Development')));
                 } else if (f === 'missing-physio') {
@@ -5225,7 +5263,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const aList = c.assessments || [];
 
             const renderBadge = (formType) => {
-                const match = aList.find(a => a.form_type === formType);
+                const match = aList.find(a => a.form_type === formType || (formType === 'Consultation Form' && a.form_type === 'Rapid Assessment'));
                 if (match) {
                     const dt = match.created_at ? new Date(match.created_at).toLocaleDateString('en-IN') : 'Done';
                     return `<span style="background: #dcfce7; color: #15803d; padding: 3px 8px; border-radius: 12px; font-weight: 600; font-size: 0.76rem;" title="Completed on ${dt}">✓ ${dt}</span>`;
@@ -5247,7 +5285,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <tr style="border-bottom: 1px solid #f1f5f9;">
                     <td style="padding: 10px 12px;"><strong>${c.name}</strong>${admBadge}</td>
                     <td style="padding: 10px 12px; color: #64748b; font-size: 0.82rem;">${ageStr} / ${c.sex || '-'}</td>
-                    <td style="padding: 10px 12px; text-align: center;">${renderBadge('Rapid Assessment')}</td>
+                    <td style="padding: 10px 12px; text-align: center;">${renderBadge('Consultation Form')}</td>
                     <td style="padding: 10px 12px; text-align: center;">${renderBadge('Child Development')}</td>
                     <td style="padding: 10px 12px; text-align: center;">${renderBadge('Physiotherapy')}</td>
                     <td style="padding: 10px 12px; text-align: center;">${renderBadge('Speech Assessment')}</td>
@@ -5341,7 +5379,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Executive Assessment Matrix Table
             const matrixRows = [
-                ['1', 'Rapid Assessment', summary.rapid.exists ? summary.rapid.date : '-', summary.rapid.exists ? summary.rapid.diagnosis : 'Pending assessment', summary.rapid.exists ? 'Completed' : 'Pending'],
+                ['1', 'Consultation Form', summary.rapid.exists ? summary.rapid.date : '-', summary.rapid.exists ? (summary.rapid.observations || summary.rapid.diagnosis) : 'Pending assessment', summary.rapid.exists ? 'Completed' : 'Pending'],
                 ['2', 'Child Development', summary.dev.exists ? summary.dev.date : '-', summary.dev.exists ? summary.dev.diagnosis : 'Pending assessment', summary.dev.exists ? 'Completed' : 'Pending'],
                 ['3', 'Physiotherapy', summary.physio.exists ? summary.physio.date : '-', summary.physio.exists ? summary.physio.diagnosis : 'Pending assessment', summary.physio.exists ? 'Completed' : 'Pending'],
                 ['4', 'Speech Assessment', summary.speech.exists ? summary.speech.date : '-', summary.speech.exists ? summary.speech.diagnosis : 'Pending assessment', summary.speech.exists ? 'Completed' : 'Pending'],
@@ -5372,7 +5410,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const r = summary.rapid;
                 let teamStr = r.teamObservations.map(t => `${t.role}: ${t.obs || ''} (Sug: ${t.sug || '-'})`).join('\n');
                 domainFindings.push([
-                    '1. Rapid Assessment\n(' + r.date + ')',
+                    '1. Consultation Form\n(' + r.date + ')',
                     `Diagnosis: ${r.diagnosis}\nSymptoms: ${r.symptoms}\nBirth History: ${r.birth_history} | Med: ${r.medical_history}\n${teamStr ? 'Team Observations:\n' + teamStr + '\n' : ''}Finalized By: ${r.finalized_by}`
                 ]);
             }
@@ -5522,7 +5560,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             doc.autoTable({
                 startY: 23,
-                head: [['#', 'Child Name & Profile', 'Rapid Assessment', 'Child Development', 'Physiotherapy', 'Speech Assessment', 'Progress Reviews', 'Status']],
+                head: [['#', 'Child Name & Profile', 'Consultation Form', 'Child Development', 'Physiotherapy', 'Speech Assessment', 'Progress Reviews', 'Status']],
                 body: tableBody,
                 theme: 'striped',
                 styles: { fontSize: 7, cellPadding: 2, textColor: [30, 41, 59], overflow: 'linebreak' },
@@ -5564,7 +5602,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const headers = [
             'Child ID', 'Admission No', 'Child Name', 'Sex', 'DOB', 'Age (Years)', 'Mobile',
             'Workup Status', 'Total Assessments',
-            'Rapid Assessment Date', 'Rapid Diagnosis', 'Rapid Symptoms', 'Rapid Finalized By',
+            'Consultation Date', 'Consultation Observations', 'Consultation Suggestions', 'Consultation Symptoms', 'Consultant Name',
             'Child Dev Date', 'Child Dev Diagnosis', 'Child Dev Chief Complaint', 'Child Dev Delays', 'Child Dev Treatment Goal',
             'Physiotherapy Date', 'Physiotherapy Diagnosis', 'Physio Gait & Mobility', 'Physio Tone', 'Physio Plan',
             'Speech Assessment Date', 'Speech Diagnosis', 'Speech Articulation', 'Speech Voice', 'Speech Plan',
@@ -5655,10 +5693,10 @@ document.addEventListener('DOMContentLoaded', () => {
             list = list.filter(c => (c.name && c.name.toLowerCase().includes(q)) || (c.admission_no && c.admission_no.toLowerCase().includes(q)) || (c.mobile && c.mobile.includes(q)));
         }
         if (sf === 'completed') {
-            list = list.filter(c => ['Rapid Assessment', 'Child Development', 'Physiotherapy', 'Speech Assessment'].every(t => (c.assessments || []).some(a => a.form_type === t)));
+            list = list.filter(c => ['Consultation Form', 'Child Development', 'Physiotherapy', 'Speech Assessment'].every(t => (c.assessments || []).some(a => a.form_type === t)));
         } else if (sf === 'partial') {
             list = list.filter(c => {
-                const cnt = ['Rapid Assessment', 'Child Development', 'Physiotherapy', 'Speech Assessment'].filter(t => (c.assessments || []).some(a => a.form_type === t)).length;
+                const cnt = ['Consultation Form', 'Child Development', 'Physiotherapy', 'Speech Assessment'].filter(t => (c.assessments || []).some(a => a.form_type === t)).length;
                 return cnt > 0 && cnt < 4;
             });
         } else if (sf === 'none') {
@@ -5681,7 +5719,7 @@ document.addEventListener('DOMContentLoaded', () => {
             list = list.filter(c => (c.name && c.name.toLowerCase().includes(q)) || (c.admission_no && c.admission_no.toLowerCase().includes(q)) || (c.mobile && c.mobile.includes(q)));
         }
         if (sf === 'completed') {
-            list = list.filter(c => ['Rapid Assessment', 'Child Development', 'Physiotherapy', 'Speech Assessment'].every(t => (c.assessments || []).some(a => a.form_type === t)));
+            list = list.filter(c => ['Consultation Form', 'Child Development', 'Physiotherapy', 'Speech Assessment'].every(t => (c.assessments || []).some(a => a.form_type === t)));
         }
 
         exportAllAssessmentsSummaryCsv(list);

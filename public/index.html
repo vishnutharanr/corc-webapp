@@ -128,57 +128,70 @@
                 </div>
             </div>
 
-            <!-- Assessment: Rapid Assessment -->
-            <section id="rapid-assessment" class="assessment-pane">
+            <!-- Assessment: Consultation Form -->
+            <section id="consultation-form" class="assessment-pane">
                 <div class="tab-header" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px;">
                     <div>
-                        <h2>Rapid Assessment</h2>
-                        <p>Initial quick evaluation of the child.</p>
+                        <h2>Consultation Form</h2>
+                        <p>Early Intervention Centre for Children with Cerebral Palsy · Consultation &amp; Counselling</p>
                     </div>
-                    <button type="button" id="btn-rapid-new-child" class="btn-secondary" style="display: none; align-items: center; gap: 6px; font-weight: 600; padding: 7px 14px; background: #fff; border: 1px solid #cbd5e1; border-radius: 6px;">
+                    <button type="button" id="btn-consultation-new-child" class="btn-secondary" style="display: none; align-items: center; gap: 6px; font-weight: 600; padding: 7px 14px; background: #fff; border: 1px solid #cbd5e1; border-radius: 6px;">
                         ➕ Register New Child Instead
                     </button>
                 </div>
-                <div id="rapid-form-edit-banner" style="display: none; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 10px 14px; margin-bottom: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
-                    <span style="font-size: 0.88rem; color: #1e40af; font-weight: 500;">✏️ <strong>Editing Profile:</strong> Modifying details for <strong id="rapid-editing-child-name">—</strong>. Changes will update this child profile.</span>
+                <div id="consultation-form-edit-banner" style="display: none; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 10px 14px; margin-bottom: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+                    <span style="font-size: 0.88rem; color: #1e40af; font-weight: 500;">✏️ <strong>Editing Profile:</strong> Modifying details for <strong id="consultation-editing-child-name">—</strong>. Changes will update this child profile.</span>
                 </div>
-                <form class="assessment-form" id="form-rapid">
+                <form class="assessment-form consultation-doc-card" id="form-consultation">
+                    <div class="consultation-doc-header">
+                        <div class="consultation-doc-subtitle">EARLY INTERVENTION CENTRE FOR CHILDREN WITH CEREBRAL PALSY, Mylaudy</div>
+                        <div class="consultation-doc-title">CONSULTATION AND COUNSELLING</div>
+                    </div>
+
+                    <div class="form-section" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+                        <div class="form-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+                            <div class="input-group">
+                                <label for="consultation-date">Date of Assessment *</label>
+                                <input type="date" id="consultation-date" name="assessment_date" required>
+                            </div>
+                            <div class="input-group">
+                                <label for="consultation-admission-no">SL.NO <span style="font-size:0.75rem; color:#2563eb; font-weight:600; background:#eff6ff; padding:1px 6px; border-radius:4px; border:1px solid #bfdbfe;">Auto-generated</span></label>
+                                <input type="text" id="consultation-admission-no" name="admission_no"
+                                    placeholder="e.g. ADM-028" style="font-weight: 600; color: #1e40af;">
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="form-section">
                         <h3>Patient Information</h3>
                         <div class="form-grid">
                             <div class="input-group">
-                                <label for="rapid-name">Child Name *</label>
-                                <input type="text" id="rapid-name" name="child_name" required
+                                <label for="consultation-name">Name *</label>
+                                <input type="text" id="consultation-name" name="child_name" required
                                     placeholder="Enter child's name">
                             </div>
                             <div class="input-group">
-                                <label for="rapid-admission-no">Admission Number <span style="font-size:0.75rem; color:#2563eb; font-weight:600; background:#eff6ff; padding:1px 6px; border-radius:4px; border:1px solid #bfdbfe;">Auto-generated</span></label>
-                                <input type="text" id="rapid-admission-no" name="admission_no"
-                                    placeholder="e.g. ADM-028" style="font-weight: 600; color: #1e40af;">
-                            </div>
-                            <div class="input-group">
-                                <label for="rapid-sex">Sex</label>
-                                <select id="rapid-sex" name="sex">
+                                <label for="consultation-sex">Sex</label>
+                                <select id="consultation-sex" name="sex">
                                     <option value="">Select...</option>
                                     <option value="Male">Male</option>
                                     <option value="Female">Female</option>
                                 </select>
                             </div>
                             <div class="input-group">
-                                <label for="rapid-dob">Date of Birth</label>
-                                <input type="date" id="rapid-dob" name="dob">
+                                <label for="consultation-dob">Date of Birth</label>
+                                <input type="date" id="consultation-dob" name="dob">
                             </div>
                             <div class="input-group">
-                                <label for="rapid-age">Age</label>
-                                <input type="text" id="rapid-age" name="age">
+                                <label for="consultation-age">Age</label>
+                                <input type="text" id="consultation-age" name="age" placeholder="e.g. 2y 6m">
                             </div>
                             <div class="input-group full-width">
-                                <label for="rapid-address">Address</label>
-                                <textarea id="rapid-address" name="address" rows="2"></textarea>
-                            </div>
-                            <div class="input-group">
-                                <label for="rapid-mobile">Mobile Number</label>
-                                <input type="tel" id="rapid-mobile" name="mobile" placeholder="Enter mobile number">
+                                <label for="consultation-address">Address with Mobile No</label>
+                                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 12px;">
+                                    <textarea id="consultation-address" name="address" rows="2" placeholder="Residential Address"></textarea>
+                                    <input type="tel" id="consultation-mobile" name="mobile" placeholder="Mobile Number" style="height: fit-content; align-self: start;">
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -187,62 +200,49 @@
                         <h3>Clinical Details</h3>
                         <div class="form-grid">
                             <div class="input-group full-width">
-                                <label for="rapid-symptoms">Symptoms expressed by parents</label>
-                                <textarea id="rapid-symptoms" name="symptoms" rows="3"></textarea>
+                                <label for="consultation-symptoms">Symptoms expressed by the parents</label>
+                                <textarea id="consultation-symptoms" name="symptoms" rows="3" placeholder="Symptoms, parental concerns, chief complaints..."></textarea>
                             </div>
                             <div class="input-group full-width">
-                                <label for="rapid-birth-history">Birth History</label>
-                                <textarea id="rapid-birth-history" name="birth_history" rows="3"></textarea>
+                                <label for="consultation-birth-history">Birth history</label>
+                                <textarea id="consultation-birth-history" name="birth_history" rows="3" placeholder="Term, delivery type, birth weight, birth cry, NICU stay..."></textarea>
                             </div>
                             <div class="input-group full-width">
-                                <label for="rapid-medical-history">Medical History</label>
-                                <textarea id="rapid-medical-history" name="medical_history" rows="3"></textarea>
+                                <label for="consultation-medical-history">Medical history</label>
+                                <textarea id="consultation-medical-history" name="medical_history" rows="3" placeholder="Medications, seizures, prior therapies, hospitalizations..."></textarea>
                             </div>
                         </div>
                     </div>
 
                     <div class="form-section">
-                        <h3>Therapist Observations & Suggestions</h3>
-                        <div class="therapist-grid">
-                            <div class="therapist-header">Therapist</div>
-                            <div class="therapist-header">Observation</div>
-                            <div class="therapist-header">Suggestion</div>
-
-                            <div class="therapist-label">Physiotherapist</div>
-                            <textarea name="physio_observation" rows="2"></textarea>
-                            <textarea name="physio_suggestion" rows="2"></textarea>
-
-                            <div class="therapist-label">Occupational Therapist</div>
-                            <textarea name="occupational_observation" rows="2"></textarea>
-                            <textarea name="occupational_suggestion" rows="2"></textarea>
-
-                            <div class="therapist-label">Sensory Therapist</div>
-                            <textarea name="sensory_observation" rows="2"></textarea>
-                            <textarea name="sensory_suggestion" rows="2"></textarea>
-
-                            <div class="therapist-label">Speech</div>
-                            <textarea name="speech_observation" rows="2"></textarea>
-                            <textarea name="speech_suggestion" rows="2"></textarea>
-
-                            <div class="therapist-label">P & O Consultant</div>
-                            <textarea name="po_observation" rows="2"></textarea>
-                            <textarea name="po_suggestion" rows="2"></textarea>
+                        <h3>Assessment &amp; Recommendations</h3>
+                        <div class="observations-suggestions-grid">
+                            <div class="obs-box">
+                                <label for="consultation-observations">🔍 OBSERVATIONS</label>
+                                <textarea id="consultation-observations" name="observations" rows="7" placeholder="Record clinical observations, developmental findings, physical examination notes..."></textarea>
+                            </div>
+                            <div class="sug-box">
+                                <label for="consultation-suggestions">💡 SUGGESTIONS</label>
+                                <textarea id="consultation-suggestions" name="suggestions" rows="7" placeholder="Record clinical suggestions, counselling guidance, therapy recommendations, home plan..."></textarea>
+                            </div>
                         </div>
-                        <div class="form-grid" style="margin-top: 20px;">
+                    </div>
+
+                    <div class="form-section">
+                        <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 16px;">
                             <div class="input-group">
-                                <label for="rapid-diagnosis">Diagnosis</label>
-                                <input type="text" id="rapid-diagnosis" name="diagnosis">
+                                <label for="consultation-consultant-name">Name</label>
+                                <input type="text" id="consultation-consultant-name" name="consultant_name" placeholder="Name of Doctor / Consultant / Examiner">
                             </div>
                             <div class="input-group">
-                                <label for="rapid-finalized">Finalized By</label>
-                                <input type="text" id="rapid-finalized" name="finalized_by"
-                                    placeholder="Enter name or title">
+                                <label for="consultation-signature">Signature</label>
+                                <input type="text" id="consultation-signature" name="signature" placeholder="Signature / Designation">
                             </div>
                         </div>
                     </div>
 
                     <div class="form-actions">
-                        <button type="submit" class="btn-primary">Save Assessment</button>
+                        <button type="submit" class="btn-primary" id="btn-save-consultation">💾 Save Consultation Form</button>
                     </div>
                 </form>
             </section>
@@ -255,8 +255,8 @@
                         <p>Comprehensive developmental history and profile.</p>
                     </div>
                     <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                        <button type="button" id="btn-import-rapid" class="btn-secondary" style="display: inline-flex; align-items: center; gap: 6px; font-weight: 600; padding: 8px 14px; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; border-radius: 6px; cursor: pointer;" title="Auto-fill basic details, medical history, and parent concerns from Rapid Assessment">
-                            ⚡ Auto-fill from Rapid Assessment
+                        <button type="button" id="btn-import-rapid" class="btn-secondary" style="display: inline-flex; align-items: center; gap: 6px; font-weight: 600; padding: 8px 14px; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; border-radius: 6px; cursor: pointer;" title="Auto-fill basic details, medical history, and parent concerns from Consultation Form">
+                            ⚡ Auto-fill from Consultation Form
                         </button>
                     </div>
                 </div>
@@ -2035,7 +2035,7 @@
                     <select id="records-therapy-filter"
                         style="padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0; background: white; font-size: 0.9rem;">
                         <option value="all">All Assessments</option>
-                        <option value="Rapid Assessment">Rapid Assessment</option>
+                        <option value="Consultation Form">Consultation Form</option>
                         <option value="Child Development">Child Development</option>
                         <option value="Physiotherapy">Physiotherapy</option>
                         <option value="Speech Assessment">Speech Assessment</option>
@@ -2147,7 +2147,7 @@
                             <option value="completed">Fully Assessed (4/4 Core)</option>
                             <option value="partial">Partially Assessed (1-3 Core)</option>
                             <option value="none">Needs Initial Assessment (0)</option>
-                            <option value="missing-rapid">Missing Rapid Assessment</option>
+                            <option value="missing-consultation">Missing Consultation Form</option>
                             <option value="missing-dev">Missing Child Development</option>
                             <option value="missing-physio">Missing Physiotherapy</option>
                             <option value="missing-speech">Missing Speech Assessment</option>
@@ -2202,7 +2202,7 @@
                                 <tr style="background: #f8fafc; color: #1e293b; border-bottom: 2px solid #e2e8f0;">
                                     <th style="padding: 12px 14px; width: 40px; text-align: center;">#</th>
                                     <th style="padding: 12px 14px; min-width: 170px;">Child Name & Demographics</th>
-                                    <th style="padding: 12px 14px; min-width: 190px;">⚡ Rapid Assessment</th>
+                                    <th style="padding: 12px 14px; min-width: 190px;">🩺 Consultation Form</th>
                                     <th style="padding: 12px 14px; min-width: 200px;">👶 Child Development</th>
                                     <th style="padding: 12px 14px; min-width: 200px;">💪 Physiotherapy</th>
                                     <th style="padding: 12px 14px; min-width: 200px;">🗣️ Speech Assessment</th>
@@ -2775,10 +2775,10 @@
                 <div id="ap-type-picker">
                     <p class="ap-subtitle">Select the type of assessment to fill out</p>
                     <div class="ap-type-grid">
-                        <div class="ap-type-card" data-form-id="rapid-assessment" data-form-name="Rapid Assessment">
-                            <span class="ap-type-icon">⚡</span>
-                            <strong>Rapid Assessment</strong>
-                            <p>Initial quick evaluation of the child</p>
+                        <div class="ap-type-card" data-form-id="consultation-form" data-form-name="Consultation Form">
+                            <span class="ap-type-icon">🩺</span>
+                            <strong>Consultation Form</strong>
+                            <p>Consultation &amp; counselling initial evaluation of the child</p>
                         </div>
                         <div class="ap-type-card" data-form-id="child-development" data-form-name="Child Development">
                             <span class="ap-type-icon">👶</span>
@@ -2913,7 +2913,7 @@
                                 <option value="completed">Fully Assessed (All 4+)</option>
                                 <option value="partial">Partially Assessed (1-3)</option>
                                 <option value="none">No Assessments Yet (0)</option>
-                                <option value="missing-rapid">Missing Rapid Assessment</option>
+                                <option value="missing-consultation">Missing Consultation Form</option>
                                 <option value="missing-dev">Missing Child Development</option>
                                 <option value="missing-physio">Missing Physiotherapy</option>
                                 <option value="missing-speech">Missing Speech Assessment</option>
@@ -2928,7 +2928,7 @@
                                     <tr style="background: #f1f5f9; color: #1e293b; border-bottom: 2px solid #cbd5e1;">
                                         <th style="padding: 10px 12px;">Child Name</th>
                                         <th style="padding: 10px 12px;">Age / Sex</th>
-                                        <th style="padding: 10px 12px; text-align: center;">⚡ Rapid</th>
+                                        <th style="padding: 10px 12px; text-align: center;">🩺 Consultation</th>
                                         <th style="padding: 10px 12px; text-align: center;">👶 Child Dev</th>
                                         <th style="padding: 10px 12px; text-align: center;">💪 Physio</th>
                                         <th style="padding: 10px 12px; text-align: center;">🗣️ Speech</th>
