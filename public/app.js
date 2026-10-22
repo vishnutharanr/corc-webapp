@@ -52,23 +52,34 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!userRole || !authToken) {
             if (loginScreen) loginScreen.style.display = 'flex';
             if (appContainer) appContainer.style.display = 'none';
+            const topHeader = document.getElementById('app-top-header');
+            if (topHeader) topHeader.style.display = 'none';
         } else {
             if (loginScreen) loginScreen.style.display = 'none';
             if (appContainer) appContainer.style.display = 'flex';
             
-            // Populate user badge in sidebar
+            // Populate user badge in sidebar and top header
             const u = JSON.parse(localStorage.getItem('currentUser') || '{}');
+            const roleLabels = {
+                admin: 'Administrator',
+                staff: 'Staff (< 8 yrs)',
+                staff8: 'Staff (≥ 8 yrs)'
+            };
+            const displayName = u.fullName || u.username || 'User';
+            const displayRole = roleLabels[userRole] || userRole;
+
             const nameEl = document.getElementById('logged-user-name');
             const roleEl = document.getElementById('logged-user-role');
-            if (nameEl) nameEl.textContent = u.fullName || u.username || 'User';
-            if (roleEl) {
-                const roleLabels = {
-                    admin: 'Administrator',
-                    staff: 'Staff (< 8 yrs)',
-                    staff8: 'Staff (≥ 8 yrs)'
-                };
-                roleEl.textContent = roleLabels[userRole] || userRole;
-            }
+            if (nameEl) nameEl.textContent = displayName;
+            if (roleEl) roleEl.textContent = displayRole;
+
+            const topNameEl = document.getElementById('top-user-name');
+            const topRoleEl = document.getElementById('top-user-role');
+            if (topNameEl) topNameEl.textContent = displayName;
+            if (topRoleEl) topRoleEl.textContent = displayRole;
+
+            const topHeader = document.getElementById('app-top-header');
+            if (topHeader) topHeader.style.display = 'flex';
 
             applyRoleRestrictions();
             if (typeof fetchTherapyFees === 'function') fetchTherapyFees();
@@ -159,20 +170,29 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    const logoutBtn = document.getElementById('nav-logout');
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', () => {
-            localStorage.removeItem('userRole');
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('currentUser');
-            userRole = null;
-            authToken = null;
-            currentUser = null;
-            document.getElementById('login-username').value = '';
-            document.getElementById('login-password').value = '';
-            checkAuth();
-        });
+    function performLogout() {
+        localStorage.removeItem('userRole');
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('currentUser');
+        userRole = null;
+        authToken = null;
+        currentUser = null;
+        const lu = document.getElementById('login-username');
+        const lp = document.getElementById('login-password');
+        if (lu) lu.value = '';
+        if (lp) lp.value = '';
+        checkAuth();
     }
+
+    const logoutBtn = document.getElementById('nav-logout');
+    if (logoutBtn) logoutBtn.addEventListener('click', performLogout);
+
+    // Global Top Header Logout & Password buttons (accessible from every page)
+    document.getElementById('top-btn-logout')?.addEventListener('click', performLogout);
+    document.querySelectorAll('.btn-av-logout, .btn-logout').forEach(b => b.addEventListener('click', performLogout));
+    document.getElementById('top-btn-change-pwd')?.addEventListener('click', () => {
+        document.getElementById('btn-open-change-password')?.click();
+    });
 
     checkAuth();
 
@@ -201,6 +221,73 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    const currentEditingAssessments = {};
+
+    function syncActiveChildAssessments(child) {
+        Object.keys(currentEditingAssessments).forEach(k => delete currentEditingAssessments[k]);
+        if (!child || !Array.isArray(child.assessments)) return;
+        child.assessments.forEach(a => {
+            if (a.form_type && a.id) {
+                currentEditingAssessments[a.form_type] = a.id;
+            }
+        });
+    }
+
+    async function refreshActiveChildAssessments() {
+        if (!activeChild || !activeChild.id) return;
+        try {
+            const res = await fetch('/api/children/' + activeChild.id);
+            if (res.ok) {
+                const fullChild = await res.json();
+                activeChild.assessments = fullChild.assessments || [];
+                const ra = fullChild.assessments?.find(a => a.form_type === 'Rapid Assessment');
+                if (ra && ra.data) activeChild._rapidData = ra.data;
+                localStorage.setItem('activeChild', JSON.stringify(activeChild));
+                syncActiveChildAssessments(activeChild);
+                updateFormEditBanners();
+                prefillFromActive();
+                const activeTab = document.querySelector('.tab-content.active, .assessment-pane.active');
+                if (activeTab && activeTab.id === 'child-development') {
+                    updateDevFormState();
+                } else if (activeTab && activeTab.id === 'rapid-assessment') {
+                    updateRapidFormState();
+                }
+            }
+        } catch (e) {
+            console.error('Error refreshing active child assessments:', e);
+        }
+    }
+
+    function updateFormEditBanners() {
+        // Rapid Assessment Edit Banner
+        const rapidBanner = document.getElementById('rapid-form-edit-banner');
+        const rapidChildName = document.getElementById('rapid-editing-child-name');
+        const btnRapidNew = document.getElementById('btn-rapid-new-child');
+        if (rapidBanner && rapidChildName) {
+            if (activeChild && activeChild.id) {
+                rapidBanner.style.display = 'flex';
+                const adm = activeChild.admission_no ? `[${activeChild.admission_no}] ` : '';
+                rapidChildName.textContent = `${adm}${activeChild.name}`;
+                if (btnRapidNew) btnRapidNew.style.display = 'inline-flex';
+            } else {
+                rapidBanner.style.display = 'none';
+                if (btnRapidNew) btnRapidNew.style.display = 'none';
+            }
+        }
+
+        // Child Development Edit Banner
+        const devBanner = document.getElementById('dev-form-edit-banner');
+        const devChildName = document.getElementById('dev-editing-child-name');
+        if (devBanner && devChildName) {
+            if (activeChild && currentEditingAssessments['Child Development']) {
+                devBanner.style.display = 'flex';
+                devChildName.textContent = activeChild.name;
+            } else {
+                devBanner.style.display = 'none';
+            }
+        }
+    }
+
     function switchTab(targetId) {
         navItems.forEach(n => {
             if (n.id !== 'nav-logout') {
@@ -216,7 +303,23 @@ document.addEventListener('DOMContentLoaded', () => {
         if (targetId === 'user-management') fetchUsers();
         if (targetId === 'therapies-settings') fetchTherapyFees();
         if (targetId === 'therapists-settings') fetchTherapists();
-        if (targetId === 'rapid-assessment' && !activeChild) primeRapidAdmissionNo();
+        if (targetId === 'rapid-assessment') {
+            if (!activeChild) primeRapidAdmissionNo();
+            updateRapidFormState();
+        }
+        if (targetId === 'child-development') {
+            updateDevFormState();
+        }
+        if (targetId === 'physiotherapy') {
+            updateAssessmentFormState('Physiotherapy', 'form-physio');
+        }
+        if (targetId === 'speech') {
+            updateAssessmentFormState('Speech Assessment', 'form-speech');
+        }
+        if (targetId === 'progress-review') {
+            updateAssessmentFormState('Quarterly Progress Review', 'form-progress');
+        }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     // ── Inject Back Buttons into Assessment Forms ────────────
@@ -238,14 +341,27 @@ document.addEventListener('DOMContentLoaded', () => {
     function setActiveChild(child, rapidData) {
         activeChild = child;
         if (child) {
+            if (!rapidData && child.assessments) {
+                const ra = child.assessments.find(a => a.form_type === 'Rapid Assessment');
+                if (ra && ra.data) rapidData = ra.data;
+            }
+            if (!rapidData && child._rapidData) {
+                rapidData = child._rapidData;
+            }
             const toStore = rapidData ? { ...child, _rapidData: rapidData } : child;
             localStorage.setItem('activeChild', JSON.stringify(toStore));
             activeChild = toStore;
+            syncActiveChildAssessments(toStore);
+            if (!toStore.assessments && toStore.id) {
+                refreshActiveChildAssessments();
+            }
         } else {
             localStorage.removeItem('activeChild');
+            Object.keys(currentEditingAssessments).forEach(k => delete currentEditingAssessments[k]);
         }
         updateBanner();
         prefillFromActive();
+        updateFormEditBanners();
     }
 
     function updateBanner() {
@@ -278,9 +394,228 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function prefillFromActive() {
+    // Auto-calculate Siblings Total (Bros + Sis = Total)
+    function calcTotalSiblings(container) {
+        if (!container) return;
+        const broInp = container.querySelector('input[name="siblings_brothers"]');
+        const sisInp = container.querySelector('input[name="siblings_sisters"]');
+        const totInp = container.querySelector('input[name="siblings_total"]');
+        if (!totInp) return;
+        const broVal = broInp && broInp.value.trim() !== '' ? parseInt(broInp.value, 10) : null;
+        const sisVal = sisInp && sisInp.value.trim() !== '' ? parseInt(sisInp.value, 10) : null;
+        if (broVal === null && sisVal === null) {
+            totInp.value = '';
+        } else {
+            totInp.value = (broVal || 0) + (sisVal || 0);
+        }
+    }
+
+    // Section 37 Milestones interactive toggle
+    function setupMilestoneInteractions(container) {
+        if (!container) return;
+        container.querySelectorAll('input[type="radio"][name^="ms_"]').forEach(r => {
+            r.addEventListener('change', () => {
+                const card = r.closest('.milestone-card');
+                if (!card) return;
+                const delayedBox = card.querySelector('.ms-delayed-box');
+                if (!delayedBox) return;
+                if (r.checked && r.value.startsWith('>')) {
+                    delayedBox.style.display = 'flex';
+                    const inp = delayedBox.querySelector('input');
+                    if (inp) inp.focus();
+                } else if (r.checked && r.value.startsWith('<')) {
+                    delayedBox.style.display = 'none';
+                    const inp = delayedBox.querySelector('input');
+                    if (inp) inp.value = '';
+                }
+            });
+        });
+    }
+
+    // Auto-populate Child Development form from Rapid Assessment
+    function populateDevFromRapid(force = false) {
+        if (!activeChild) {
+            if (force) showToast('Please select a child profile first.', true);
+            return;
+        }
+        const devForm = document.getElementById('form-development');
+        if (!devForm) return;
+
         const rd = (activeChild && activeChild._rapidData) || {};
 
+        let ageVal = rd.age || '';
+        if (!ageVal && (activeChild.dob || rd.dob)) {
+            const birthDate = new Date(activeChild.dob || rd.dob);
+            if (!isNaN(birthDate.getTime())) {
+                const today = new Date();
+                let years = today.getFullYear() - birthDate.getFullYear();
+                let months = today.getMonth() - birthDate.getMonth();
+                if (today.getDate() < birthDate.getDate()) months--;
+                if (months < 0) { years--; months += 12; }
+                ageVal = years > 0 ? `${years}y ${months}m` : `${months}m`;
+            }
+        }
+
+        const fills = [
+            ['input[name="child_name"]',              activeChild.name || ''],
+            ['input[name="admission_no"]',            activeChild.admission_no || ''],
+            ['select[name="sex"]',                    activeChild.sex || rd.sex || ''],
+            ['input[name="dob"]',                     activeChild.dob || rd.dob || ''],
+            ['input[name="age"]',                     ageVal],
+            ['textarea[name="address"]',              rd.address || ''],
+            ['textarea[name="medical_history_dev"]',  rd.medical_history || ''],
+            ['input[name="parent_expectations"]',     rd.symptoms || ''],
+            ['input[name="dev_diagnosis"]',           rd.diagnosis || ''],
+            ['input[name="father_contact"]',          activeChild.mobile || rd.father_contact || rd.mobile || ''],
+            ['input[name="mother_contact"]',          rd.mother_contact || activeChild.mobile || rd.mobile || ''],
+            ['input[name="informant"]',               rd.informant || ''],
+            ['select[name="relationship"]',           rd.relationship || ''],
+            ['input[name="perinatal_others"]',        rd.birth_history || ''],
+            ['input[name="height"]',                  rd.height || ''],
+            ['input[name="weight"]',                  rd.weight || ''],
+            ['input[name="bmi"]',                     rd.bmi || ''],
+            ['input[name="head_circ"]',               rd.head_circ || ''],
+            ['input[name="chest_circ"]',              rd.chest_circ || ''],
+            ['input[name="muac_r"]',                  rd.muac_r || ''],
+            ['input[name="muac_l"]',                  rd.muac_l || '']
+        ];
+
+        let populatedCount = 0;
+        fills.forEach(([sel, val]) => {
+            if (!val) return;
+            const el = devForm.querySelector(sel);
+            if (el) {
+                if (force || !el.value || el.value.trim() === '') {
+                    el.value = val;
+                    populatedCount++;
+                }
+            }
+        });
+
+        if (force) {
+            showToast(`✅ Generated details from Rapid Assessment (${populatedCount} fields updated)!`);
+        }
+    }
+
+    function populateFormFields(form, data) {
+        if (!form || !data) return;
+        Object.keys(data).forEach(key => {
+            const val = data[key];
+            const elements = form.querySelectorAll(`[name="${key}"]`);
+            if (!elements.length) return;
+            
+            elements.forEach(el => {
+                if (el.type === 'radio') {
+                    el.checked = (el.value === val);
+                    if (el.checked && el.name.startsWith('ms_') && el.value.startsWith('>')) {
+                        const card = el.closest('.milestone-card');
+                        const dBox = card?.querySelector('.ms-delayed-box');
+                        if (dBox) dBox.style.display = 'flex';
+                    }
+                } else if (el.type === 'checkbox') {
+                    if (Array.isArray(val)) {
+                        el.checked = val.includes(el.value);
+                    } else {
+                        el.checked = (el.value === val || val === true);
+                    }
+                } else {
+                    el.value = (val !== undefined && val !== null) ? val : '';
+                }
+            });
+        });
+
+        // Detail text inputs for delayed milestones
+        Object.keys(data).forEach(key => {
+            if (key.endsWith('_detail') && data[key]) {
+                const inp = form.querySelector(`input[name="${key}"]`);
+                if (inp) {
+                    inp.value = data[key];
+                    const card = inp.closest('.milestone-card');
+                    const dBox = card?.querySelector('.ms-delayed-box');
+                    if (dBox) dBox.style.display = 'flex';
+                }
+            }
+        });
+
+        calcTotalSiblings(form);
+
+        form.querySelectorAll('.conditional-desc').forEach(desc => {
+            const hasVal = Array.from(desc.querySelectorAll('input, select, textarea')).some(i => i.value && i.value.trim());
+            if (hasVal) desc.style.display = 'block';
+        });
+
+        if (data.photo_base64) {
+            const imgEl = form.querySelector('#dev-photo-preview') || form.querySelector('img[id$="-photo-preview"]');
+            const phEl = form.querySelector('#photo-placeholder');
+            if (imgEl) { imgEl.src = data.photo_base64; imgEl.style.display = 'block'; }
+            if (phEl) phEl.style.display = 'none';
+        }
+    }
+
+    function updateRapidFormState() {
+        const rf = document.getElementById('form-rapid');
+        if (!rf) return;
+        updateFormEditBanners();
+        if (activeChild && activeChild.id) {
+            const rd = activeChild._rapidData || {};
+            const populate = [
+                ['input[name="child_name"]', activeChild.name || ''],
+                ['input[name="admission_no"]', activeChild.admission_no || ''],
+                ['select[name="sex"]', activeChild.sex || rd.sex || ''],
+                ['input[name="dob"]', activeChild.dob || rd.dob || ''],
+                ['input[name="age"]', rd.age || ''],
+                ['textarea[name="address"]', rd.address || ''],
+                ['input[name="mobile"]', activeChild.mobile || rd.mobile || ''],
+                ['textarea[name="symptoms"]', rd.symptoms || ''],
+                ['textarea[name="birth_history"]', rd.birth_history || ''],
+                ['textarea[name="medical_history"]', rd.medical_history || ''],
+                ['textarea[name="physio_observation"]', rd.physio_observation || ''],
+                ['textarea[name="physio_suggestion"]', rd.physio_suggestion || ''],
+                ['textarea[name="occupational_observation"]', rd.occupational_observation || ''],
+                ['textarea[name="occupational_suggestion"]', rd.occupational_suggestion || ''],
+                ['textarea[name="sensory_observation"]', rd.sensory_observation || ''],
+                ['textarea[name="sensory_suggestion"]', rd.sensory_suggestion || ''],
+                ['textarea[name="speech_observation"]', rd.speech_observation || ''],
+                ['textarea[name="speech_suggestion"]', rd.speech_suggestion || ''],
+                ['textarea[name="po_observation"]', rd.po_observation || ''],
+                ['textarea[name="po_suggestion"]', rd.po_suggestion || ''],
+                ['input[name="diagnosis"]', rd.diagnosis || ''],
+                ['input[name="finalized_by"]', rd.finalized_by || '']
+            ];
+            populate.forEach(([sel, val]) => {
+                const el = rf.querySelector(sel);
+                if (el) el.value = val;
+            });
+        }
+    }
+
+    function updateDevFormState() {
+        const devForm = document.getElementById('form-development');
+        if (!devForm) return;
+        updateFormEditBanners();
+        if (activeChild && currentEditingAssessments['Child Development']) {
+            const devAss = activeChild.assessments?.find(a => a.form_type === 'Child Development' && a.id == currentEditingAssessments['Child Development']);
+            if (devAss && devAss.data) {
+                populateFormFields(devForm, devAss.data);
+            }
+        } else {
+            prefillFromActive();
+        }
+    }
+
+    function updateAssessmentFormState(formType, formId) {
+        const form = document.getElementById(formId);
+        if (!form) return;
+        prefillFromActive();
+        if (activeChild && currentEditingAssessments[formType]) {
+            const ass = activeChild.assessments?.find(a => a.form_type === formType && a.id == currentEditingAssessments[formType]);
+            if (ass && ass.data) {
+                populateFormFields(form, ass.data);
+            }
+        }
+    }
+
+    function prefillFromActive() {
         // ── Lock child name in all assessment forms ──────────────
         const nameFields = [
             document.getElementById('physio-name'),
@@ -319,26 +654,64 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // ── Auto-fill Child Development form from Rapid Assessment data ──
-        if (!activeChild) return;
-        const devForm = document.getElementById('form-development');
-        if (!devForm) return;
-
-        // Map: [CSS selector, value]  — only fills if value is non-empty
-        const fills = [
-            ['input[name="admission_no"]',  activeChild.admission_no || ''],
-            ['select[name="sex"]',          activeChild.sex || rd.sex || ''],
-            ['input[name="dob"]',           activeChild.dob || rd.dob || ''],
-            ['input[name="age"]',           rd.age     || ''],
-            ['textarea[name="address"]',    rd.address || ''],
-            ['input[name="dev_diagnosis"]', rd.diagnosis || ''],
-        ];
-        fills.forEach(([sel, val]) => {
-            if (!val) return;
-            const el = devForm.querySelector(sel);
-            if (el) el.value = val;
-        });
+        // Auto-fill basic fields in Child Development
+        if (activeChild) {
+            populateDevFromRapid(false);
+        }
     }
+
+    // Attach listeners for Dev form and Rapid form controls
+    const devFormEl = document.getElementById('form-development');
+    if (devFormEl) {
+        devFormEl.querySelectorAll('input[name="siblings_brothers"], input[name="siblings_sisters"]').forEach(inp => {
+            inp.addEventListener('input', () => calcTotalSiblings(devFormEl));
+            inp.addEventListener('change', () => calcTotalSiblings(devFormEl));
+        });
+        setupMilestoneInteractions(devFormEl);
+    }
+
+    document.getElementById('btn-import-rapid')?.addEventListener('click', async () => {
+        if (!activeChild) {
+            showToast('Please open or select a child profile first.', true);
+            return;
+        }
+        if (!activeChild._rapidData && activeChild.id) {
+            try {
+                const res = await fetch('/api/children/' + activeChild.id);
+                if (res.ok) {
+                    const cd = await res.json();
+                    const ra = cd.assessments?.find(a => a.form_type === 'Rapid Assessment');
+                    if (ra && ra.data) {
+                        activeChild._rapidData = ra.data;
+                        localStorage.setItem('activeChild', JSON.stringify(activeChild));
+                    }
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+        populateDevFromRapid(true);
+    });
+
+    document.getElementById('btn-dev-new-version')?.addEventListener('click', () => {
+        delete currentEditingAssessments['Child Development'];
+        const devForm = document.getElementById('form-development');
+        if (devForm) {
+            devForm.reset();
+            prefillFromActive();
+        }
+        const devBanner = document.getElementById('dev-form-edit-banner');
+        if (devBanner) devBanner.style.display = 'none';
+        showToast('Ready to record a fresh Child Development assessment.');
+    });
+
+    document.getElementById('btn-rapid-new-child')?.addEventListener('click', async () => {
+        setActiveChild(null);
+        const rf = document.getElementById('form-rapid');
+        if (rf) rf.reset();
+        await primeRapidAdmissionNo();
+        showToast('Ready to register a new child.');
+    });
 
     async function fetchNextAdmissionNo() {
         try {
@@ -781,6 +1154,58 @@ document.addEventListener('DOMContentLoaded', () => {
             alert("More than 8 years");
             return;
         }
+
+        if (activeChild && activeChild.id) {
+            // EDITING existing child profile and Rapid Assessment (Prevents duplicate files)
+            try {
+                // 1. Update child profile
+                const cr = await fetch('/api/children/' + activeChild.id, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        name, 
+                        admission_no: data.admission_no || activeChild.admission_no || null, 
+                        dob: data.dob || null, 
+                        sex: data.sex || null, 
+                        mobile: data.mobile || null 
+                    })
+                });
+                if (!cr.ok) { showToast('Error updating child: ' + (await cr.json()).error, true); return; }
+                const updatedChild = await cr.json();
+
+                // 2. Update or create Rapid Assessment linked to this child
+                const rapidAssId = currentEditingAssessments['Rapid Assessment'];
+                if (rapidAssId) {
+                    const ar = await fetch('/api/assessments/' + rapidAssId, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ data })
+                    });
+                    if (!ar.ok) { showToast('Error updating assessment: ' + (await ar.json()).error, true); return; }
+                } else {
+                    const ar = await fetch('/api/assessments', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ child_id: activeChild.id, child_name: name, form_type: 'Rapid Assessment', data })
+                    });
+                    if (ar.ok) {
+                        const newAss = await ar.json();
+                        currentEditingAssessments['Rapid Assessment'] = newAss.id;
+                    }
+                }
+
+                setActiveChild({ ...activeChild, ...updatedChild }, data);
+                showToast('✅ Profile and Rapid Assessment updated successfully!');
+                setTimeout(() => switchTab('child-development'), 1000);
+                fetchChildFolders();
+                return;
+            } catch (err) {
+                console.error(err);
+                showToast('Failed to save assessment.', true);
+                return;
+            }
+        }
+
         try {
             // 1. Create child profile
             const cr = await fetch('/api/children', {
@@ -788,7 +1213,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
                     name, 
-                    admission_no: data.admission_no || null,
+                    admission_no: data.admission_no || null, 
                     dob: data.dob || null, 
                     sex: data.sex || null, 
                     mobile: data.mobile || null 
@@ -804,6 +1229,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify({ child_id: child.id, child_name: name, form_type: 'Rapid Assessment', data })
             });
             if (ar.ok) {
+                const createdAss = await ar.json();
+                currentEditingAssessments['Rapid Assessment'] = createdAss.id;
                 setActiveChild(child, data);
                 el.reset();
                 showToast('\u2705 Child profile created for "' + name + '"! Opening Child Development form...');
@@ -830,6 +1257,33 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
         }
+
+        const existingAssId = currentEditingAssessments[formType];
+        if (existingAssId) {
+            // EDITING existing assessment record (Prevents creating duplicate files)
+            try {
+                const r = await fetch('/api/assessments/' + existingAssId, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ data })
+                });
+                if (r.ok) {
+                    showToast(`✅ ${formType} updated successfully!`);
+                    if (activeChild && activeChild.assessments) {
+                        const idx = activeChild.assessments.findIndex(a => a.id == existingAssId);
+                        if (idx !== -1) activeChild.assessments[idx].data = data;
+                    }
+                    fetchChildFolders();
+                } else {
+                    showToast('Error: ' + (await r.json()).error, true);
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('Failed to update assessment.', true);
+            }
+            return;
+        }
+
         try {
             const r = await fetch('/api/assessments', {
                 method: 'POST',
@@ -837,12 +1291,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify({ child_id: childId, child_name: childName, form_type: formType, data })
             });
             if (r.ok) {
+                const created = await r.json();
+                currentEditingAssessments[formType] = created.id;
                 showToast(formType + ' saved successfully!');
                 const nf = el.querySelector('input[name="child_name"]');
                 const sv = nf && nf.value;
                 el.reset();
                 if (nf && sv) nf.value = sv;
                 prefillFromActive();
+                refreshActiveChildAssessments();
+                fetchChildFolders();
             } else {
                 showToast('Error: ' + (await r.json()).error, true);
             }
@@ -983,7 +1441,15 @@ document.addEventListener('DOMContentLoaded', () => {
                         '</div>').join('')
                     : '<div class="folder-empty-msg">No assessments saved yet.</div>';
 
-                const childJson    = JSON.stringify({id:child.id, name:child.name, admission_no:child.admission_no || '', dob:child.dob, sex:child.sex, mobile:child.mobile});
+                const childJson    = JSON.stringify({
+                    id: child.id, 
+                    name: child.name, 
+                    admission_no: child.admission_no || '', 
+                    dob: child.dob, 
+                    sex: child.sex, 
+                    mobile: child.mobile,
+                    assessments: child.assessments || []
+                });
                 const safeChildJson = childJson.replace(/"/g, '&quot;');
                 const openBtn = isActive
                     ? '<span class="active-badge">\u25cf Active</span>'
@@ -1358,6 +1824,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 el.checked = arr.includes(el.value);
             } else if (el.type === 'radio') {
                 el.checked = (val === el.value);
+                if (el.checked && el.name.startsWith('ms_') && String(el.value).startsWith('>')) {
+                    const card = el.closest('.milestone-card');
+                    const dBox = card?.querySelector('.ms-delayed-box');
+                    if (dBox) dBox.style.display = 'flex';
+                }
             } else {
                 el.value = (val !== undefined && val !== null) ? (Array.isArray(val) ? val.join(', ') : String(val)) : '';
             }
@@ -1375,11 +1846,40 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
+        // Ensure any milestone delayed detail box with existing values is visible
+        clone.querySelectorAll('input[name$="_detail"]').forEach(inp => {
+            if (inp.value && inp.value.trim()) {
+                const card = inp.closest('.milestone-card');
+                const dBox = card?.querySelector('.ms-delayed-box');
+                if (dBox) dBox.style.display = 'flex';
+            }
+        });
+
         // Show conditional-desc blocks that have data
         clone.querySelectorAll('.conditional-desc').forEach(desc => {
             const hasVal = Array.from(desc.querySelectorAll('input, select, textarea')).some(i => i.value && i.value.trim());
             if (hasVal) desc.style.display = 'block';
         });
+
+        // Siblings Auto-Calculation
+        calcTotalSiblings(clone);
+
+        if (!readOnly) {
+            clone.querySelectorAll('input[name="siblings_brothers"], input[name="siblings_sisters"]').forEach(inp => {
+                inp.addEventListener('input', () => calcTotalSiblings(clone));
+                inp.addEventListener('change', () => calcTotalSiblings(clone));
+            });
+            setupMilestoneInteractions(clone);
+            clone.querySelectorAll('.yes-no-select').forEach(sel => {
+                sel.addEventListener('change', e => {
+                    const desc = e.target.parentElement.querySelector('.conditional-desc');
+                    if (!desc) return;
+                    const show = e.target.value === 'Yes' || e.target.value === 'Defective';
+                    desc.style.display = show ? 'block' : 'none';
+                    if (!show) desc.querySelectorAll('input, select').forEach(i => i.value = '');
+                });
+            });
+        }
 
         // Remove submit buttons from clone (we use dedicated top & bottom toolbars)
         clone.querySelectorAll('.form-actions').forEach(el => el.remove());
@@ -3665,6 +4165,30 @@ document.addEventListener('DOMContentLoaded', () => {
             dData.chest_circ ? `Chest: ${dData.chest_circ}cm` : ''
         ].filter(Boolean);
 
+        const devMilestones = [];
+        const msDefinitions = [
+            { key: 'ms_sitting', label: 'Sitting' },
+            { key: 'ms_crawling', label: 'Crawling' },
+            { key: 'ms_standing', label: 'Standing' },
+            { key: 'ms_walking', label: 'Walking' },
+            { key: 'ms_babbling', label: 'Babbling' },
+            { key: 'ms_words', label: 'Words' },
+            { key: 'ms_sentences', label: 'Sentences' },
+            { key: 'ms_social_smile', label: 'Social Smile' },
+            { key: 'ms_eye_contact', label: 'Eye Contact' }
+        ];
+        msDefinitions.forEach(m => {
+            const val = dData[m.key];
+            const detail = dData[`${m.key}_detail`];
+            if (val) {
+                devMilestones.push(`${m.label}: ${val}${detail ? ` (${detail})` : ''}`);
+            }
+        });
+        if (devMilestones.length === 0 && dData.milestones) {
+            const legacyMs = Array.isArray(dData.milestones) ? dData.milestones : [dData.milestones];
+            legacyMs.forEach(item => devMilestones.push(item));
+        }
+
         const devSummary = {
             exists: !!dev,
             id: dev?.id,
@@ -3676,6 +4200,7 @@ document.addEventListener('DOMContentLoaded', () => {
             anthropometry: anthropometryList.join(' · ') || '',
             delays,
             conditions,
+            milestones: devMilestones,
             goals: dData.treatment_goal || dData.treatment_plan || dData.parent_expectations || '',
             assessed_by: dData.assessed_by || ''
         };
@@ -3890,6 +4415,12 @@ document.addEventListener('DOMContentLoaded', () => {
                             <div class="summary-field-box" style="background: #fffbeb; border-color: #fde68a;">
                                 <div class="field-label" style="color: #92400e;">Impairments & Associated Conditions</div>
                                 <div class="field-val" style="color: #78350f;">${d.conditions.join(' · ')}</div>
+                            </div>
+                        ` : ''}
+                        ${d.milestones && d.milestones.length ? `
+                            <div class="summary-field-box" style="background: #f0fdf4; border-color: #bbf7d0;">
+                                <div class="field-label" style="color: #166534;">Developmental Milestones (Age 0-2 yrs)</div>
+                                <div class="field-val" style="color: #14532d;">${d.milestones.join(' · ')}</div>
                             </div>
                         ` : ''}
                         ${d.goals ? `
@@ -4847,9 +5378,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (summary.dev.exists) {
                 const d = summary.dev;
+                const msStr = d.milestones && d.milestones.length ? `\nMilestones (0-2y): ${d.milestones.join(', ')}` : '';
                 domainFindings.push([
                     '2. Child Development\n(' + d.date + ')',
-                    `Developmental Impression: ${d.diagnosis}\nChief Complaints: ${d.chief_complaints} (Informant: ${d.informant})\nPerinatal: ${d.delivery}\nIdentified Delays: ${d.delays.join(', ') || 'None stated'}\nConditions: ${d.conditions.join(', ') || 'None noted'}\nGoals & Plan: ${d.goals || 'Targeted early intervention'}`
+                    `Developmental Impression: ${d.diagnosis}\nChief Complaints: ${d.chief_complaints} (Informant: ${d.informant})\nPerinatal: ${d.delivery}\nIdentified Delays: ${d.delays.join(', ') || 'None stated'}\nConditions: ${d.conditions.join(', ') || 'None noted'}${msStr}\nGoals & Plan: ${d.goals || 'Targeted early intervention'}`
                 ]);
             }
 

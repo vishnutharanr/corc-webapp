@@ -47,9 +47,8 @@
     <div class="app-container" id="app-container" style="display: none;">
         <!-- Sidebar Navigation -->
         <nav class="sidebar">
-            <div class="logo-container"
-                style="display: flex; justify-content: center; align-items: center; padding: 20px;">
-                <img src="logo.jpg" alt="ProVision" style="max-width: 100%; height: auto; max-height: 80px;">
+            <div class="logo-container">
+                <img src="logo.jpg" alt="ProVision" class="sidebar-logo-img">
             </div>
             <ul class="nav-links">
                 <li class="nav-item active" data-target="records">
@@ -73,27 +72,42 @@
                 <li class="nav-item admin-only-filter" data-target="user-management" style="display: none;">
                     <span class="nav-icon">👥</span> Staff & Users
                 </li>
-                <li style="margin-top: auto;">
-                    <div
-                        style="padding: 10px 14px; margin: 10px 5px; border-radius: 8px; background: rgba(255,255,255,0.06); font-size: 0.85rem; color: #cbd5e1; display: flex; align-items: center; justify-content: space-between;">
-                        <div>
-                            <strong id="logged-user-name"
-                                style="color: #fff; font-size: 0.85rem; display: block;">—</strong>
-                            <span id="logged-user-role"
-                                style="font-size: 0.72rem; text-transform: uppercase; color: #818cf8; font-weight: 600;">—</span>
-                        </div>
-                        <button id="btn-open-change-password" title="Change Password"
-                            style="background: none; border: none; cursor: pointer; font-size: 1.1rem; color: #94a3b8; padding: 2px;">🔑</button>
-                    </div>
-                </li>
-                <li class="nav-item" id="nav-logout" style="color: var(--danger);">
-                    <span class="nav-icon">🚪</span> Logout
-                </li>
             </ul>
+
+            <div class="sidebar-footer">
+                <div class="sidebar-user-card">
+                    <div class="sidebar-user-details">
+                        <strong id="logged-user-name">—</strong>
+                        <span id="logged-user-role">—</span>
+                    </div>
+                    <button id="btn-open-change-password" title="Change Password" type="button" class="btn-sidebar-key">🔑</button>
+                </div>
+                <button type="button" class="nav-item sidebar-logout-btn" id="nav-logout" title="Log out from application">
+                    <span class="nav-icon">🚪</span> Logout
+                </button>
+            </div>
         </nav>
 
         <!-- Main Content Area -->
         <main class="main-content">
+            <!-- Global Top Application Header Bar (Visible on every page/tab) -->
+            <header class="app-top-header" id="app-top-header">
+                <div class="app-top-branding">
+                    <span class="app-clinic-tagline">Clinical Pediatric Record Management System</span>
+                </div>
+                <div class="app-top-user-controls">
+                    <div class="app-user-badge">
+                        <span class="user-avatar-icon">👤</span>
+                        <div class="user-meta-info">
+                            <strong id="top-user-name" class="top-user-name">—</strong>
+                            <span id="top-user-role" class="top-user-role">—</span>
+                        </div>
+                    </div>
+                    <button type="button" id="top-btn-change-pwd" class="btn-top-action" title="Change Password">🔑 Password</button>
+                    <button type="button" class="btn-top-logout" id="top-btn-logout" title="Log out from application">🚪 Logout</button>
+                </div>
+            </header>
+
             <!-- Toast Notification -->
             <div id="toast" class="toast hidden">Message goes here</div>
 
@@ -116,9 +130,17 @@
 
             <!-- Assessment: Rapid Assessment -->
             <section id="rapid-assessment" class="assessment-pane">
-                <div class="tab-header">
-                    <h2>Rapid Assessment</h2>
-                    <p>Initial quick evaluation of the child.</p>
+                <div class="tab-header" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px;">
+                    <div>
+                        <h2>Rapid Assessment</h2>
+                        <p>Initial quick evaluation of the child.</p>
+                    </div>
+                    <button type="button" id="btn-rapid-new-child" class="btn-secondary" style="display: none; align-items: center; gap: 6px; font-weight: 600; padding: 7px 14px; background: #fff; border: 1px solid #cbd5e1; border-radius: 6px;">
+                        ➕ Register New Child Instead
+                    </button>
+                </div>
+                <div id="rapid-form-edit-banner" style="display: none; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 10px 14px; margin-bottom: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+                    <span style="font-size: 0.88rem; color: #1e40af; font-weight: 500;">✏️ <strong>Editing Profile:</strong> Modifying details for <strong id="rapid-editing-child-name">—</strong>. Changes will update this child profile.</span>
                 </div>
                 <form class="assessment-form" id="form-rapid">
                     <div class="form-section">
@@ -227,9 +249,20 @@
 
             <!-- Assessment: Child Development -->
             <section id="child-development" class="assessment-pane">
-                <div class="tab-header">
-                    <h2>Child Development Assessment</h2>
-                    <p>Comprehensive developmental history and profile.</p>
+                <div class="tab-header" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px;">
+                    <div>
+                        <h2>Child Development Assessment</h2>
+                        <p>Comprehensive developmental history and profile.</p>
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                        <button type="button" id="btn-import-rapid" class="btn-secondary" style="display: inline-flex; align-items: center; gap: 6px; font-weight: 600; padding: 8px 14px; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; border-radius: 6px; cursor: pointer;" title="Auto-fill basic details, medical history, and parent concerns from Rapid Assessment">
+                            ⚡ Auto-fill from Rapid Assessment
+                        </button>
+                    </div>
+                </div>
+                <div id="dev-form-edit-banner" style="display: none; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 10px 14px; margin-bottom: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+                    <span style="font-size: 0.88rem; color: #1e40af; font-weight: 500;">✏️ <strong>Editing Mode:</strong> Loaded existing Child Development assessment for <strong id="dev-editing-child-name">—</strong>. Saving will update this record.</span>
+                    <button type="button" id="btn-dev-new-version" class="btn-secondary btn-sm" style="background: #fff; border-color: #93c5fd; color: #1e40af; font-weight: 600;">+ Start Fresh Assessment</button>
                 </div>
                 <form class="assessment-form" id="form-development">
                     <!-- Assessment Details & Photo -->
@@ -404,11 +437,11 @@
                                 </select>
                             </div>
                             <div class="input-group" style="grid-column: span 2;">
-                                <label>12. Siblings (Brothers / Sisters / Total)</label>
+                                <label>12. Siblings (Brothers / Sisters / Total) <span style="font-size:0.75rem; color:#2563eb; font-weight:600; background:#eff6ff; padding:1px 6px; border-radius:4px; border:1px solid #bfdbfe;">Auto-calculated</span></label>
                                 <div style="display:flex; gap:10px;">
-                                    <input type="number" name="siblings_brothers" placeholder="Bros">
-                                    <input type="number" name="siblings_sisters" placeholder="Sis">
-                                    <input type="number" name="siblings_total" placeholder="Total">
+                                    <input type="number" name="siblings_brothers" placeholder="Bros" min="0">
+                                    <input type="number" name="siblings_sisters" placeholder="Sis" min="0">
+                                    <input type="number" name="siblings_total" placeholder="Total" min="0" readonly style="background:#f1f5f9; font-weight:600; cursor:not-allowed;" title="Total = Brothers + Sisters">
                                 </div>
                             </div>
                             <div class="input-group full-width">
@@ -665,37 +698,204 @@
                             </div>
                         </div>
 
-                        <h4 style="margin: 20px 0 10px; font-weight: 600; color: var(--primary);">37. Milestones</h4>
-                        <div class="form-grid">
-                            <!-- Motor -->
-                            <div class="input-group">
-                                <strong>Motor</strong>
-                                <label><input type="checkbox" name="milestones" value="Sitting < 8 months"> Sitting < 8
-                                        months</label>
-                                        <label><input type="checkbox" name="milestones" value="Crawling <10 m"> Crawling
-                                            <10 m</label>
-                                                <label><input type="checkbox" name="milestones" value="Standing <14 m">
-                                                    Standing <14 m</label>
-                                                        <label><input type="checkbox" name="milestones"
-                                                                value="Walking < 18 m"> Walking < 18 m</label>
+                        <h4 style="margin: 24px 0 12px; font-weight: 600; color: var(--primary); font-size: 1.05rem;">37. Milestones</h4>
+                        <div class="milestones-container" style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 20px;">
+                            <!-- Motor Milestones -->
+                            <div class="milestones-category" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px;">
+                                <strong style="display: block; margin-bottom: 10px; color: #1e40af; font-size: 0.95rem;">Motor Milestones</strong>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px;">
+                                    <!-- Sitting -->
+                                    <div class="milestone-card" style="background: #fff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 12px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                            <strong style="color: #0f172a; font-size: 0.9rem;">Sitting</strong>
+                                            <span style="font-size: 0.72rem; color: #475569; background: #e2e8f0; padding: 1px 6px; border-radius: 4px; font-weight: 500;">Threshold: 8 m</span>
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+                                            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; margin: 0;">
+                                                <input type="radio" name="ms_sitting" value="< 8 m"> &lt; 8 m
+                                            </label>
+                                            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; margin: 0;">
+                                                <input type="radio" name="ms_sitting" value="> 8 m"> &gt; 8 m
+                                            </label>
+                                        </div>
+                                        <div class="ms-delayed-box" style="display: none; align-items: center; gap: 6px; margin-top: 8px; padding-top: 6px; border-top: 1px dashed #e2e8f0;">
+                                            <span style="font-size: 0.78rem; color: #b91c1c; font-weight: 600; white-space: nowrap;">If &gt; 8 m, specify:</span>
+                                            <input type="text" name="ms_sitting_detail" placeholder="Month / Year (e.g. 10 m, 1 yr)" style="padding: 4px 8px; font-size: 0.82rem; border: 1px solid #fca5a5; border-radius: 4px; flex: 1; background: #fef2f2;">
+                                        </div>
+                                    </div>
+
+                                    <!-- Crawling -->
+                                    <div class="milestone-card" style="background: #fff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 12px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                            <strong style="color: #0f172a; font-size: 0.9rem;">Crawling</strong>
+                                            <span style="font-size: 0.72rem; color: #475569; background: #e2e8f0; padding: 1px 6px; border-radius: 4px; font-weight: 500;">Threshold: 10 m</span>
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+                                            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; margin: 0;">
+                                                <input type="radio" name="ms_crawling" value="< 10 m"> &lt; 10 m
+                                            </label>
+                                            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; margin: 0;">
+                                                <input type="radio" name="ms_crawling" value="> 10 m"> &gt; 10 m
+                                            </label>
+                                        </div>
+                                        <div class="ms-delayed-box" style="display: none; align-items: center; gap: 6px; margin-top: 8px; padding-top: 6px; border-top: 1px dashed #e2e8f0;">
+                                            <span style="font-size: 0.78rem; color: #b91c1c; font-weight: 600; white-space: nowrap;">If &gt; 10 m, specify:</span>
+                                            <input type="text" name="ms_crawling_detail" placeholder="Month / Year (e.g. 12 m, 1.5 yr)" style="padding: 4px 8px; font-size: 0.82rem; border: 1px solid #fca5a5; border-radius: 4px; flex: 1; background: #fef2f2;">
+                                        </div>
+                                    </div>
+
+                                    <!-- Standing -->
+                                    <div class="milestone-card" style="background: #fff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 12px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                            <strong style="color: #0f172a; font-size: 0.9rem;">Standing</strong>
+                                            <span style="font-size: 0.72rem; color: #475569; background: #e2e8f0; padding: 1px 6px; border-radius: 4px; font-weight: 500;">Threshold: 14 m</span>
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+                                            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; margin: 0;">
+                                                <input type="radio" name="ms_standing" value="< 14 m"> &lt; 14 m
+                                            </label>
+                                            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; margin: 0;">
+                                                <input type="radio" name="ms_standing" value="> 14 m"> &gt; 14 m
+                                            </label>
+                                        </div>
+                                        <div class="ms-delayed-box" style="display: none; align-items: center; gap: 6px; margin-top: 8px; padding-top: 6px; border-top: 1px dashed #e2e8f0;">
+                                            <span style="font-size: 0.78rem; color: #b91c1c; font-weight: 600; white-space: nowrap;">If &gt; 14 m, specify:</span>
+                                            <input type="text" name="ms_standing_detail" placeholder="Month / Year (e.g. 16 m, 1.8 yr)" style="padding: 4px 8px; font-size: 0.82rem; border: 1px solid #fca5a5; border-radius: 4px; flex: 1; background: #fef2f2;">
+                                        </div>
+                                    </div>
+
+                                    <!-- Walking -->
+                                    <div class="milestone-card" style="background: #fff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 12px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                            <strong style="color: #0f172a; font-size: 0.9rem;">Walking</strong>
+                                            <span style="font-size: 0.72rem; color: #475569; background: #e2e8f0; padding: 1px 6px; border-radius: 4px; font-weight: 500;">Threshold: 18 m</span>
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+                                            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; margin: 0;">
+                                                <input type="radio" name="ms_walking" value="< 18 m"> &lt; 18 m
+                                            </label>
+                                            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; margin: 0;">
+                                                <input type="radio" name="ms_walking" value="> 18 m"> &gt; 18 m
+                                            </label>
+                                        </div>
+                                        <div class="ms-delayed-box" style="display: none; align-items: center; gap: 6px; margin-top: 8px; padding-top: 6px; border-top: 1px dashed #e2e8f0;">
+                                            <span style="font-size: 0.78rem; color: #b91c1c; font-weight: 600; white-space: nowrap;">If &gt; 18 m, specify:</span>
+                                            <input type="text" name="ms_walking_detail" placeholder="Month / Year (e.g. 24 m, 2.5 yr)" style="padding: 4px 8px; font-size: 0.82rem; border: 1px solid #fca5a5; border-radius: 4px; flex: 1; background: #fef2f2;">
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <!-- Language -->
-                            <div class="input-group">
-                                <strong>Language</strong>
-                                <label><input type="checkbox" name="milestones" value="Babbling < 5 m"> Babbling < 5
-                                        m</label>
-                                        <label><input type="checkbox" name="milestones" value="Words < 12 m"> Words < 12
-                                                m</label>
-                                                <label><input type="checkbox" name="milestones"
-                                                        value="Sentences < 24 m"> Sentences < 24 m</label>
+
+                            <!-- Language Milestones -->
+                            <div class="milestones-category" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px;">
+                                <strong style="display: block; margin-bottom: 10px; color: #0284c7; font-size: 0.95rem;">Language Milestones</strong>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px;">
+                                    <!-- Babbling -->
+                                    <div class="milestone-card" style="background: #fff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 12px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                            <strong style="color: #0f172a; font-size: 0.9rem;">Babbling</strong>
+                                            <span style="font-size: 0.72rem; color: #475569; background: #e2e8f0; padding: 1px 6px; border-radius: 4px; font-weight: 500;">Threshold: 5 m</span>
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+                                            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; margin: 0;">
+                                                <input type="radio" name="ms_babbling" value="< 5 m"> &lt; 5 m
+                                            </label>
+                                            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; margin: 0;">
+                                                <input type="radio" name="ms_babbling" value="> 5 m"> &gt; 5 m
+                                            </label>
+                                        </div>
+                                        <div class="ms-delayed-box" style="display: none; align-items: center; gap: 6px; margin-top: 8px; padding-top: 6px; border-top: 1px dashed #e2e8f0;">
+                                            <span style="font-size: 0.78rem; color: #b91c1c; font-weight: 600; white-space: nowrap;">If &gt; 5 m, specify:</span>
+                                            <input type="text" name="ms_babbling_detail" placeholder="Month / Year (e.g. 8 m, 1 yr)" style="padding: 4px 8px; font-size: 0.82rem; border: 1px solid #fca5a5; border-radius: 4px; flex: 1; background: #fef2f2;">
+                                        </div>
+                                    </div>
+
+                                    <!-- Words -->
+                                    <div class="milestone-card" style="background: #fff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 12px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                            <strong style="color: #0f172a; font-size: 0.9rem;">Words</strong>
+                                            <span style="font-size: 0.72rem; color: #475569; background: #e2e8f0; padding: 1px 6px; border-radius: 4px; font-weight: 500;">Threshold: 12 m</span>
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+                                            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; margin: 0;">
+                                                <input type="radio" name="ms_words" value="< 12 m"> &lt; 12 m
+                                            </label>
+                                            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; margin: 0;">
+                                                <input type="radio" name="ms_words" value="> 12 m"> &gt; 12 m
+                                            </label>
+                                        </div>
+                                        <div class="ms-delayed-box" style="display: none; align-items: center; gap: 6px; margin-top: 8px; padding-top: 6px; border-top: 1px dashed #e2e8f0;">
+                                            <span style="font-size: 0.78rem; color: #b91c1c; font-weight: 600; white-space: nowrap;">If &gt; 12 m, specify:</span>
+                                            <input type="text" name="ms_words_detail" placeholder="Month / Year (e.g. 18 m, 2 yr)" style="padding: 4px 8px; font-size: 0.82rem; border: 1px solid #fca5a5; border-radius: 4px; flex: 1; background: #fef2f2;">
+                                        </div>
+                                    </div>
+
+                                    <!-- Sentences -->
+                                    <div class="milestone-card" style="background: #fff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 12px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                            <strong style="color: #0f172a; font-size: 0.9rem;">Sentences</strong>
+                                            <span style="font-size: 0.72rem; color: #475569; background: #e2e8f0; padding: 1px 6px; border-radius: 4px; font-weight: 500;">Threshold: 24 m</span>
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+                                            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; margin: 0;">
+                                                <input type="radio" name="ms_sentences" value="< 24 m"> &lt; 24 m
+                                            </label>
+                                            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; margin: 0;">
+                                                <input type="radio" name="ms_sentences" value="> 24 m"> &gt; 24 m
+                                            </label>
+                                        </div>
+                                        <div class="ms-delayed-box" style="display: none; align-items: center; gap: 6px; margin-top: 8px; padding-top: 6px; border-top: 1px dashed #e2e8f0;">
+                                            <span style="font-size: 0.78rem; color: #b91c1c; font-weight: 600; white-space: nowrap;">If &gt; 24 m, specify:</span>
+                                            <input type="text" name="ms_sentences_detail" placeholder="Month / Year (e.g. 36 m, 3.5 yr)" style="padding: 4px 8px; font-size: 0.82rem; border: 1px solid #fca5a5; border-radius: 4px; flex: 1; background: #fef2f2;">
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <!-- Cognitive delay -->
-                            <div class="input-group">
-                                <strong>Cognitive delay</strong>
-                                <label><input type="checkbox" name="milestones" value="Social smile <3 m"> Social smile
-                                    <3 m</label>
-                                        <label><input type="checkbox" name="milestones" value="Eye contact < 3 m"> Eye
-                                            contact < 3 m</label>
+
+                            <!-- Cognitive Delay Milestones -->
+                            <div class="milestones-category" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px;">
+                                <strong style="display: block; margin-bottom: 10px; color: #7c3aed; font-size: 0.95rem;">Cognitive Delay Milestones</strong>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px;">
+                                    <!-- Social smile -->
+                                    <div class="milestone-card" style="background: #fff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 12px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                            <strong style="color: #0f172a; font-size: 0.9rem;">Social smile</strong>
+                                            <span style="font-size: 0.72rem; color: #475569; background: #e2e8f0; padding: 1px 6px; border-radius: 4px; font-weight: 500;">Threshold: 3 m</span>
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+                                            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; margin: 0;">
+                                                <input type="radio" name="ms_social_smile" value="< 3 m"> &lt; 3 m
+                                            </label>
+                                            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; margin: 0;">
+                                                <input type="radio" name="ms_social_smile" value="> 3 m"> &gt; 3 m
+                                            </label>
+                                        </div>
+                                        <div class="ms-delayed-box" style="display: none; align-items: center; gap: 6px; margin-top: 8px; padding-top: 6px; border-top: 1px dashed #e2e8f0;">
+                                            <span style="font-size: 0.78rem; color: #b91c1c; font-weight: 600; white-space: nowrap;">If &gt; 3 m, specify:</span>
+                                            <input type="text" name="ms_social_smile_detail" placeholder="Month / Year (e.g. 5 m, 6 m)" style="padding: 4px 8px; font-size: 0.82rem; border: 1px solid #fca5a5; border-radius: 4px; flex: 1; background: #fef2f2;">
+                                        </div>
+                                    </div>
+
+                                    <!-- Eye contact -->
+                                    <div class="milestone-card" style="background: #fff; border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px 12px;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                            <strong style="color: #0f172a; font-size: 0.9rem;">Eye contact</strong>
+                                            <span style="font-size: 0.72rem; color: #475569; background: #e2e8f0; padding: 1px 6px; border-radius: 4px; font-weight: 500;">Threshold: 3 m</span>
+                                        </div>
+                                        <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+                                            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; margin: 0;">
+                                                <input type="radio" name="ms_eye_contact" value="< 3 m"> &lt; 3 m
+                                            </label>
+                                            <label style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.85rem; cursor: pointer; margin: 0;">
+                                                <input type="radio" name="ms_eye_contact" value="> 3 m"> &gt; 3 m
+                                            </label>
+                                        </div>
+                                        <div class="ms-delayed-box" style="display: none; align-items: center; gap: 6px; margin-top: 8px; padding-top: 6px; border-top: 1px dashed #e2e8f0;">
+                                            <span style="font-size: 0.78rem; color: #b91c1c; font-weight: 600; white-space: nowrap;">If &gt; 3 m, specify:</span>
+                                            <input type="text" name="ms_eye_contact_detail" placeholder="Month / Year (e.g. 6 m, 1 yr)" style="padding: 4px 8px; font-size: 0.82rem; border: 1px solid #fca5a5; border-radius: 4px; flex: 1; background: #fef2f2;">
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -1881,6 +2081,7 @@
                     <div class="av-nav-bar">
                         <button type="button" class="btn-back-to-records" id="btn-av-back">← Back to Records</button>
                         <div class="av-actions-bar" id="av-actions-bar"></div>
+                        <button type="button" class="btn-top-logout btn-sm btn-av-logout" title="Log out from application" style="margin-left: auto;">🚪 Logout</button>
                     </div>
                     <div class="av-title-bar">
                         <h2 id="av-title">Assessment Dossier</h2>

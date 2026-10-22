@@ -642,6 +642,23 @@ app.post('/api/assessments', async (req, res) => {
 
     try {
         const stringifiedData = typeof data === 'string' ? data : JSON.stringify(data);
+
+        // If an assessment for this child and form type already exists, update it to avoid duplicate records
+        if (child_id) {
+            const existing = await pool.query(
+                `SELECT id FROM assessments WHERE child_id = $1 AND form_type = $2 ORDER BY created_at DESC LIMIT 1`,
+                [child_id, form_type]
+            );
+            if (existing.rows.length > 0) {
+                const existingId = existing.rows[0].id;
+                await pool.query(
+                    `UPDATE assessments SET data = $1, child_name = $2 WHERE id = $3`,
+                    [stringifiedData, child_name, existingId]
+                );
+                return res.json({ message: 'Assessment updated successfully', id: existingId, updated: true });
+            }
+        }
+
         const result = await pool.query(
             `INSERT INTO assessments (child_id, child_name, form_type, data) VALUES ($1, $2, $3, $4) RETURNING id`,
             [child_id || null, child_name, form_type, stringifiedData]
@@ -736,6 +753,11 @@ app.put('/api/assessments/:id', async (req, res) => {
 
             if (childName) {
                 await pool.query(`UPDATE assessments SET child_name = $1 WHERE id = $2`, [childName, req.params.id]);
+            }
+        } else if (parsedData) {
+            const anyName = parsedData.child_name || parsedData.name;
+            if (anyName) {
+                await pool.query(`UPDATE assessments SET child_name = $1 WHERE id = $2`, [anyName, req.params.id]);
             }
         }
 
