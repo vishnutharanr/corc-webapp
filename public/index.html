@@ -16,7 +16,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="styles.css?v=20">
+    <link rel="stylesheet" href="styles.css?v=21">
 </head>
 
 <body>
@@ -155,9 +155,9 @@
                                 <input type="date" id="consultation-date" name="assessment_date" required>
                             </div>
                             <div class="input-group">
-                                <label for="consultation-admission-no">SL.NO <span style="font-size:0.75rem; color:#2563eb; font-weight:600; background:#eff6ff; padding:1px 6px; border-radius:4px; border:1px solid #bfdbfe;">Auto-generated</span></label>
+                                <label for="consultation-admission-no">SL.NO / EIC NO <span style="font-size:0.75rem; color:#2563eb; font-weight:600; background:#eff6ff; padding:1px 6px; border-radius:4px; border:1px solid #bfdbfe;">Auto-generated</span></label>
                                 <input type="text" id="consultation-admission-no" name="admission_no"
-                                    placeholder="e.g. ADM-028" style="font-weight: 600; color: #1e40af;">
+                                    placeholder="e.g. EIC-028" style="font-weight: 600; color: #1e40af;">
                             </div>
                         </div>
                     </div>
@@ -296,8 +296,8 @@
                                 <input type="text" name="sl_no" placeholder="Sl. No">
                             </div>
                             <div class="input-group">
-                                <label>Admission No</label>
-                                <input type="text" name="admission_no" placeholder="e.g. ADM-001">
+                                <label>Admission No / EIC NO</label>
+                                <input type="text" name="admission_no" placeholder="e.g. EIC-001">
                             </div>
                             <div class="input-group">
                                 <label>Informant</label>
@@ -3163,8 +3163,8 @@
                     <form id="child-edit-form">
                         <input type="hidden" id="edit-child-id">
                         <div class="input-group">
-                            <label for="edit-child-adm">Admission Number <span style="font-size:0.75rem; color:#2563eb; font-weight:600;">(Identifier)</span></label>
-                            <input type="text" id="edit-child-adm" placeholder="e.g. ADM-001" style="font-weight: 600; color: #1e40af;">
+                            <label for="edit-child-adm">Admission Number (EIC) <span style="font-size:0.75rem; color:#2563eb; font-weight:600;">(Identifier)</span></label>
+                            <input type="text" id="edit-child-adm" placeholder="e.g. EIC-001" style="font-weight: 600; color: #1e40af;">
                         </div>
                         <div class="input-group">
                             <label for="edit-child-name">Child Name *</label>
@@ -3202,7 +3202,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="app.js?v=20"></script>
+    <script src="app.js?v=21"></script>
 </body>
 
 </html>

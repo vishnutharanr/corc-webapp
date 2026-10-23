@@ -143,6 +143,7 @@ const INIT_SQL = `
     UPDATE schedules SET time_slot = '4.00 - 4.30' WHERE time_slot = '4.00 - 5.00';
     UPDATE therapy_attendance SET time_slot = '4.00 - 4.30' WHERE time_slot = '4.00 - 5.00';
     UPDATE assessments SET form_type = 'Consultation Form' WHERE form_type = 'Rapid Assessment';
+    UPDATE children SET admission_no = REGEXP_REPLACE(admission_no, '^ADM([-_]?)', 'EIC\\1', 'i') WHERE admission_no ILIKE 'ADM%';
 `;
 
 const DEFAULT_THERAPY_FEES = [
@@ -253,6 +254,11 @@ async function ensureDbInit() {
             await seedDefaultTherapyFees();
             await seedDefaultTherapists();
         }
+        await pool.query(`
+            UPDATE children 
+            SET admission_no = REGEXP_REPLACE(admission_no, '^ADM([-_]?)', 'EIC\\1', 'i')
+            WHERE admission_no ILIKE 'ADM%'
+        `);
         await backfillMissingAdmissionNumbers();
         isDbReady = true;
     } catch (err) {
@@ -467,7 +473,7 @@ async function getNextAdmissionNo() {
         }
     }
     const nextNum = maxNum + 1;
-    return `ADM-${String(nextNum).padStart(3, '0')}`;
+    return `EIC-${String(nextNum).padStart(3, '0')}`;
 }
 
 async function backfillMissingAdmissionNumbers() {

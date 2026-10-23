@@ -1485,7 +1485,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const card = document.createElement('div');
                 card.className = 'child-folder-card' + (isActive ? ' folder-active' : '');
-                const meta = [child.admission_no ? 'Adm No: ' + child.admission_no : '', child.sex, child.dob ? 'DOB: '+child.dob : '', child.mobile ? '\ud83d\udcf1 '+child.mobile : '', child.assessments.length + ' assessment(s)'].filter(Boolean).join(' \u00b7 ');
+                const meta = [child.admission_no ? 'EIC No: ' + child.admission_no : '', child.sex, child.dob ? 'DOB: '+child.dob : '', child.mobile ? '📱 '+child.mobile : '', child.assessments.length + ' assessment(s)'].filter(Boolean).join(' · ');
                 const admBadge = child.admission_no 
                     ? '<span class="adm-badge" style="display:inline-block; font-size:0.8rem; background:#1e40af; color:#ffffff; border-radius:4px; padding:2px 8px; margin-right:8px; font-weight:700; letter-spacing:0.02em;">' + child.admission_no + '</span>'
                     : '';
@@ -5462,7 +5462,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div class="summary-child-avatar">${(child.name || 'C').charAt(0).toUpperCase()}</div>
                         <div class="summary-child-info">
                             <strong>${child.admission_no ? `<span class="adm-badge" style="display:inline-block; font-size:0.75rem; background:#1e40af; color:#ffffff; border-radius:4px; padding:2px 7px; margin-right:8px; font-weight:700;">${child.admission_no}</span>` : ''}${child.name}</strong>
-                            <div class="summary-child-meta">${ageStr} / ${child.sex || '-'} · ${child.admission_no ? `Adm: ${child.admission_no} · ` : ''}📱 ${child.mobile || 'None'} · ID: #${child.id}</div>
+                            <div class="summary-child-meta">${ageStr} / ${child.sex || '-'} · ${child.admission_no ? `${child.admission_no} · ` : ''}📱 ${child.mobile || 'None'} · ID: #${child.id}</div>
                         </div>
                     </div>
 
@@ -5771,7 +5771,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div style="background: white; border-radius: 8px; border: 1px solid #cbd5e1; padding: 18px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #e2e8f0; flex-wrap: wrap; gap: 8px;">
                         <div style="font-weight: 700; color: #1e3a8a; font-size: 1.05rem;">
-                            ${c.name} ${c.admission_no ? `<span style="font-size: 0.82rem; color: #0284c7; background: #e0f2fe; padding: 2px 8px; border-radius: 4px; margin-left: 6px;">Adm: ${c.admission_no}</span>` : ''}
+                            ${c.name} ${c.admission_no ? `<span style="font-size: 0.82rem; color: #0284c7; background: #e0f2fe; padding: 2px 8px; border-radius: 4px; margin-left: 6px;">${c.admission_no}</span>` : ''}
                         </div>
                         <div style="display: flex; gap: 8px;">
                             <button type="button" class="btn-main-sheet-print btn-secondary btn-sm" data-child-id="${c.id}" style="display: flex; align-items: center; gap: 4px; font-weight: 600;">
@@ -5917,7 +5917,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const ageYears = extractChildAge(child);
         const ageStr = ageYears ? `${ageYears} yrs` : (child.dob ? `DOB: ${child.dob}` : 'Age not specified');
-        const admBadge = child.admission_no ? ` · Adm: ${child.admission_no}` : '';
+        const admBadge = child.admission_no ? ` · ${child.admission_no}` : '';
         
         nameEl.textContent = `Clinical Assessment Summary — ${child.name}`;
         subEl.textContent = `${child.sex || 'Child'} · ${ageStr} · Mobile: ${child.mobile || 'None'} · ID: #${child.id}${admBadge}`;
@@ -5935,8 +5935,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (res.ok) {
                 childData = await res.json();
                 assessments = childData.assessments || [];
-                if (childData.admission_no && !subEl.textContent.includes('Adm:')) {
-                    subEl.textContent += ` · Adm: ${childData.admission_no}`;
+                if (childData.admission_no && !subEl.textContent.includes(childData.admission_no)) {
+                    subEl.textContent += ` · ${childData.admission_no}`;
                 }
             } else {
                 const aRes = await fetch(`/api/assessments?child_id=${child.id}`);
@@ -6279,7 +6279,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const totalBadge = `<span style="font-weight: 700; color: ${aList.length >= 4 ? '#15803d' : (aList.length > 0 ? '#b45309' : '#dc2626')};">${aList.length}</span>`;
 
-            const admBadge = c.admission_no ? `<div style="font-size: 0.73rem; color: #0284c7; font-weight: 600;">Adm: ${c.admission_no}</div>` : '';
+            const admBadge = c.admission_no ? `<div style="font-size: 0.73rem; color: #0284c7; font-weight: 600;">${c.admission_no}</div>` : '';
             const safeChildJson = JSON.stringify({ id: c.id, name: c.name, admission_no: c.admission_no, dob: c.dob, sex: c.sex, mobile: c.mobile }).replace(/"/g, '&quot;');
 
             return `
@@ -6875,7 +6875,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const progTxt = summary.progress.length ? `${summary.progress[0].quarter}: ${summary.progress[0].achievement.slice(0, 35)}...` : '-';
 
                 const statusTxt = summary.coreCount === 4 ? 'Complete (4/4)' : (summary.totalCount > 0 ? `Partial (${summary.coreCount}/4)` : 'Pending (0)');
-                const admLine = c.admission_no ? `Adm: ${c.admission_no}\n` : '';
+                const admLine = c.admission_no ? `EIC: ${c.admission_no}\n` : '';
 
                 return [
                     (idx + 1).toString(),
