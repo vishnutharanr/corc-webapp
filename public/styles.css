@@ -1380,61 +1380,180 @@ button {
 @media print {
     @page {
         size: A4 landscape;
-        margin: 1cm;
+        margin: 8mm 6mm;
     }
-    body * {
-        visibility: hidden;
-    }
-    #print-area, #print-area *,
-    #schedule-print-area, #schedule-print-area * {
-        visibility: visible;
-    }
-    #print-area, #schedule-print-area {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 100%;
-        margin: 0;
-        padding: 0;
-    }
-    .records-table, .schedule-table {
-        width: 100%;
-        max-width: 100%;
-        min-width: auto !important;
-        border-collapse: collapse;
-        font-size: 8pt !important;
-        table-layout: fixed !important;
-    }
-    .schedule-table .sticky-col {
-        width: 12% !important;
-    }
-    tr.schedule-row-empty {
+
+    /* Completely hide all UI Chrome in print */
+    nav.sidebar,
+    .sidebar,
+    header.app-top-header,
+    .app-top-header,
+    .tab-header,
+    #schedule-selection-bar,
+    .records-toolbar,
+    .summary-toolbar,
+    .summary-card-actions,
+    .modal,
+    .toast,
+    #login-screen,
+    .active-child-banner,
+    .btn-top-action,
+    .btn-top-logout,
+    button,
+    input[type="checkbox"],
+    .schedule-child-cb,
+    #schedule-select-all-cb,
+    .folder-actions,
+    .folder-form-links {
         display: none !important;
     }
-    .records-table th, .records-table td,
-    .schedule-table th, .schedule-table td {
-        border: 1px solid #000 !important;
-        padding: 2px !important;
-        color: #000 !important;
-        min-width: auto !important;
+
+    html, body {
+        width: 100% !important;
         height: auto !important;
-        word-wrap: break-word;
-        overflow-wrap: break-word;
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #fff !important;
+        color: #000 !important;
+        overflow: visible !important;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
     }
+
+    .app-container {
+        display: block !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    main.main-content {
+        display: block !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    /* Only show the active tab when printing */
+    .tab-content:not(.active) {
+        display: none !important;
+    }
+
+    #schedule.active {
+        display: block !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+    }
+
+    /* Completely hide everything inside schedule tab except the print area */
+    #schedule > :not(#schedule-print-area) {
+        display: none !important;
+    }
+
+    #schedule-print-area {
+        display: block !important;
+        position: static !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: visible !important;
+    }
+
+    /* Print Header for Schedule Table */
+    .schedule-print-header {
+        display: block !important;
+        text-align: center;
+        margin-bottom: 8px;
+        padding-bottom: 6px;
+        border-bottom: 2px solid #1e3a8a;
+    }
+
+    .schedule-print-header h1 {
+        font-size: 13pt !important;
+        font-weight: 800 !important;
+        color: #1e3a8a !important;
+        margin: 0 0 2px 0 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.03em !important;
+    }
+
+    .schedule-print-header h2 {
+        font-size: 10pt !important;
+        font-weight: 700 !important;
+        color: #0f172a !important;
+        margin: 0 0 3px 0 !important;
+    }
+
+    .schedule-print-header p {
+        font-size: 8pt !important;
+        color: #475569 !important;
+        margin: 0 !important;
+    }
+
+    /* Schedule Table Print Layout */
+    .schedule-table {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 100% !important;
+        border-collapse: collapse !important;
+        table-layout: fixed !important;
+        font-size: 7.5pt !important;
+        margin: 0 !important;
+    }
+
+    .schedule-table th,
+    .schedule-table td {
+        border: 1px solid #475569 !important;
+        padding: 3px 2px !important;
+        text-align: center !important;
+        vertical-align: middle !important;
+        height: auto !important;
+        min-width: auto !important;
+        word-break: break-word !important;
+        overflow: hidden !important;
+    }
+
+    .schedule-table th {
+        background: #f1f5f9 !important;
+        color: #0f172a !important;
+        font-weight: 700 !important;
+        font-size: 7pt !important;
+        position: static !important;
+    }
+
+    .schedule-table .sticky-col {
+        position: static !important;
+        width: 14% !important;
+        text-align: left !important;
+        padding-left: 5px !important;
+        background: #f8fafc !important;
+        font-weight: 600 !important;
+        font-size: 7.5pt !important;
+    }
+
+    .schedule-table td:not(.sticky-col) {
+        width: 6.61% !important;
+    }
+
     .schedule-cell {
         padding: 1px !important;
-        word-break: break-all !important;
-        overflow: hidden;
+        border-radius: 2px !important;
+        font-size: 6.8pt !important;
+        font-weight: 600 !important;
+        line-height: 1.15 !important;
     }
+
     .schedule-cell .therapist-name {
-        font-size: 5pt !important;
+        font-size: 5.5pt !important;
+        display: block !important;
     }
-    .schedule-grid-container {
-        border: none;
-        box-shadow: none;
-        overflow: visible;
+
+    /* Filter rows: if specific children are selected, only show selected rows */
+    body.print-selected-only .schedule-table tbody tr:not(.schedule-row-selected) {
+        display: none !important;
     }
-    
+
     /* Ensure accordions are fully expanded when printing */
     .accordion-content {
         display: table-row !important;

@@ -3414,9 +3414,245 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    document.getElementById('btn-print-schedule')?.addEventListener('click', () => {
+    // ── Schedule Print & PDF Export (Only Schedule Table) ─────────────
+    function printScheduleTable() {
+        const dateInput = document.getElementById('schedule-date');
+        const dateStr = dateInput ? formatDisplayDate(dateInput.value) : '';
+        const printDateEl = document.getElementById('schedule-print-date-line');
+        const selectedCount = selectedScheduleChildIds.size;
+        if (printDateEl) {
+            printDateEl.textContent = `Date: ${dateStr}` + (selectedCount > 0 ? ` • Selected Children: ${selectedCount}` : '');
+        }
+        if (selectedCount > 0) {
+            document.body.classList.add('print-selected-only');
+        } else {
+            document.body.classList.remove('print-selected-only');
+        }
+
+        const wasModalOpen = scheduleShareModal && scheduleShareModal.classList.contains('show');
+        if (wasModalOpen) scheduleShareModal.classList.remove('show');
+
         window.print();
+
+        setTimeout(() => {
+            document.body.classList.remove('print-selected-only');
+            if (wasModalOpen) scheduleShareModal.classList.add('show');
+        }, 1000);
+    }
+
+    document.getElementById('btn-print-schedule')?.addEventListener('click', printScheduleTable);
+    document.getElementById('btn-share-print')?.addEventListener('click', printScheduleTable);
+
+    window.addEventListener('beforeprint', () => {
+        const scheduleTab = document.getElementById('schedule');
+        if (scheduleTab && scheduleTab.classList.contains('active')) {
+            const dateInput = document.getElementById('schedule-date');
+            const dateStr = dateInput ? formatDisplayDate(dateInput.value) : '';
+            const printDateEl = document.getElementById('schedule-print-date-line');
+            const selectedCount = selectedScheduleChildIds.size;
+            if (printDateEl) {
+                printDateEl.textContent = `Date: ${dateStr}` + (selectedCount > 0 ? ` • Selected Children: ${selectedCount}` : '');
+            }
+            if (selectedCount > 0) {
+                document.body.classList.add('print-selected-only');
+            } else {
+                document.body.classList.remove('print-selected-only');
+            }
+        }
     });
+
+    window.addEventListener('afterprint', () => {
+        document.body.classList.remove('print-selected-only');
+    });
+
+    // Generate Landscape PDF of Schedule Table
+    function generateScheduleTablePdf() {
+        if (!window.jspdf || !window.jspdf.jsPDF) {
+            showToast('PDF generator library is still loading, please retry in a moment', true);
+            return;
+        }
+        const dateInput = document.getElementById('schedule-date');
+        const dateValue = dateInput ? dateInput.value : '';
+        if (!dateValue) {
+            showToast('Please select a date first', true);
+            return;
+        }
+        const formattedDate = formatDisplayDate(dateValue);
+
+        let permittedChildren = scheduleChildrenList;
+        if (userRole === 'staff' || userRole === 'staff8') {
+            permittedChildren = scheduleChildrenList.filter(child => matchesAgeFilter(child));
+        }
+
+        let targetChildren = permittedChildren;
+        if (selectedScheduleChildIds.size > 0) {
+            targetChildren = permittedChildren.filter(c => selectedScheduleChildIds.has(String(c.id)));
+        } else {
+            const filterChildId = scheduleFilterInput ? scheduleFilterInput.value : '';
+            const hideUnscheduled = document.getElementById('schedule-hide-unscheduled')?.checked;
+            if (filterChildId && filterChildId !== '__scheduled__') {
+                targetChildren = permittedChildren.filter(c => c.id == filterChildId);
+            } else if (filterChildId === '__scheduled__' || hideUnscheduled) {
+                targetChildren = permittedChildren.filter(c => currentScheduleData.some(s => s.child_id === c.id));
+            }
+        }
+
+        if (targetChildren.length === 0) {
+            showToast('No children to export in schedule', true);
+            return;
+        }
+
+        try {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({
+                orientation: 'landscape',
+                unit: 'mm',
+                format: 'a4'
+            });
+
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const pageHeight = doc.internal.pageSize.getHeight();
+
+            // Header Banner
+            doc.setFillColor(30, 58, 138); // #1e3a8a
+            doc.rect(0, 0, pageWidth, 13, 'F');
+
+            doc.setTextColor(255, 255, 255);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(10.5);
+            doc.text('CHILDREN OCCUPATIONAL REHABILITATION CENTRE (CORC)', 10, 8.5);
+
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8.5);
+            doc.text('DAILY THERAPY SCHEDULE', pageWidth - 10, 8.5, { align: 'right' });
+
+            // Sub-info bar
+            doc.setTextColor(15, 23, 42);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(9);
+            doc.text(`Schedule Date: ${formattedDate}`, 10, 18.5);
+
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8);
+            doc.setTextColor(100, 116, 139);
+            const selectionInfo = selectedScheduleChildIds.size > 0
+                ? `Selected Children: ${targetChildren.length} of ${permittedChildren.length}`
+                : `Total Children Shown: ${targetChildren.length}`;
+            doc.text(selectionInfo, pageWidth - 10, 18.5, { align: 'right' });
+
+            // Table Columns: Name column + 13 slots
+            const columns = [
+                { header: 'NAME', dataKey: 'name' },
+                ...TIME_SLOTS.map((slot, idx) => ({
+                    header: slot.replace(' - ', '\n- '),
+                    dataKey: `slot_${idx}`
+                }))
+            ];
+
+            // Build rows
+            const rows = targetChildren.map((child, idx) => {
+                const rowObj = {
+                    name: `${idx + 1}. ${child.name}${child.admission_no ? `\n[${child.admission_no}]` : ''}`
+                };
+                TIME_SLOTS.forEach((slot, sIdx) => {
+                    const block = currentScheduleData.find(s => s.child_id === child.id && s.time_slot === slot);
+                    if (block) {
+                        let shortTherapy = block.therapy_type.split(' ')[0];
+                        if (block.therapy_type === 'Occupational Therapy') shortTherapy = 'OT';
+                        rowObj[`slot_${sIdx}`] = `${shortTherapy}\n(${block.therapist_name || 'TBD'})`;
+                    } else {
+                        rowObj[`slot_${sIdx}`] = '';
+                    }
+                });
+                return rowObj;
+            });
+
+            doc.autoTable({
+                columns: columns,
+                body: rows,
+                startY: 21,
+                margin: { left: 8, right: 8, bottom: 9 },
+                theme: 'grid',
+                styles: {
+                    fontSize: 6.2,
+                    cellPadding: 1.2,
+                    valign: 'middle',
+                    halign: 'center',
+                    lineColor: [203, 213, 225],
+                    lineWidth: 0.15,
+                    textColor: [15, 23, 42]
+                },
+                headStyles: {
+                    fillColor: [241, 245, 249],
+                    textColor: [15, 23, 42],
+                    fontStyle: 'bold',
+                    fontSize: 6.2,
+                    halign: 'center',
+                    lineColor: [148, 163, 184],
+                    lineWidth: 0.2
+                },
+                columnStyles: {
+                    name: {
+                        halign: 'left',
+                        fontStyle: 'bold',
+                        cellWidth: 32,
+                        fillColor: [248, 250, 252],
+                        fontSize: 6.8
+                    }
+                },
+                didParseCell: function(data) {
+                    if (data.section === 'body' && data.column.dataKey !== 'name') {
+                        const text = data.cell.raw || '';
+                        if (text) {
+                            const lower = text.toLowerCase();
+                            if (lower.includes('physio')) {
+                                data.cell.styles.fillColor = [224, 242, 254];
+                                data.cell.styles.textColor = [3, 105, 161];
+                                data.cell.styles.fontStyle = 'bold';
+                            } else if (lower.includes('ot') || lower.includes('occupational')) {
+                                data.cell.styles.fillColor = [254, 243, 199];
+                                data.cell.styles.textColor = [180, 83, 9];
+                                data.cell.styles.fontStyle = 'bold';
+                            } else if (lower.includes('hydro')) {
+                                data.cell.styles.fillColor = [207, 250, 254];
+                                data.cell.styles.textColor = [14, 116, 144];
+                                data.cell.styles.fontStyle = 'bold';
+                            } else if (lower.includes('music')) {
+                                data.cell.styles.fillColor = [243, 232, 255];
+                                data.cell.styles.textColor = [126, 34, 206];
+                                data.cell.styles.fontStyle = 'bold';
+                            } else if (lower.includes('speech')) {
+                                data.cell.styles.fillColor = [220, 252, 231];
+                                data.cell.styles.textColor = [21, 128, 61];
+                                data.cell.styles.fontStyle = 'bold';
+                            } else {
+                                data.cell.styles.fillColor = [241, 245, 249];
+                                data.cell.styles.fontStyle = 'bold';
+                            }
+                        }
+                    }
+                },
+                didDrawPage: function(data) {
+                    const pageCount = doc.internal.getNumberOfPages();
+                    doc.setFontSize(6.5);
+                    doc.setTextColor(148, 163, 184);
+                    doc.text(`Page ${data.pageNumber} of ${pageCount}`, pageWidth - 10, pageHeight - 4, { align: 'right' });
+                    doc.text(`CORC Daily Therapy Schedule • Generated on ${new Date().toLocaleDateString()}`, 10, pageHeight - 4);
+                }
+            });
+
+            const safeDate = dateValue.replace(/[^a-zA-Z0-9-]/g, '_');
+            doc.save(`CORC_Daily_Schedule_${safeDate}.pdf`);
+            showToast('Schedule PDF downloaded successfully!');
+        } catch (err) {
+            console.error('Error generating schedule PDF:', err);
+            showToast('Failed to export schedule PDF', true);
+        }
+    }
+
+    document.getElementById('btn-export-schedule-pdf')?.addEventListener('click', generateScheduleTablePdf);
+    document.getElementById('btn-share-download-pdf')?.addEventListener('click', generateScheduleTablePdf);
+
 
     // ── Schedule Selection & Sharing Logic ─────────────────────────────
     function updateScheduleSelectionUI() {
