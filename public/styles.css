@@ -1587,6 +1587,27 @@ button {
     flex-wrap: wrap;
 }
 
+.sheet-summary-card {
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.sheet-summary-card:hover {
+    border-color: #94a3b8 !important;
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.08) !important;
+}
+
+.sheet-summary-header {
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.15s ease;
+    border-radius: 6px;
+    padding: 4px 6px;
+}
+
+.sheet-summary-header:hover {
+    background-color: #f8fafc;
+}
+
 .summary-card-body {
     padding: 20px;
     background: #f8fafc;

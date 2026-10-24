@@ -5553,12 +5553,12 @@ function printChildSummarySheet(child, assessments = []) {
                         <span class="discipline-pill" style="background: ${statusBadgeBg}; color: ${statusBadgeColor}; font-weight: 700;">${statusBadgeText}</span>
                         <button class="btn-card-export-pdf btn-secondary btn-sm" data-child-json="${safeChildJson}" style="background: #fff; font-weight: 600;">📄 PDF</button>
                         <button class="btn-card-open-folder btn-secondary btn-sm" data-child-json="${safeChildJson}" style="background: #fff;">📁 Folder</button>
-                        <span class="folder-toggle" style="font-size: 1.1rem; color: #64748b;">▾</span>
+                        <span class="folder-toggle" style="font-size: 1.1rem; color: #64748b;">▸</span>
                     </div>
                 </div>
 
-                <!-- Body (All 5 forms together) -->
-                <div class="summary-card-body" id="summary-card-body-${child.id}">
+                <!-- Body (All 5 forms together) - Minimized by default -->
+                <div class="summary-card-body" id="summary-card-body-${child.id}" style="display: none;">
                     <div class="summary-forms-grid">
                         ${rapidPanelHtml}
                         ${devPanelHtml}
@@ -5814,7 +5814,7 @@ function printChildSummarySheet(child, assessments = []) {
             matrixContainer.style.display = currentMainSummaryView === 'matrix' ? 'block' : 'none';
         }
         if (btnToggleAllCards) {
-            btnToggleAllCards.style.display = currentMainSummaryView === 'cards' ? 'inline-flex' : 'none';
+            btnToggleAllCards.style.display = (currentMainSummaryView === 'cards' || currentMainSummaryView === 'sheet') ? 'inline-flex' : 'none';
         }
 
         if (!list.length) {
@@ -5838,15 +5838,35 @@ function printChildSummarySheet(child, assessments = []) {
             return;
         }
 
-        // Render Germany Summary Sheets
+        // Render Germany Summary Sheets (Minimized by Default)
         if (sheetsContainer) {
-            sheetsContainer.innerHTML = list.map(c => `
-                <div style="background: white; border-radius: 8px; border: 1px solid #cbd5e1; padding: 18px; margin-bottom: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #e2e8f0; flex-wrap: wrap; gap: 8px;">
-                        <div style="font-weight: 700; color: #1e3a8a; font-size: 1.05rem;">
-                            ${c.name} ${c.admission_no ? `<span style="font-size: 0.82rem; color: #0284c7; background: #e0f2fe; padding: 2px 8px; border-radius: 4px; margin-left: 6px;">${c.admission_no}</span>` : ''}
+            sheetsContainer.innerHTML = list.map(c => {
+                const summary = extractAssessmentSummaries(c, c.assessments || []);
+                const ageYears = extractChildAge(c);
+                const ageStr = ageYears ? `${ageYears} yrs` : (c.dob ? `DOB: ${c.dob}` : 'Age -');
+                const statusBadgeBg = summary.coreCount === 4 ? '#dcfce7' : (summary.coreCount > 0 ? '#fef9c3' : '#fee2e2');
+                const statusBadgeColor = summary.coreCount === 4 ? '#166534' : (summary.coreCount > 0 ? '#854d0e' : '#991b1b');
+                const statusBadgeText = summary.coreCount === 4 ? 'Fully Assessed' : (summary.coreCount > 0 ? `${summary.coreCount}/4 Completed` : 'Not Assessed');
+
+                return `
+                <div class="sheet-summary-card" id="sheet-summary-card-${c.id}" style="background: white; border-radius: 8px; border: 1px solid #cbd5e1; padding: 14px 18px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); transition: all 0.2s ease;">
+                    <div class="sheet-summary-header" data-child-id="${c.id}" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; flex-wrap: wrap; gap: 10px;">
+                        <div style="display: flex; align-items: center; gap: 12px; min-width: 240px;">
+                            <span class="sheet-toggle-icon" id="sheet-toggle-icon-${c.id}" style="font-size: 1.15rem; color: #64748b; font-weight: bold; width: 16px; display: inline-block;">▸</span>
+                            <div style="width: 38px; height: 38px; border-radius: 50%; background: #e0f2fe; color: #0369a1; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1rem; border: 1px solid #bae6fd;">
+                                ${(c.name || 'C').charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                                <div style="font-weight: 700; color: #1e3a8a; font-size: 1.05rem; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                    <span>${c.name}</span>
+                                    ${c.admission_no ? `<span class="adm-badge" style="font-size: 0.78rem; background: #1e40af; color: #ffffff; padding: 2px 7px; border-radius: 4px; font-weight: 700;">${c.admission_no}</span>` : ''}
+                                </div>
+                                <div style="font-size: 0.8rem; color: #64748b; margin-top: 2px;">
+                                    ${ageStr} / ${c.sex || '-'} · 📱 ${c.mobile || 'None'} · ID: #${c.id} · <span style="background: ${statusBadgeBg}; color: ${statusBadgeColor}; font-weight: 600; padding: 1px 6px; border-radius: 4px; font-size: 0.75rem;">${statusBadgeText}</span>
+                                </div>
+                            </div>
                         </div>
-                        <div style="display: flex; gap: 8px;">
+                        <div class="sheet-header-actions" style="display: flex; gap: 8px; align-items: center; margin-left: auto;">
                             <button type="button" class="btn-main-sheet-print btn-secondary btn-sm" data-child-id="${c.id}" style="display: flex; align-items: center; gap: 4px; font-weight: 600;">
                                 🖨️ Print Sheet
                             </button>
@@ -5856,28 +5876,59 @@ function printChildSummarySheet(child, assessments = []) {
                             <button type="button" class="btn-main-sheet-details btn-secondary btn-sm" data-child-id="${c.id}" style="display: flex; align-items: center; gap: 4px; font-weight: 600; color: #1e40af; border-color: #bfdbfe;">
                                 📋 Full Dossier
                             </button>
+                            <button type="button" class="btn-toggle-sheet btn-secondary btn-sm" data-child-id="${c.id}" style="display: flex; align-items: center; gap: 4px; font-weight: 600; background: #f8fafc; border-color: #cbd5e1; color: #334155;">
+                                <span class="sheet-toggle-label" id="sheet-toggle-label-${c.id}">View Sheet</span>
+                                <span class="sheet-toggle-arrow" id="sheet-toggle-arrow-${c.id}">▾</span>
+                            </button>
                         </div>
                     </div>
-                    ${renderChildSummarySheetHtml(c, c.assessments || [])}
+                    <!-- Minimized / Collapsed by default -->
+                    <div class="sheet-collapsible-body" id="sheet-body-${c.id}" style="display: none; margin-top: 14px; border-top: 1px solid #e2e8f0; padding-top: 16px;">
+                        ${renderChildSummarySheetHtml(c, c.assessments || [])}
+                    </div>
                 </div>
-            `).join('');
+            `;
+            }).join('');
+
+            sheetsContainer.querySelectorAll('.sheet-summary-header').forEach(header => {
+                header.addEventListener('click', (e) => {
+                    if (e.target.closest('.btn-main-sheet-print') || e.target.closest('.btn-main-sheet-pdf') || e.target.closest('.btn-main-sheet-details')) {
+                        return;
+                    }
+                    const childId = header.getAttribute('data-child-id');
+                    const body = document.getElementById(`sheet-body-${childId}`);
+                    const icon = document.getElementById(`sheet-toggle-icon-${childId}`);
+                    const label = document.getElementById(`sheet-toggle-label-${childId}`);
+                    const arrow = document.getElementById(`sheet-toggle-arrow-${childId}`);
+                    if (body) {
+                        const isHidden = body.style.display === 'none';
+                        body.style.display = isHidden ? 'block' : 'none';
+                        if (icon) icon.textContent = isHidden ? '▾' : '▸';
+                        if (label) label.textContent = isHidden ? 'Collapse Sheet' : 'View Sheet';
+                        if (arrow) arrow.textContent = isHidden ? '▴' : '▾';
+                    }
+                });
+            });
 
             sheetsContainer.querySelectorAll('.btn-main-sheet-print').forEach(btn => {
-                btn.addEventListener('click', () => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
                     const cid = btn.getAttribute('data-child-id');
                     const ch = allSummaryChildrenList.find(x => String(x.id) === String(cid));
                     if (ch) printChildSummarySheet(ch, ch.assessments || []);
                 });
             });
             sheetsContainer.querySelectorAll('.btn-main-sheet-pdf').forEach(btn => {
-                btn.addEventListener('click', () => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
                     const cid = btn.getAttribute('data-child-id');
                     const ch = allSummaryChildrenList.find(x => String(x.id) === String(cid));
                     if (ch) generateChildSummaryPdf(ch, ch.assessments || []);
                 });
             });
             sheetsContainer.querySelectorAll('.btn-main-sheet-details').forEach(btn => {
-                btn.addEventListener('click', () => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
                     const cid = btn.getAttribute('data-child-id');
                     const ch = allSummaryChildrenList.find(x => String(x.id) === String(cid));
                     if (ch) openChildSummaryModal(ch);
@@ -7284,7 +7335,13 @@ function printChildSummarySheet(child, assessments = []) {
         if (sheetsContainerEl) sheetsContainerEl.style.display = currentMainSummaryView === 'sheet' ? 'flex' : 'none';
         if (cardsContainerEl) cardsContainerEl.style.display = currentMainSummaryView === 'cards' ? 'flex' : 'none';
         if (matrixContainerEl) matrixContainerEl.style.display = currentMainSummaryView === 'matrix' ? 'block' : 'none';
-        if (btnToggleAllCards) btnToggleAllCards.style.display = currentMainSummaryView === 'cards' ? 'inline-flex' : 'none';
+        if (btnToggleAllCards) {
+            btnToggleAllCards.style.display = (currentMainSummaryView === 'cards' || currentMainSummaryView === 'sheet') ? 'inline-flex' : 'none';
+            const iconEl = document.getElementById('toggle-cards-icon');
+            const textEl = document.getElementById('toggle-cards-text');
+            if (iconEl) iconEl.textContent = allCardsExpanded ? '⊟' : '⊞';
+            if (textEl) textEl.textContent = allCardsExpanded ? 'Collapse All' : 'Expand All';
+        }
     }
 
     btnViewSheet?.addEventListener('click', () => {
@@ -7302,7 +7359,7 @@ function printChildSummarySheet(child, assessments = []) {
         updateMainSummaryViewUI();
     });
 
-    // Toggle All Cards (Expand All / Collapse All)
+    // Toggle All Cards / Summaries (Expand All / Collapse All)
     btnToggleAllCards?.addEventListener('click', () => {
         allCardsExpanded = !allCardsExpanded;
         const iconEl = document.getElementById('toggle-cards-icon');
@@ -7310,11 +7367,26 @@ function printChildSummarySheet(child, assessments = []) {
         if (iconEl) iconEl.textContent = allCardsExpanded ? '⊟' : '⊞';
         if (textEl) textEl.textContent = allCardsExpanded ? 'Collapse All' : 'Expand All';
 
+        // Toggle cards view bodies
         document.querySelectorAll('.summary-child-card .summary-card-body').forEach(body => {
             body.style.display = allCardsExpanded ? 'flex' : 'none';
         });
         document.querySelectorAll('.summary-child-card .folder-toggle').forEach(t => {
-            t.textContent = allCardsExpanded ? '▴' : '▾';
+            t.textContent = allCardsExpanded ? '▾' : '▸';
+        });
+
+        // Toggle sheet view bodies
+        document.querySelectorAll('.sheet-collapsible-body').forEach(body => {
+            body.style.display = allCardsExpanded ? 'block' : 'none';
+        });
+        document.querySelectorAll('.sheet-toggle-icon').forEach(icon => {
+            icon.textContent = allCardsExpanded ? '▾' : '▸';
+        });
+        document.querySelectorAll('.sheet-toggle-label').forEach(label => {
+            label.textContent = allCardsExpanded ? 'Collapse Sheet' : 'View Sheet';
+        });
+        document.querySelectorAll('.sheet-toggle-arrow').forEach(arr => {
+            arr.textContent = allCardsExpanded ? '▴' : '▾';
         });
     });
 
