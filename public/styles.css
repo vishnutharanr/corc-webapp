@@ -628,17 +628,43 @@ button {
     font-weight: 700;
 }
 .active-child-actions { display: flex; gap: 8px; }
-.btn-sm {
+.active-child-actions .btn-sm {
     padding: 6px 14px;
     font-size: 0.82rem;
     border-radius: 6px;
     background: rgba(255,255,255,0.15);
     border: 1px solid rgba(255,255,255,0.4);
-    color: #fff;
+    color: #fff !important;
     cursor: pointer;
     transition: var(--transition);
 }
-.btn-sm:hover { background: rgba(255,255,255,0.28); }
+.active-child-actions .btn-sm:hover { background: rgba(255,255,255,0.28); }
+
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 0.82rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.btn-primary.btn-sm {
+    background: #2563eb;
+    color: #ffffff !important;
+    border: 1px solid #1d4ed8;
+}
+.btn-primary.btn-sm:hover {
+    background: #1d4ed8;
+}
+
+.btn-secondary.btn-sm {
+    background: #ffffff;
+    color: #1e293b !important;
+    border: 1px solid #cbd5e1;
+}
+.btn-secondary.btn-sm:hover {
+    background: #f1f5f9;
+}
 
 /* ── Child Folder Cards ────────────────────────────────── */
 .children-folders {

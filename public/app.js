@@ -4401,6 +4401,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Helper: Normalize and aggregate fields across all clinical assessments for the Germany Summary Sheet
+        // Helper: Normalize and aggregate fields across all clinical assessments for the Germany Summary Sheet
     function getSummaryFields(child, assessments = []) {
         const s = extractAssessmentSummaries(child, assessments);
         const rData = s.raw?.rapid || {};
@@ -4417,6 +4418,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (v === undefined || v === null || String(v).trim() === '') return defaultVal;
             return String(v).trim();
         };
+
+        const planText = pData.physio_treatment_plan || '';
+        const aidsText = pData.use_of_aids || pData.external_devices || '';
 
         return {
             assessmentDate,
@@ -4517,7 +4521,7 @@ document.addEventListener('DOMContentLoaded', () => {
             hyperLordosis: cleanVal(pData.hyper_lordosis, 'No'),
             impairmentOthers: cleanVal(pData.impairment_others, 'None'),
 
-            // Gross Motor
+            // Gross Motor (all 20 items)
             gmHeadControl: cleanVal(pData.gm_head_control, 'Yes'),
             gmSitSupport: cleanVal(pData.gm_sit_support, 'Yes'),
             gmRolling: cleanVal(pData.gm_rolling, 'Yes'),
@@ -4539,7 +4543,7 @@ document.addEventListener('DOMContentLoaded', () => {
             gmStairNoSupport: cleanVal(pData.gm_stair_no_support, 'Yes'),
             gmRunningIssues: cleanVal(pData.gm_running_issues, 'None'),
 
-            // Transitions without support
+            // Transitions without support (all 9 items)
             trSupineProneSit: cleanVal(pData.tr_supine_prone_sit, 'Yes'),
             trProneSupineRoll: cleanVal(pData.tr_prone_supine_roll, 'Yes'),
             trSitSupport: cleanVal(pData.tr_sit_support, 'Yes'),
@@ -4567,7 +4571,23 @@ document.addEventListener('DOMContentLoaded', () => {
             romElbowFlexR: cleanVal(pData.rom_elbow_flex_r, 'Normal'), romElbowFlexL: cleanVal(pData.rom_elbow_flex_l, 'Normal'),
             romHandR: cleanVal(pData.rom_hand_r, 'Normal'), romHandL: cleanVal(pData.rom_hand_l, 'Normal'),
 
-            // Muscle Strength
+            // ROM Active
+            romActHipFlexR: cleanVal(pData.rom_act_hip_flex_r || pData.rom_hip_flex_r, 'Normal'),
+            romActHipFlexL: cleanVal(pData.rom_act_hip_flex_l || pData.rom_hip_flex_l, 'Normal'),
+            romActHipRotR: cleanVal(pData.rom_act_hip_rot_r || pData.rom_hip_rot_r, 'Normal'),
+            romActHipRotL: cleanVal(pData.rom_act_hip_rot_l || pData.rom_hip_rot_l, 'Normal'),
+            romActKneeFlexR: cleanVal(pData.rom_act_knee_flex_r || pData.rom_knee_flex_r, 'Normal'),
+            romActKneeFlexL: cleanVal(pData.rom_act_knee_flex_l || pData.rom_knee_flex_l, 'Normal'),
+            romActAnkleBendR: cleanVal(pData.rom_act_ankle_bend_r || pData.rom_ankle_bend_r, 'Normal'),
+            romActAnkleBendL: cleanVal(pData.rom_act_ankle_bend_l || pData.rom_ankle_bend_l, 'Normal'),
+            romActAnkleStrR: cleanVal(pData.rom_act_ankle_str_r || pData.rom_ankle_str_r, 'Normal'),
+            romActAnkleStrL: cleanVal(pData.rom_act_ankle_str_l || pData.rom_ankle_str_l, 'Normal'),
+            romActElbowFlexR: cleanVal(pData.rom_act_elbow_flex_r || pData.rom_elbow_flex_r, 'Normal'),
+            romActElbowFlexL: cleanVal(pData.rom_act_elbow_flex_l || pData.rom_elbow_flex_l, 'Normal'),
+            romActWristFlexR: cleanVal(pData.rom_act_wrist_flex_r || pData.rom_hand_r, 'Normal'),
+            romActWristFlexL: cleanVal(pData.rom_act_wrist_flex_l || pData.rom_hand_l, 'Normal'),
+
+            // Muscle Strength (1/5 - 5/5)
             strHipR: cleanVal(pData.strength_hip_r, '4/5'), strHipL: cleanVal(pData.strength_hip_l, '4/5'),
             strKneeR: cleanVal(pData.strength_knee_r, '4/5'), strKneeL: cleanVal(pData.strength_knee_l, '4/5'),
             strAnkleR: cleanVal(pData.strength_ankle_r, '4/5'), strAnkleL: cleanVal(pData.strength_ankle_l, '4/5'),
@@ -4587,11 +4607,27 @@ document.addEventListener('DOMContentLoaded', () => {
             fineMotorPinch: cleanVal(pData.fine_motor_pinch, 'Present'),
             fineMotorSupination: cleanVal(pData.fine_motor_supination, 'Present'),
 
+            // Treatment Plan Sub-items (from SUMMARY SHEET.docx)
+            tpHeadControl: cleanVal(pData.tp_head_control || (planText.toLowerCase().includes('head') ? planText : '') || 'Head stability & midline alignment training'),
+            tpTrunkControl: cleanVal(pData.tp_trunk_control || (planText.toLowerCase().includes('trunk') ? planText : '') || 'Trunk strengthening & postural control'),
+            tpSitting: cleanVal(pData.tp_sitting || (planText.toLowerCase().includes('sitting') ? planText : '') || 'Active sitting balance exercises'),
+            tpStanding: cleanVal(pData.tp_standing || (planText.toLowerCase().includes('standing') ? planText : '') || 'Weight bearing & standing balance training'),
+            tpSideSteps: cleanVal(pData.tp_side_steps || (planText.toLowerCase().includes('side') ? planText : '') || 'Lateral weight shift and stepping practice'),
+            tpWalkingAids: cleanVal(pData.tp_walking_aids || (aidsText && aidsText !== 'None' ? `Gait training with ${aidsText}` : '') || 'Gait retraining with assistive support'),
+            tpFreeWalking: cleanVal(pData.tp_free_walking || (planText.toLowerCase().includes('walk') ? planText : '') || 'Independent reciprocal walking coordination'),
+
+            // External Devices Sub-items (from SUMMARY SHEET.docx)
+            devSplints: cleanVal(pData.dev_splints || (aidsText.toLowerCase().includes('splint') ? 'Prescribed / In use' : 'None')),
+            devCpChair: cleanVal(pData.dev_cp_chair || (aidsText.toLowerCase().includes('chair') ? 'Prescribed / In use' : 'None')),
+            devStandingFrame: cleanVal(pData.dev_standing_frame || (aidsText.toLowerCase().includes('standing frame') ? 'Prescribed / In use' : 'None')),
+            devWheelchair: cleanVal(pData.dev_wheelchair || (aidsText.toLowerCase().includes('wheelchair') ? 'Prescribed / In use' : 'None')),
+            devWalker: cleanVal(pData.dev_walker || (aidsText.toLowerCase().includes('walker') ? 'Prescribed / In use' : 'None')),
+
             // Plan & Devices
             physioOtherComments: cleanVal(pData.physio_other_comments, 'Child is cooperative with clinical assessment'),
             physioTreatmentPlan: cleanVal(pData.physio_treatment_plan, 'Targeted motor retraining, gait conditioning and balance therapy'),
             externalDevices: cleanVal(pData.external_devices || pData.use_of_aids, 'As indicated for positioning and gait support'),
-            furtherInvestigations: cleanVal(pData.further_investigations, 'German therapist / doctor consultation, periodic review')
+            furtherInvestigations: cleanVal(pData.further_investigations || pData.investigations_needed, 'Sree Chitra / German therapist & pediatrician evaluation recommended')
         };
     }
 
@@ -4603,7 +4639,7 @@ document.addEventListener('DOMContentLoaded', () => {
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#039;');
+            .replace(/\'/g, '&#039;');
     }
 
     // Helper: Render official Germany Team Child Summary Sheet format in HTML
@@ -4992,7 +5028,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </tr>
 
                     <tr>
-                        <th colspan="4" class="table-subhead">JOINT RANGE OF MOTION (ROM) PASSIVE & ACTIVE</th>
+                        <th colspan="4" class="table-subhead">JOINT RANGE OF MOTION (ROM) PASSIVE &amp; ACTIVE</th>
                     </tr>
                     <tr>
                         <td class="label-col">Hip ROM (Passive)</td>
@@ -5004,9 +5040,17 @@ document.addEventListener('DOMContentLoaded', () => {
                         </td>
                     </tr>
                     <tr>
-                        <td class="label-col">Knee & Ankle ROM</td>
+                        <td class="label-col">Hip ROM (Active)</td>
                         <td colspan="3" class="val-col">
-                            Knee Flex/Ext: Rt (${escapeHtml(f.romKneeFlexR)}) Lt (${escapeHtml(f.romKneeFlexL)}) &nbsp;|&nbsp;
+                            Flex/Ext: Rt (${escapeHtml(f.romActHipFlexR)}) Lt (${escapeHtml(f.romActHipFlexL)}) &nbsp;|&nbsp;
+                            Rotation: Rt (${escapeHtml(f.romActHipRotR)}) Lt (${escapeHtml(f.romActHipRotL)})
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Knee &amp; Ankle ROM</td>
+                        <td colspan="3" class="val-col">
+                            Knee Flex/Ext (Pass): Rt (${escapeHtml(f.romKneeFlexR)}) Lt (${escapeHtml(f.romKneeFlexL)}) &nbsp;|&nbsp;
+                            Knee (Act): Rt (${escapeHtml(f.romActKneeFlexR)}) Lt (${escapeHtml(f.romActKneeFlexL)})<br>
                             Ankle (Bended): Rt (${escapeHtml(f.romAnkleBendR)}) Lt (${escapeHtml(f.romAnkleBendL)}) &nbsp;|&nbsp;
                             Ankle (Straight): Rt (${escapeHtml(f.romAnkleStrR)}) Lt (${escapeHtml(f.romAnkleStrL)})
                         </td>
@@ -5035,12 +5079,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         <td colspan="3" class="val-col">
                             Shoulder: Rt (${escapeHtml(f.strShoulderR)}) Lt (${escapeHtml(f.strShoulderL)}) &nbsp;|&nbsp;
                             Elbow: Rt (${escapeHtml(f.strElbowR)}) Lt (${escapeHtml(f.strElbowL)}) &nbsp;|&nbsp;
-                            Wrist & Fingers: Rt (${escapeHtml(f.strWristR)}) Lt (${escapeHtml(f.strWristL)})
+                            Wrist &amp; Fingers: Rt (${escapeHtml(f.strWristR)}) Lt (${escapeHtml(f.strWristL)})
                         </td>
                     </tr>
 
                     <tr>
-                        <th colspan="4" class="table-subhead">NEUROLOGICAL & REFLEXES</th>
+                        <th colspan="4" class="table-subhead">NEUROLOGICAL &amp; REFLEXES</th>
                     </tr>
                     <tr>
                         <td class="label-col">Muscle tone in general</td>
@@ -5075,16 +5119,46 @@ document.addEventListener('DOMContentLoaded', () => {
                         <th colspan="4" class="table-subhead">TREATMENT PLAN</th>
                     </tr>
                     <tr>
-                        <td class="label-col">Targeted Treatment Plan</td>
-                        <td colspan="3" class="val-col" style="font-weight: 600; color: #1e3a8a;">${escapeHtml(f.physioTreatmentPlan)}</td>
+                        <td class="label-col">Head control</td>
+                        <td class="val-col">${escapeHtml(f.tpHeadControl)}</td>
+                        <td class="label-col">Trunk control</td>
+                        <td class="val-col">${escapeHtml(f.tpTrunkControl)}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Sitting position</td>
+                        <td class="val-col">${escapeHtml(f.tpSitting)}</td>
+                        <td class="label-col">Standing position</td>
+                        <td class="val-col">${escapeHtml(f.tpStanding)}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Side steps</td>
+                        <td class="val-col">${escapeHtml(f.tpSideSteps)}</td>
+                        <td class="label-col">Walking with aids</td>
+                        <td class="val-col">${escapeHtml(f.tpWalkingAids)}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Free walking gait pattern</td>
+                        <td colspan="3" class="val-col" style="font-weight: 600; color: #1e3a8a;">${escapeHtml(f.tpFreeWalking)}</td>
                     </tr>
 
                     <tr>
                         <th colspan="4" class="table-subhead">EXTERNAL DEVICES</th>
                     </tr>
                     <tr>
-                        <td class="label-col">Splints / CP Chair / Wheelchair / Walker</td>
-                        <td colspan="3" class="val-col">${escapeHtml(f.externalDevices)}</td>
+                        <td class="label-col">Splints</td>
+                        <td class="val-col">${escapeHtml(f.devSplints)}</td>
+                        <td class="label-col">CP chair</td>
+                        <td class="val-col">${escapeHtml(f.devCpChair)}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Standing frame</td>
+                        <td class="val-col">${escapeHtml(f.devStandingFrame)}</td>
+                        <td class="label-col">Wheel Chair</td>
+                        <td class="val-col">${escapeHtml(f.devWheelchair)}</td>
+                    </tr>
+                    <tr>
+                        <td class="label-col">Walker</td>
+                        <td colspan="3" class="val-col">${escapeHtml(f.devWalker)}</td>
                     </tr>
 
                     <tr>
@@ -5099,8 +5173,7 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
     }
 
-    // Helper: Print Child Summary Sheet directly
-    function printChildSummarySheet(child, assessments = []) {
+function printChildSummarySheet(child, assessments = []) {
         if (!child) return;
         const sheetHtml = renderChildSummarySheetHtml(child, assessments);
         const printWin = window.open('', '_blank', 'width=950,height=850');
@@ -6317,7 +6390,545 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // ── Generate Official Germany Summary Sheet PDF (Table 0 & Table 1 Format) ─────
+        // ── Helper: Build Official Germany Summary Sheet PDF for a single child ──────
+    function buildChildSummaryPdfDocument(doc, child, assessments = [], startOnNewPage = false) {
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const margin = 12;
+
+        if (startOnNewPage) {
+            doc.addPage();
+        }
+
+        const startY = 8;
+        // Brand Header Banner
+        doc.setFillColor(30, 58, 138); // Deep Navy
+        doc.rect(margin, startY, pageWidth - (margin * 2), 2, 'F');
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10.5);
+        doc.setTextColor(30, 58, 138);
+        doc.text('EARLY INTERVENTION CENTRE FOR CHILDREN WITH CEREBRAL PALSY Mylaudy', pageWidth / 2, startY + 6, { align: 'center' });
+
+        doc.setFontSize(12.5);
+        doc.setTextColor(15, 23, 42);
+        doc.text('CHILD SUMMARY SHEET', pageWidth / 2, startY + 12, { align: 'center' });
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(71, 85, 105);
+        doc.text('Suggestions from Germany Team', pageWidth / 2, startY + 16.5, { align: 'center' });
+
+        const f = getSummaryFields(child, assessments);
+
+        // Table 0: Part 1 - Information Sheet & Developmental History
+        const table0Body = [
+            // Top Meta Row
+            [
+                { content: 'DATE OF ASSESSMENT', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.assessmentDate, styles: { fontStyle: 'bold', textColor: [30, 58, 138] } },
+                { content: 'SL.NO', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.slNo, styles: { fontStyle: 'bold', textColor: [30, 58, 138] } }
+            ],
+            // Header: INFORMATION SHEET
+            [{ content: 'INFORMATION SHEET', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
+            [
+                { content: 'Name', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.name, styles: { fontStyle: 'bold' } },
+                { content: 'Sex', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.sex }
+            ],
+            [
+                { content: 'Date of Birth', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.dob },
+                { content: 'Age / Grade', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: `${f.age} / Grade: ${f.grade}` }
+            ],
+            [
+                { content: 'Address', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.address, colSpan: 3 }
+            ],
+            [
+                { content: 'Anthropometry', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: `Height: ${f.height} cm  |  Weight: ${f.weight} kg  |  BMI: ${f.bmi}\nHead Circ: ${f.headCirc} cm  |  Chest: ${f.chestCirc} cm  |  MUAC: R(${f.muacR}) L(${f.muacL})`, colSpan: 3 }
+            ],
+            [
+                { content: 'Consanguinity', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.consanguinity, colSpan: 3 }
+            ],
+            [
+                { content: 'Siblings', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: `Brothers: ${f.siblingsBrothers} | Sisters: ${f.siblingsSisters} | Total: ${f.siblingsTotal}` },
+                { content: 'Birth Order / Preg.', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: `Order: ${f.birthOrder} | Preg: ${f.pregnancies} | Deliv: ${f.deliveries}` }
+            ],
+            [
+                { content: 'History of disability in family', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.disabilityInFamily, colSpan: 3 }
+            ],
+
+            // Pre-Natal History
+            [{ content: 'PRE-NATAL HISTORY', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
+            [
+                { content: 'Health of mother during preg.', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.motherPregnancyHealth },
+                { content: 'RH incompatibility', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.rhIncompatibility }
+            ],
+            [
+                { content: 'Any infectious disease', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.pregnancyInfections, colSpan: 3 }
+            ],
+
+            // Peri-Natal History
+            [{ content: 'PERI-NATAL HISTORY', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
+            [
+                { content: 'Type of delivery', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.deliveryType },
+                { content: 'Place of delivery', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.deliveryPlace }
+            ],
+            [
+                { content: 'Term', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: `${f.deliveryTerm} ${f.prematureMonth ? `(${f.prematureMonth})` : ''}` },
+                { content: 'Birth cry', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.birthCry }
+            ],
+            [
+                { content: 'Birth weight', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.birthWeight },
+                { content: 'Birth colour', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.birthColour }
+            ],
+
+            // Post Natal History
+            [{ content: 'POST NATAL HISTORY', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
+            [
+                { content: 'Days stay in hospital', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.hospitalStayDays },
+                { content: 'Incubator support', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.incubatorSupport }
+            ],
+            [
+                { content: 'Oxygens', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.oxygenSupport },
+                { content: 'Fits / convulsions', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.convulsions }
+            ],
+            [
+                { content: 'Any major surgery', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.majorSurgeries, colSpan: 3 }
+            ],
+
+            // Known Diagnosis
+            [{ content: 'KNOWN DIAGNOSIS', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
+            [
+                { content: 'Cerebral Palsy', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.knownCp },
+                { content: 'Genetic disorder', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.knownGenetic }
+            ],
+            [
+                { content: 'Unknown underlying disease', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.knownUnknownDisease },
+                { content: 'Clinical Impression', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.diagnosis, styles: { fontStyle: 'bold', textColor: [30, 58, 138] } }
+            ],
+
+            // Cognitive Development
+            [{ content: 'COGNITIVE DEVELOPMENT', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
+            [
+                { content: 'Cognitive Delay', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: `Speech: ${f.speechDelay}  |  Schooling: ${f.schoolingDelay}`, colSpan: 3 }
+            ],
+            [
+                { content: 'Social smile < 3 m', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.msSmile },
+                { content: 'Babbling < 5 m', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.msBabbling }
+            ],
+            [
+                { content: 'Eye contact < 3 m', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.msEyeContact },
+                { content: 'Words < 12 m', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.msWords }
+            ],
+            [
+                { content: 'Sentences < 24 m', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.msSentences, colSpan: 3 }
+            ],
+
+            // Developmental Delay and Disability
+            [{ content: 'DEVELOPMENTAL DELAY AND DISABILITY', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
+            [
+                { content: 'Vision Impairment', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.visionImpairment },
+                { content: 'Hearing impairment', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.hearingImpairment }
+            ],
+            [
+                { content: 'Neuro-motor impairment', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.neuromotorImpairment, colSpan: 3 }
+            ],
+
+            // Objectives
+            [{ content: 'OBJECTIVES', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
+            [
+                { content: 'Previous reports from doctors', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.doctorReports, colSpan: 3 }
+            ],
+            [
+                { content: 'Previous reports from imaging', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.imagingReports, colSpan: 3 }
+            ],
+            [
+                { content: 'Previous therapies', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.previousTherapies, colSpan: 3 }
+            ],
+            [
+                { content: 'Expectations of the parents', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.parentExpectations, colSpan: 3, styles: { fontStyle: 'bold', textColor: [30, 58, 138] } }
+            ]
+        ];
+
+        doc.autoTable({
+            startY: startY + 19,
+            head: [[{ content: 'PART 1: INFORMATION SHEET & DEVELOPMENTAL HISTORY', colSpan: 4, styles: { halign: 'left', fillColor: [30, 58, 138], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 } }]],
+            body: table0Body,
+            theme: 'grid',
+            styles: { fontSize: 7, cellPadding: 1.6, textColor: [15, 23, 42], overflow: 'linebreak' },
+            columnStyles: {
+                0: { width: 44 },
+                1: { width: 48 },
+                2: { width: 44 },
+                3: { width: 50 }
+            },
+            margin: { left: margin, right: margin }
+        });
+
+        // Table 1: Part 2 - Physiotherapy Assessment & Functional Evaluation
+        const table1Body = [
+            // Motor Milestones
+            [{ content: 'MOTOR MILESTONES', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
+            [
+                { content: 'Sitting < 8 months', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.msSitting },
+                { content: 'Crawling < 10 m', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.msCrawling }
+            ],
+            [
+                { content: 'Standing < 14 m', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.msStanding },
+                { content: 'Walking < 18 m', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.msWalking }
+            ],
+            [
+                { content: 'Use of aids', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.useOfAids, colSpan: 3 }
+            ],
+
+            // Visible Deformity
+            [{ content: 'VISIBLE DEFORMITY', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
+            [
+                { content: 'Knock knees', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: `Rt: ${f.knockKneesR} | Lt: ${f.knockKneesL}` },
+                { content: 'Bow legs', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: `Rt: ${f.bowLegsR} | Lt: ${f.bowLegsL}` }
+            ],
+            [
+                { content: 'Flat foot', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: `Rt: ${f.flatFootR} | Lt: ${f.flatFootL}` },
+                { content: 'Equines', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: `Rt: ${f.equinesR} | Lt: ${f.equinesL}` }
+            ],
+            [
+                { content: 'Elbow deformity', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: `Rt: ${f.elbowDefR} | Lt: ${f.elbowDefL}` },
+                { content: 'Hand deformity', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: `Rt: ${f.handDefR} | Lt: ${f.handDefL}` }
+            ],
+            [
+                { content: 'Others', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.deformityOthers, colSpan: 3 }
+            ],
+
+            // Impairment of Body Structure
+            [{ content: 'IMPAIRMENT OF BODY STRUCTURE', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
+            [
+                { content: 'Scoliosis', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.scoliosis },
+                { content: 'Kyphosis', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.kyphosis }
+            ],
+            [
+                { content: 'Hyper lordosis', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.hyperLordosis },
+                { content: 'Others', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.impairmentOthers }
+            ],
+
+            // Gross Motor
+            [{ content: 'GROSS MOTOR', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
+            [
+                { content: 'Head control', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.gmHeadControl },
+                { content: 'Sitting with support', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.gmSitSupport }
+            ],
+            [
+                { content: 'Rolling', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.gmRolling },
+                { content: 'Sitting without support', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.gmSitNoSupport }
+            ],
+            [
+                { content: 'Alternating crawling', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.gmAltCrawling },
+                { content: '4 point kneeling', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.gm4PointKneel }
+            ],
+            [
+                { content: 'Bunny hopping', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.gmBunnyHopping },
+                { content: '2 point kneeling', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.gm2PointKneel }
+            ],
+            [
+                { content: 'Half kneeling', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.gmHalfKneel },
+                { content: 'Standing without support', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.gmStandNoSupport }
+            ],
+            [
+                { content: 'Standing with support', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.gmStandSupport },
+                { content: 'Standing on tip toes', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.gmStandTiptoes }
+            ],
+            [
+                { content: 'Standing on heels', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.gmStandHeels },
+                { content: 'Jumping on one leg', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.gmJumpOneLeg }
+            ],
+            [
+                { content: 'Standing on one leg', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.gmStandOneLeg },
+                { content: 'Jumping on two legs', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.gmJumpTwoLegs }
+            ],
+            [
+                { content: 'Stair climbing with support', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.gmStairSupport },
+                { content: 'Running regular', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.gmRunningRegular }
+            ],
+            [
+                { content: 'Stair climbing without supp.', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.gmStairNoSupport },
+                { content: 'Running Issues', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.gmRunningIssues }
+            ],
+
+            // Transitions without support
+            [{ content: 'TRANSITION WITHOUT SUPPORT', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
+            [
+                { content: 'Supine - prone - sitting', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.trSupineProneSit },
+                { content: 'Prone - supine - rolling', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.trProneSupineRoll }
+            ],
+            [
+                { content: 'Sitting with support', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.trSitSupport },
+                { content: 'Sitting without support', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.trSitNoSupport }
+            ],
+            [
+                { content: 'Sitting - Standing', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.trSitStand },
+                { content: 'Standing - Sitting', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.trStandSit }
+            ],
+            [
+                { content: 'Crawl - Kneel - Half kneel - Stand', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.trCrawlKneelStand },
+                { content: 'Stand - Half kneel - Kneel - Crawl', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.trStandKneelCrawl }
+            ],
+            [
+                { content: 'Quadruped - side sitting', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.trQuadSideSit, colSpan: 3 }
+            ],
+
+            // Gait Patterns
+            [{ content: 'GAIT PATTERNS', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
+            [
+                { content: 'Without support', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.gaitWithoutSupport },
+                { content: 'With support', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.gaitWithSupport }
+            ],
+            [
+                { content: 'No walk', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.gaitNoWalk, colSpan: 3 }
+            ],
+            [
+                { content: 'Gait pattern details', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.gaitPattern, colSpan: 3 }
+            ],
+
+            // ROM Passive & Active
+            [{ content: 'JOINT RANGE OF MOTION (ROM) PASSIVE & ACTIVE', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
+            [
+                { content: 'Hip ROM (Passive)', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: `Horiz: R(${f.romHipHorizR}) L(${f.romHipHorizL}) | Vert: R(${f.romHipVertR}) L(${f.romHipVertL})\nFlex/Ext: R(${f.romHipFlexR}) L(${f.romHipFlexL}) | Rot: R(${f.romHipRotR}) L(${f.romHipRotL})`, colSpan: 3 }
+            ],
+            [
+                { content: 'Hip ROM (Active)', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: `Flex/Ext: R(${f.romActHipFlexR}) L(${f.romActHipFlexL}) | Rot: R(${f.romActHipRotR}) L(${f.romActHipRotL})`, colSpan: 3 }
+            ],
+            [
+                { content: 'Knee & Ankle ROM', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: `Knee Pass: R(${f.romKneeFlexR}) L(${f.romKneeFlexL}) | Knee Act: R(${f.romActKneeFlexR}) L(${f.romActKneeFlexL})\nAnkle Bended: R(${f.romAnkleBendR}) L(${f.romAnkleBendL}) | Straight: R(${f.romAnkleStrR}) L(${f.romAnkleStrL})`, colSpan: 3 }
+            ],
+            [
+                { content: 'Upper Limb ROM', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: `Elbow Flex/Ext: R(${f.romElbowFlexR}) L(${f.romElbowFlexL}) | Hand/Wrist: R(${f.romHandR}) L(${f.romHandL})`, colSpan: 3 }
+            ],
+
+            // Muscle Strength
+            [{ content: 'MUSCLE STRENGTH (1/5 - 5/5)', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
+            [
+                { content: 'Hip / Knee / Ankle', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: `Hip: R(${f.strHipR}) L(${f.strHipL}) | Knee: R(${f.strKneeR}) L(${f.strKneeL}) | Ankle: R(${f.strAnkleR}) L(${f.strAnkleL})`, colSpan: 3 }
+            ],
+            [
+                { content: 'Shoulder / Elbow / Wrist', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: `Shoulder: R(${f.strShoulderR}) L(${f.strShoulderL}) | Elbow: R(${f.strElbowR}) L(${f.strElbowL}) | Wrist: R(${f.strWristR}) L(${f.strWristL})`, colSpan: 3 }
+            ],
+
+            // Neurological & Reflexes
+            [{ content: 'NEUROLOGICAL & REFLEXES', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
+            [
+                { content: 'Muscle tone in general', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.muscleToneGeneral },
+                { content: 'Clonus', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.clonus }
+            ],
+            [
+                { content: 'Patellar reflex', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: `Rt: ${f.reflexPatellarR} | Lt: ${f.reflexPatellarL}` },
+                { content: 'Achilles reflex', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: `Rt: ${f.reflexAchillesR} | Lt: ${f.reflexAchillesL}` }
+            ],
+            [
+                { content: 'Babinski reflex', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: `Rt: ${f.reflexBabinskiR} | Lt: ${f.reflexBabinskiL}` },
+                { content: 'Limb length meas.', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: `Rt: ${f.limbLengthR} | Lt: ${f.limbLengthL}` }
+            ],
+            [
+                { content: 'Co-ordination', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: `Able to cross midline: ${f.coordinationMidline}` },
+                { content: 'Fine Motor Assessment', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: `Pinch: ${f.fineMotorPinch} | Pro/sup: ${f.fineMotorSupination}` }
+            ],
+            [
+                { content: 'Other comments', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.physioOtherComments, colSpan: 3 }
+            ],
+
+            // Treatment Plan (Individual rows from SUMMARY SHEET.docx)
+            [{ content: 'TREATMENT PLAN', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
+            [
+                { content: 'Head control', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.tpHeadControl },
+                { content: 'Trunk control', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.tpTrunkControl }
+            ],
+            [
+                { content: 'Sitting position', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.tpSitting },
+                { content: 'Standing position', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.tpStanding }
+            ],
+            [
+                { content: 'Side steps', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.tpSideSteps },
+                { content: 'Walking with aids', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.tpWalkingAids }
+            ],
+            [
+                { content: 'Free walking gait pattern', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.tpFreeWalking, colSpan: 3, styles: { fontStyle: 'bold', textColor: [30, 58, 138] } }
+            ],
+
+            // External Devices (Individual rows from SUMMARY SHEET.docx)
+            [{ content: 'EXTERNAL DEVICES', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
+            [
+                { content: 'Splints', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.devSplints },
+                { content: 'CP chair', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.devCpChair }
+            ],
+            [
+                { content: 'Standing frame', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.devStandingFrame },
+                { content: 'Wheel Chair', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.devWheelchair }
+            ],
+            [
+                { content: 'Walker', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.devWalker, colSpan: 3 }
+            ],
+
+            // Further Investigations Needed
+            [{ content: 'FURTHER INVESTIGATIONS NEEDED', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
+            [
+                { content: '(Sree Chitra, General pediatrician, German therapist, German doctors)', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: f.furtherInvestigations, colSpan: 3, styles: { fontStyle: 'bold', textColor: [15, 23, 42] } }
+            ]
+        ];
+
+        doc.autoTable({
+            startY: doc.lastAutoTable.finalY + 5,
+            head: [[{ content: 'PART 2: PHYSIOTHERAPY ASSESSMENT & FUNCTIONAL EVALUATION', colSpan: 4, styles: { halign: 'left', fillColor: [30, 58, 138], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 } }]],
+            body: table1Body,
+            theme: 'grid',
+            styles: { fontSize: 7, cellPadding: 1.6, textColor: [15, 23, 42], overflow: 'linebreak' },
+            columnStyles: {
+                0: { width: 44 },
+                1: { width: 48 },
+                2: { width: 44 },
+                3: { width: 50 }
+            },
+            margin: { left: margin, right: margin }
+        });
+
+        // Clinician Signatures Block
+        let sigY = doc.lastAutoTable.finalY + 12;
+        if (sigY + 24 > pageHeight - 12) {
+            doc.addPage();
+            sigY = 20;
+        }
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7.5);
+        doc.setTextColor(71, 85, 105);
+        doc.text('Physiotherapist / German Team Signatures:', margin, sigY);
+        doc.text('Clinical Director / Authorized Signatory:', pageWidth - margin - 60, sigY);
+
+        doc.setDrawColor(203, 213, 225);
+        doc.line(margin, sigY + 10, margin + 55, sigY + 10);
+        doc.line(pageWidth - margin - 60, sigY + 10, pageWidth - margin, sigY + 10);
+
+        doc.setFontSize(7);
+        doc.text('Evaluating Clinician & Date', margin, sigY + 14);
+        doc.text('CORC Centre Seal & In-Charge', pageWidth - margin - 60, sigY + 14);
+    }
+
+    // ── Generate Single Child Official Germany Summary Sheet PDF ──────────────────
     function generateChildSummaryPdf(child, assessments = []) {
         if (!window.jspdf || !window.jspdf.jsPDF) {
             showToast('PDF generator is initializing, please try again in a moment', true);
@@ -6330,491 +6941,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const pageHeight = doc.internal.pageSize.getHeight();
             const margin = 12;
 
-            // Brand Header Banner
-            doc.setFillColor(30, 58, 138); // Deep Navy
-            doc.rect(margin, 8, pageWidth - (margin * 2), 2, 'F');
-
-            doc.setFont('helvetica', 'bold');
-            doc.setFontSize(10.5);
-            doc.setTextColor(30, 58, 138);
-            doc.text('EARLY INTERVENTION CENTRE FOR CHILDREN WITH CEREBRAL PALSY Mylaudy', pageWidth / 2, 14, { align: 'center' });
-
-            doc.setFontSize(12.5);
-            doc.setTextColor(15, 23, 42);
-            doc.text('CHILD SUMMARY SHEET', pageWidth / 2, 20, { align: 'center' });
-
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(8);
-            doc.setTextColor(71, 85, 105);
-            doc.text('Suggestions from Germany Team', pageWidth / 2, 24.5, { align: 'center' });
-
-            const f = getSummaryFields(child, assessments);
-
-            // Table 0: Part 1 - Information Sheet & Developmental History
-            const table0Body = [
-                // Top Meta Row
-                [
-                    { content: 'DATE OF ASSESSMENT', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.assessmentDate, styles: { fontStyle: 'bold', textColor: [30, 58, 138] } },
-                    { content: 'SL.NO', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.slNo, styles: { fontStyle: 'bold', textColor: [30, 58, 138] } }
-                ],
-                // Header: INFORMATION SHEET
-                [{ content: 'INFORMATION SHEET', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
-                [
-                    { content: 'Name', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.name, styles: { fontStyle: 'bold' } },
-                    { content: 'Sex', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.sex }
-                ],
-                [
-                    { content: 'Date of Birth', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.dob },
-                    { content: 'Age / Grade', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: `${f.age} / Grade: ${f.grade}` }
-                ],
-                [
-                    { content: 'Address', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.address, colSpan: 3 }
-                ],
-                [
-                    { content: 'Anthropometry', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: `Height: ${f.height} cm  |  Weight: ${f.weight} kg  |  BMI: ${f.bmi}\nHead Circ: ${f.headCirc} cm  |  Chest: ${f.chestCirc} cm  |  MUAC: R(${f.muacR}) L(${f.muacL})`, colSpan: 3 }
-                ],
-                [
-                    { content: 'Consanguinity', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.consanguinity, colSpan: 3 }
-                ],
-                [
-                    { content: 'Siblings', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: `Brothers: ${f.siblingsBrothers} | Sisters: ${f.siblingsSisters} | Total: ${f.siblingsTotal}` },
-                    { content: 'Birth Order / Preg.', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: `Order: ${f.birthOrder} | Preg: ${f.pregnancies} | Deliv: ${f.deliveries}` }
-                ],
-                [
-                    { content: 'History of disability in family', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.disabilityInFamily, colSpan: 3 }
-                ],
-
-                // Pre-Natal History
-                [{ content: 'PRE-NATAL HISTORY', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
-                [
-                    { content: 'Health of mother during preg.', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.motherPregnancyHealth },
-                    { content: 'RH incompatibility', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.rhIncompatibility }
-                ],
-                [
-                    { content: 'Any infectious disease', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.pregnancyInfections, colSpan: 3 }
-                ],
-
-                // Peri-Natal History
-                [{ content: 'PERI-NATAL HISTORY', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
-                [
-                    { content: 'Type of delivery', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.deliveryType },
-                    { content: 'Place of delivery', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.deliveryPlace }
-                ],
-                [
-                    { content: 'Term', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: `${f.deliveryTerm} ${f.prematureMonth ? `(${f.prematureMonth})` : ''}` },
-                    { content: 'Birth cry', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.birthCry }
-                ],
-                [
-                    { content: 'Birth weight', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.birthWeight },
-                    { content: 'Birth colour', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.birthColour }
-                ],
-
-                // Post Natal History
-                [{ content: 'POST NATAL HISTORY', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
-                [
-                    { content: 'Days stay in hospital', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.hospitalStayDays },
-                    { content: 'Incubator support', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.incubatorSupport }
-                ],
-                [
-                    { content: 'Oxygens', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.oxygenSupport },
-                    { content: 'Fits / convulsions', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.convulsions }
-                ],
-                [
-                    { content: 'Any major surgery', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.majorSurgeries, colSpan: 3 }
-                ],
-
-                // Known Diagnosis
-                [{ content: 'KNOWN DIAGNOSIS', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
-                [
-                    { content: 'Cerebral Palsy', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.knownCp },
-                    { content: 'Genetic disorder', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.knownGenetic }
-                ],
-                [
-                    { content: 'Unknown underlying disease', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.knownUnknownDisease },
-                    { content: 'Clinical Impression', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.diagnosis, styles: { fontStyle: 'bold', textColor: [30, 58, 138] } }
-                ],
-
-                // Cognitive Development
-                [{ content: 'COGNITIVE DEVELOPMENT', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
-                [
-                    { content: 'Cognitive Delay', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: `Speech: ${f.speechDelay}  |  Schooling: ${f.schoolingDelay}`, colSpan: 3 }
-                ],
-                [
-                    { content: 'Social smile < 3 m', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.msSmile },
-                    { content: 'Babbling < 5 m', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.msBabbling }
-                ],
-                [
-                    { content: 'Eye contact < 3 m', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.msEyeContact },
-                    { content: 'Words < 12 m', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.msWords }
-                ],
-                [
-                    { content: 'Sentences < 24 m', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.msSentences, colSpan: 3 }
-                ],
-
-                // Developmental Delay and Disability
-                [{ content: 'DEVELOPMENTAL DELAY AND DISABILITY', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
-                [
-                    { content: 'Vision Impairment', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.visionImpairment },
-                    { content: 'Hearing impairment', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.hearingImpairment }
-                ],
-                [
-                    { content: 'Neuro-motor impairment', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.neuromotorImpairment, colSpan: 3 }
-                ],
-
-                // Objectives
-                [{ content: 'OBJECTIVES', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
-                [
-                    { content: 'Previous reports from doctors', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.doctorReports, colSpan: 3 }
-                ],
-                [
-                    { content: 'Previous reports from imaging', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.imagingReports, colSpan: 3 }
-                ],
-                [
-                    { content: 'Previous therapies', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.previousTherapies, colSpan: 3 }
-                ],
-                [
-                    { content: 'Expectations of the parents', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.parentExpectations, colSpan: 3, styles: { fontStyle: 'bold', textColor: [30, 58, 138] } }
-                ]
-            ];
-
-            doc.autoTable({
-                startY: 27,
-                head: [[{ content: 'PART 1: INFORMATION SHEET & DEVELOPMENTAL HISTORY', colSpan: 4, styles: { halign: 'left', fillColor: [30, 58, 138], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 } }]],
-                body: table0Body,
-                theme: 'grid',
-                styles: { fontSize: 7, cellPadding: 1.6, textColor: [15, 23, 42], overflow: 'linebreak' },
-                columnStyles: {
-                    0: { width: 44 },
-                    1: { width: 48 },
-                    2: { width: 44 },
-                    3: { width: 50 }
-                },
-                margin: { left: margin, right: margin }
-            });
-
-            // Table 1: Part 2 - Physiotherapy Assessment & Functional Evaluation
-            const table1Body = [
-                // Motor Milestones
-                [{ content: 'MOTOR MILESTONES', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
-                [
-                    { content: 'Sitting < 8 months', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.msSitting },
-                    { content: 'Crawling < 10 m', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.msCrawling }
-                ],
-                [
-                    { content: 'Standing < 14 m', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.msStanding },
-                    { content: 'Walking < 18 m', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.msWalking }
-                ],
-                [
-                    { content: 'Use of aids', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.useOfAids, colSpan: 3 }
-                ],
-
-                // Visible Deformity
-                [{ content: 'VISIBLE DEFORMITY', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
-                [
-                    { content: 'Knock knees', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: `Rt: ${f.knockKneesR} | Lt: ${f.knockKneesL}` },
-                    { content: 'Bow legs', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: `Rt: ${f.bowLegsR} | Lt: ${f.bowLegsL}` }
-                ],
-                [
-                    { content: 'Flat foot', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: `Rt: ${f.flatFootR} | Lt: ${f.flatFootL}` },
-                    { content: 'Equines', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: `Rt: ${f.equinesR} | Lt: ${f.equinesL}` }
-                ],
-                [
-                    { content: 'Elbow deformity', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: `Rt: ${f.elbowDefR} | Lt: ${f.elbowDefL}` },
-                    { content: 'Hand deformity', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: `Rt: ${f.handDefR} | Lt: ${f.handDefL}` }
-                ],
-                [
-                    { content: 'Others', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.deformityOthers, colSpan: 3 }
-                ],
-
-                // Impairment of Body Structure
-                [{ content: 'IMPAIRMENT OF BODY STRUCTURE', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
-                [
-                    { content: 'Scoliosis', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.scoliosis },
-                    { content: 'Kyphosis', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.kyphosis }
-                ],
-                [
-                    { content: 'Hyper lordosis', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.hyperLordosis },
-                    { content: 'Others', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.impairmentOthers }
-                ],
-
-                // Gross Motor
-                [{ content: 'GROSS MOTOR', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
-                [
-                    { content: 'Head control', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.gmHeadControl },
-                    { content: 'Sitting with support', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.gmSitSupport }
-                ],
-                [
-                    { content: 'Rolling', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.gmRolling },
-                    { content: 'Sitting without support', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.gmSitNoSupport }
-                ],
-                [
-                    { content: 'Alternating crawling', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.gmAltCrawling },
-                    { content: '4 point kneeling', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.gm4PointKneel }
-                ],
-                [
-                    { content: 'Bunny hopping', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.gmBunnyHopping },
-                    { content: '2 point kneeling', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.gm2PointKneel }
-                ],
-                [
-                    { content: 'Half kneeling', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.gmHalfKneel },
-                    { content: 'Standing without support', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.gmStandNoSupport }
-                ],
-                [
-                    { content: 'Standing with support', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.gmStandSupport },
-                    { content: 'Standing on tip toes', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.gmStandTiptoes }
-                ],
-                [
-                    { content: 'Standing on heels', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.gmStandHeels },
-                    { content: 'Jumping on one leg', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.gmJumpOneLeg }
-                ],
-                [
-                    { content: 'Standing on one leg', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.gmStandOneLeg },
-                    { content: 'Jumping on two legs', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.gmJumpTwoLegs }
-                ],
-                [
-                    { content: 'Stair climbing with support', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.gmStairSupport },
-                    { content: 'Running regular', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.gmRunningRegular }
-                ],
-                [
-                    { content: 'Stair climbing without support', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.gmStairNoSupport },
-                    { content: 'Running Issues', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.gmRunningIssues }
-                ],
-
-                // Transitions without support
-                [{ content: 'TRANSITION WITHOUT SUPPORT', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
-                [
-                    { content: 'Supine - prone - sitting', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.trSupineProneSit },
-                    { content: 'Prone - supine - rolling', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.trProneSupineRoll }
-                ],
-                [
-                    { content: 'Sitting with support', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.trSitSupport },
-                    { content: 'Sitting without support', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.trSitNoSupport }
-                ],
-                [
-                    { content: 'Sitting - Standing', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.trSitStand },
-                    { content: 'Standing - Sitting', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.trStandSit }
-                ],
-                [
-                    { content: 'Crawling - Kneeling - Standing', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.trCrawlKneelStand },
-                    { content: 'Standing - Kneeling - Crawling', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.trStandKneelCrawl }
-                ],
-                [
-                    { content: 'Quadruped - side sitting', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.trQuadSideSit, colSpan: 3 }
-                ],
-
-                // Gait Patterns
-                [{ content: 'GAIT PATTERNS', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
-                [
-                    { content: 'Without support', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.gaitWithoutSupport },
-                    { content: 'With support', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.gaitWithSupport }
-                ],
-                [
-                    { content: 'No walk', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.gaitNoWalk, colSpan: 3 }
-                ],
-                [
-                    { content: 'Gait pattern details', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.gaitPattern, colSpan: 3 }
-                ],
-
-                // ROM & Strength
-                [{ content: 'JOINT RANGE OF MOTION (ROM) PASSIVE & ACTIVE', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
-                [
-                    { content: 'Hip ROM (Passive)', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: `Horiz. abd/add: Rt(${f.romHipHorizR}) Lt(${f.romHipHorizL}) | Vert. abd/add: Rt(${f.romHipVertR}) Lt(${f.romHipVertL})\nFlex/Ext: Rt(${f.romHipFlexR}) Lt(${f.romHipFlexL}) | Rotation: Rt(${f.romHipRotR}) Lt(${f.romHipRotL})`, colSpan: 3 }
-                ],
-                [
-                    { content: 'Knee & Ankle ROM', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: `Knee Flex/Ext: Rt(${f.romKneeFlexR}) Lt(${f.romKneeFlexL})\nAnkle (Bended): Rt(${f.romAnkleBendR}) Lt(${f.romAnkleBendL}) | Ankle (Straight): Rt(${f.romAnkleStrR}) Lt(${f.romAnkleStrL})`, colSpan: 3 }
-                ],
-                [
-                    { content: 'Upper Limb ROM', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: `Elbow Flex/Ext: Rt(${f.romElbowFlexR}) Lt(${f.romElbowFlexL}) | Hand/Wrist: Rt(${f.romHandR}) Lt(${f.romHandL})`, colSpan: 3 }
-                ],
-                [{ content: 'MUSCLE STRENGTH (1/5 - 5/5)', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
-                [
-                    { content: 'Hip / Knee / Ankle', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: `Hip: Rt(${f.strHipR}) Lt(${f.strHipL}) | Knee: Rt(${f.strKneeR}) Lt(${f.strKneeL}) | Ankle: Rt(${f.strAnkleR}) Lt(${f.strAnkleL})`, colSpan: 3 }
-                ],
-                [
-                    { content: 'Shoulder / Elbow / Wrist', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: `Shoulder: Rt(${f.strShoulderR}) Lt(${f.strShoulderL}) | Elbow: Rt(${f.strElbowR}) Lt(${f.strElbowL}) | Wrist & Fingers: Rt(${f.strWristR}) Lt(${f.strWristL})`, colSpan: 3 }
-                ],
-
-                // Neurological & Reflexes
-                [{ content: 'NEUROLOGICAL & REFLEXES', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
-                [
-                    { content: 'Muscle tone in general', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.muscleToneGeneral },
-                    { content: 'Clonus', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.clonus }
-                ],
-                [
-                    { content: 'Patellar reflex', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: `Rt: ${f.reflexPatellarR} | Lt: ${f.reflexPatellarL}` },
-                    { content: 'Achilles reflex', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: `Rt: ${f.reflexAchillesR} | Lt: ${f.reflexAchillesL}` }
-                ],
-                [
-                    { content: 'Babinski reflex', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: `Rt: ${f.reflexBabinskiR} | Lt: ${f.reflexBabinskiL}` },
-                    { content: 'Limb length meas.', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: `Rt: ${f.limbLengthR} | Lt: ${f.limbLengthL}` }
-                ],
-                [
-                    { content: 'Co-ordination', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: `Able to cross midline: ${f.coordinationMidline}` },
-                    { content: 'Fine Motor Assessment', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: `Pinch: ${f.fineMotorPinch} | Pro/sup: ${f.fineMotorSupination}` }
-                ],
-                [
-                    { content: 'Other comments', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.physioOtherComments, colSpan: 3 }
-                ],
-
-                // Plan & Recommendations
-                [{ content: 'TREATMENT PLAN', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
-                [
-                    { content: 'Targeted Treatment Plan', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.physioTreatmentPlan, colSpan: 3, styles: { fontStyle: 'bold', textColor: [30, 58, 138] } }
-                ],
-                [{ content: 'EXTERNAL DEVICES', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
-                [
-                    { content: 'Splints / CP Chair / Wheelchair / Walker', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.externalDevices, colSpan: 3 }
-                ],
-                [{ content: 'FURTHER INVESTIGATIONS NEEDED', colSpan: 4, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } }],
-                [
-                    { content: '(Sree Chitra, General pediatrician, German therapist, German doctors)', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                    { content: f.furtherInvestigations, colSpan: 3, styles: { fontStyle: 'bold', textColor: [15, 23, 42] } }
-                ]
-            ];
-
-            doc.autoTable({
-                startY: doc.lastAutoTable.finalY + 5,
-                head: [[{ content: 'PART 2: PHYSIOTHERAPY ASSESSMENT & FUNCTIONAL EVALUATION', colSpan: 4, styles: { halign: 'left', fillColor: [30, 58, 138], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 } }]],
-                body: table1Body,
-                theme: 'grid',
-                styles: { fontSize: 7, cellPadding: 1.6, textColor: [15, 23, 42], overflow: 'linebreak' },
-                columnStyles: {
-                    0: { width: 44 },
-                    1: { width: 48 },
-                    2: { width: 44 },
-                    3: { width: 50 }
-                },
-                margin: { left: margin, right: margin }
-            });
-
-            // Clinician Signatures Block
-            let sigY = doc.lastAutoTable.finalY + 12;
-            if (sigY + 24 > pageHeight - 12) {
-                doc.addPage();
-                sigY = 20;
-            }
-
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(7.5);
-            doc.setTextColor(71, 85, 105);
-            doc.text('Physiotherapist / German Team Signatures:', margin, sigY);
-            doc.text('Clinical Director / Authorized Signatory:', pageWidth - margin - 60, sigY);
-
-            doc.setDrawColor(203, 213, 225);
-            doc.line(margin, sigY + 10, margin + 55, sigY + 10);
-            doc.line(pageWidth - margin - 60, sigY + 10, pageWidth - margin, sigY + 10);
-
-            doc.setFontSize(7);
-            doc.text('Evaluating Clinician & Date', margin, sigY + 14);
-            doc.text('CORC Centre Seal & In-Charge', pageWidth - margin - 60, sigY + 14);
+            buildChildSummaryPdfDocument(doc, child, assessments, false);
 
             // Add Header/Footer to each page
             const totalPages = doc.internal.getNumberOfPages();
@@ -6827,7 +6954,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const cleanName = (child.name || 'Child').replace(/[^a-zA-Z0-9]/g, '_');
-            const filename = `Summary_Sheet_${cleanName}.pdf`;
+            const adm = (child.admission_no || `ID_${child.id}`).replace(/[^a-zA-Z0-9]/g, '_');
+            const filename = `Summary_Sheet_${adm}_${cleanName}.pdf`;
             saveAndOpenPdf(doc, filename);
             showToast('Official Germany Summary Sheet PDF generated and downloaded!');
         } catch (err) {
@@ -6836,8 +6964,50 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // ── Generate Center-Wide Summary PDF (All Children, All Forms Together) ───
+    // ── Generate Official Germany Summary Sheet PDF for ALL Children (Sequential Sheets) ──
     function generateAllAssessmentsSummaryPdf(children = []) {
+        if (!window.jspdf || !window.jspdf.jsPDF) {
+            showToast('PDF generator is initializing, please try again in a moment', true);
+            return;
+        }
+
+        if (!children || !children.length) {
+            showToast('No children found to export', true);
+            return;
+        }
+
+        try {
+            showToast(`Generating official Summary Sheets for all ${children.length} children...`);
+            const doc = new window.jspdf.jsPDF('portrait', 'mm', 'a4');
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const pageHeight = doc.internal.pageSize.getHeight();
+            const margin = 12;
+
+            // Render each child\'s full Summary Sheet (Table 0 and Table 1) sequentially
+            children.forEach((c, idx) => {
+                buildChildSummaryPdfDocument(doc, c, c.assessments || [], idx > 0);
+            });
+
+            // Add Page numbering to each page
+            const totalPages = doc.internal.getNumberOfPages();
+            for (let i = 1; i <= totalPages; i++) {
+                doc.setPage(i);
+                doc.setFontSize(7);
+                doc.setTextColor(148, 163, 184);
+                doc.text(`Page ${i} of ${totalPages}`, pageWidth - margin, pageHeight - 5, { align: 'right' });
+                doc.text('CORC Early Intervention Centre Mylaudy - Child Summary Sheet Dossier (Suggestions from Germany Team)', margin, pageHeight - 5);
+            }
+
+            saveAndOpenPdf(doc, 'All_Children_Summary_Sheets_Germany_Format.pdf');
+            showToast(`Official Germany Summary Sheets PDF generated for all ${children.length} children!`);
+        } catch (err) {
+            console.error('Error generating all summary sheets PDF:', err);
+            showToast('Error generating summary sheets PDF', true);
+        }
+    }
+
+    // ── Generate Center-Wide Summary Overview Grid PDF (Cross-Sectional Matrix) ───
+    function generateOverviewGridPdf(children = []) {
         if (!window.jspdf || !window.jspdf.jsPDF) {
             showToast('PDF generator is initializing, please try again in a moment', true);
             return;
@@ -6915,15 +7085,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
 
-            saveAndOpenPdf(doc, 'Center_Assessment_Summaries_Report.pdf');
-            showToast('Center Assessment Summaries PDF generated successfully!');
+            saveAndOpenPdf(doc, 'Center_Assessment_Overview_Grid.pdf');
+            showToast('Center Assessment Overview Grid PDF generated successfully!');
         } catch (err) {
             console.error('Error generating center assessment PDF:', err);
             showToast('Error generating center assessment PDF', true);
         }
     }
 
-    // ── Export Center-Wide Summary CSV (All Children, All Forms Together) ─────
+// ── Export Center-Wide Summary CSV (All Children, All Forms Together) ─────
     function exportAllAssessmentsSummaryCsv(children = []) {
         if (!children || !children.length) {
             showToast('No child assessment records to export', true);
@@ -7035,6 +7205,32 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         generateAllAssessmentsSummaryPdf(list);
+    });
+
+    document.getElementById('btn-main-export-overview-pdf')?.addEventListener('click', () => {
+        const searchInput = document.getElementById('main-summary-search');
+        const statusFilter = document.getElementById('main-summary-status-filter');
+        const ageFilter = document.getElementById('main-summary-age-filter');
+        const q = (searchInput?.value || '').toLowerCase().trim();
+        const sf = statusFilter?.value || 'all';
+        const af = ageFilter?.value || 'all';
+
+        let list = allSummaryChildrenList.filter(c => matchesAgeFilter(c, af));
+        if (q) {
+            list = list.filter(c => (c.name && c.name.toLowerCase().includes(q)) || (c.admission_no && c.admission_no.toLowerCase().includes(q)) || (c.mobile && c.mobile.includes(q)));
+        }
+        if (sf === 'completed') {
+            list = list.filter(c => ['Consultation Form', 'Child Development', 'Physiotherapy', 'Speech Assessment'].every(t => (c.assessments || []).some(a => a.form_type === t)));
+        } else if (sf === 'partial') {
+            list = list.filter(c => {
+                const cnt = ['Consultation Form', 'Child Development', 'Physiotherapy', 'Speech Assessment'].filter(t => (c.assessments || []).some(a => a.form_type === t)).length;
+                return cnt > 0 && cnt < 4;
+            });
+        } else if (sf === 'none') {
+            list = list.filter(c => !c.assessments || c.assessments.length === 0);
+        }
+
+        generateOverviewGridPdf(list);
     });
 
     document.getElementById('btn-main-export-all-summary-csv')?.addEventListener('click', () => {
