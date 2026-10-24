@@ -3417,27 +3417,181 @@ document.addEventListener('DOMContentLoaded', () => {
     // ── Schedule Print & PDF Export (Only Schedule Table) ─────────────
     function printScheduleTable() {
         const dateInput = document.getElementById('schedule-date');
-        const dateStr = dateInput ? formatDisplayDate(dateInput.value) : '';
-        const printDateEl = document.getElementById('schedule-print-date-line');
-        const selectedCount = selectedScheduleChildIds.size;
-        if (printDateEl) {
-            printDateEl.textContent = `Date: ${dateStr}` + (selectedCount > 0 ? ` • Selected Children: ${selectedCount}` : '');
+        const dateValue = dateInput ? dateInput.value : '';
+        const formattedDate = dateValue ? formatDisplayDate(dateValue) : '';
+
+        let permittedChildren = scheduleChildrenList;
+        if (userRole === 'staff' || userRole === 'staff8') {
+            permittedChildren = scheduleChildrenList.filter(child => matchesAgeFilter(child));
         }
-        if (selectedCount > 0) {
-            document.body.classList.add('print-selected-only');
+
+        let targetChildren = permittedChildren;
+        if (selectedScheduleChildIds.size > 0) {
+            targetChildren = permittedChildren.filter(c => selectedScheduleChildIds.has(String(c.id)));
         } else {
-            document.body.classList.remove('print-selected-only');
+            const filterChildId = scheduleFilterInput ? scheduleFilterInput.value : '';
+            const hideUnscheduled = document.getElementById('schedule-hide-unscheduled')?.checked;
+            if (filterChildId && filterChildId !== '__scheduled__') {
+                targetChildren = permittedChildren.filter(c => c.id == filterChildId);
+            } else if (filterChildId === '__scheduled__' || hideUnscheduled) {
+                targetChildren = permittedChildren.filter(c => currentScheduleData.some(s => s.child_id === c.id));
+            }
         }
 
-        const wasModalOpen = scheduleShareModal && scheduleShareModal.classList.contains('show');
-        if (wasModalOpen) scheduleShareModal.classList.remove('show');
+        if (targetChildren.length === 0) {
+            showToast('No children to print in schedule', true);
+            return;
+        }
 
-        window.print();
+        // Close share modal if open
+        if (scheduleShareModal) scheduleShareModal.classList.remove('show');
+
+        // Build Table Header
+        let tableHeaderHtml = `
+            <thead>
+                <tr>
+                    <th style="width: 13.5%; text-align: left; padding: 6px 8px; background: #f1f5f9; color: #0f172a; font-weight: 700; border: 1px solid #475569; font-size: 7.8pt;">NAME</th>
+                    ${TIME_SLOTS.map(slot => `<th style="width: 6.65%; text-align: center; padding: 4px 1px; background: #f1f5f9; color: #0f172a; font-weight: 700; border: 1px solid #475569; font-size: 7pt; line-height: 1.15;">${slot.replace(' - ', '<br>- ')}</th>`).join('')}
+                </tr>
+            </thead>
+        `;
+
+        // Build Table Body
+        let tableBodyHtml = '<tbody>';
+        targetChildren.forEach((child, index) => {
+            const admBadge = child.admission_no 
+                ? `<span style="display:inline-block; font-size:7pt; color:#1e40af; font-weight:700;">[${child.admission_no}]</span> ` 
+                : '';
+            tableBodyHtml += `<tr>`;
+            tableBodyHtml += `<td style="border: 1px solid #475569; padding: 4px 6px; text-align: left; font-size: 7.5pt; background: #f8fafc; font-weight: 600;">
+                                <span style="color: #64748b; font-size: 7pt;">${index + 1}.</span> 
+                                ${admBadge}<strong>${child.name}</strong>
+                             </td>`;
+            TIME_SLOTS.forEach(slot => {
+                const block = currentScheduleData.find(s => s.child_id === child.id && s.time_slot === slot);
+                if (block) {
+                    let bgColor = '#f8fafc';
+                    let textColor = '#0f172a';
+                    const t = block.therapy_type.toLowerCase();
+                    if (t.includes('physio')) { bgColor = '#e0f2fe'; textColor = '#0369a1'; }
+                    else if (t.includes('occupational') || t.includes('ot')) { bgColor = '#fef3c7'; textColor = '#b45309'; }
+                    else if (t.includes('hydro')) { bgColor = '#cffafe'; textColor = '#0e7490'; }
+                    else if (t.includes('music')) { bgColor = '#f3e8ff'; textColor = '#7e22ce'; }
+                    else if (t.includes('speech')) { bgColor = '#dcfce7'; textColor = '#15803d'; }
+                    else if (t.includes('assessment')) { bgColor = '#ffe4e6'; textColor = '#be123c'; }
+
+                    let shortTherapy = block.therapy_type.split(' ')[0];
+                    if (block.therapy_type === 'Occupational Therapy') shortTherapy = 'OT';
+
+                    tableBodyHtml += `<td style="border: 1px solid #475569; padding: 2px 1px; text-align: center; vertical-align: middle; background-color: ${bgColor}; color: ${textColor}; font-weight: 700; font-size: 7pt; line-height: 1.15;">
+                                        <div>${shortTherapy}</div>
+                                        <div style="font-size: 5.6pt; font-weight: 600; opacity: 0.9;">(${block.therapist_name || 'TBD'})</div>
+                                      </td>`;
+                } else {
+                    tableBodyHtml += `<td style="border: 1px solid #475569; padding: 2px;"></td>`;
+                }
+            });
+            tableBodyHtml += `</tr>`;
+        });
+        tableBodyHtml += '</tbody>';
+
+        const printHtml = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>CORC Daily Therapy Schedule - ${formattedDate}</title>
+    <style>
+        @page {
+            size: A4 landscape;
+            margin: 8mm 6mm;
+        }
+        * {
+            box-sizing: border-box;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: #fff;
+            color: #0f172a;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 8px;
+            padding-bottom: 6px;
+            border-bottom: 2px solid #1e3a8a;
+        }
+        .header h1 {
+            margin: 0 0 2px 0;
+            font-size: 13pt;
+            font-weight: 800;
+            color: #1e3a8a;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .header h2 {
+            margin: 0 0 3px 0;
+            font-size: 10pt;
+            font-weight: 700;
+            color: #0f172a;
+            text-transform: uppercase;
+        }
+        .header .meta {
+            margin: 0;
+            font-size: 8pt;
+            color: #475569;
+            font-weight: 600;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+            margin: 0;
+        }
+        th, td {
+            overflow: hidden;
+            word-break: break-word;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Children Occupational Rehabilitation Centre (CORC)</h1>
+        <h2>Daily Therapy Schedule</h2>
+        <p class="meta">Date: ${formattedDate}${selectedScheduleChildIds.size > 0 ? ` • Selected Children: ${targetChildren.length}` : ` • Total Children: ${targetChildren.length}`}</p>
+    </div>
+    <table>
+        ${tableHeaderHtml}
+        ${tableBodyHtml}
+    </table>
+</body>
+</html>`;
+
+        let printFrame = document.getElementById('schedule-print-hidden-frame');
+        if (!printFrame) {
+            printFrame = document.createElement('iframe');
+            printFrame.id = 'schedule-print-hidden-frame';
+            printFrame.style.position = 'fixed';
+            printFrame.style.right = '0';
+            printFrame.style.bottom = '0';
+            printFrame.style.width = '0';
+            printFrame.style.height = '0';
+            printFrame.style.border = '0';
+            printFrame.style.visibility = 'hidden';
+            document.body.appendChild(printFrame);
+        }
+
+        const frameDoc = printFrame.contentWindow.document;
+        frameDoc.open();
+        frameDoc.write(printHtml);
+        frameDoc.close();
 
         setTimeout(() => {
-            document.body.classList.remove('print-selected-only');
-            if (wasModalOpen) scheduleShareModal.classList.add('show');
-        }, 1000);
+            printFrame.contentWindow.focus();
+            printFrame.contentWindow.print();
+        }, 250);
     }
 
     document.getElementById('btn-print-schedule')?.addEventListener('click', printScheduleTable);

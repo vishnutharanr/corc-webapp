@@ -1277,6 +1277,7 @@ button {
     z-index: 11;
     text-align: left;
     padding-left: 12px;
+}
 .schedule-table tr.schedule-row-selected td {
     background-color: #f0f7ff !important;
 }
@@ -1866,14 +1867,6 @@ button {
 }
 
 @media print {
-    .sidebar, .records-toolbar, .summary-toolbar, .summary-card-actions, .nav-links {
-        display: none !important;
-    }
-    .main-content, #assessment-summaries, .tab-content {
-        padding: 0 !important;
-        margin: 0 !important;
-        width: 100% !important;
-    }
     .summary-child-card {
         page-break-inside: avoid;
         box-shadow: none !important;
