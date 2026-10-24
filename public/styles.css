@@ -1277,7 +1277,38 @@ button {
     z-index: 11;
     text-align: left;
     padding-left: 12px;
-    min-width: 140px;
+.schedule-table tr.schedule-row-selected td {
+    background-color: #f0f7ff !important;
+}
+.schedule-table tr.schedule-row-selected .sticky-col {
+    background-color: #e0f2fe !important;
+}
+.schedule-table .sticky-col {
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s;
+}
+.schedule-table .sticky-col:hover {
+    background-color: #f1f5f9;
+}
+.schedule-share-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.84rem;
+    transition: background 0.12s;
+    user-select: none;
+}
+.schedule-share-item:hover {
+    background: #f1f5f9;
+}
+.schedule-share-item input[type="checkbox"] {
+    cursor: pointer;
+    accent-color: #2563eb;
+    margin: 0;
 }
 .schedule-table td:not(.sticky-col) {
     cursor: pointer;

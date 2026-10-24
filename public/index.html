@@ -16,7 +16,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="styles.css?v=24">
+    <link rel="stylesheet" href="styles.css?v=25">
 </head>
 
 <body>
@@ -2344,8 +2344,32 @@
                             <label>Schedule Date</label>
                             <input type="date" id="schedule-date" required>
                         </div>
-                        <button id="btn-share-schedule" class="btn-secondary">📤 Share</button>
+                        <button id="btn-share-schedule" class="btn-secondary" style="display: flex; align-items: center; gap: 6px; font-weight: 600;"><span>📤</span> Share</button>
                         <button id="btn-print-schedule" class="btn-secondary">🖨 Print</button>
+                    </div>
+                </div>
+
+                <!-- Multiple Child Selection Action Bar -->
+                <div id="schedule-selection-bar" style="display: none; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 10px 16px; margin-bottom: 14px; box-shadow: 0 1px 2px rgba(37,99,235,0.06);">
+                    <div style="display: flex; align-items: center; gap: 10px; font-size: 0.9rem;">
+                        <span style="font-weight: 700; color: #1e40af; display: flex; align-items: center; gap: 6px;">
+                            <span>☑</span> <span id="schedule-selected-count">0</span> child(ren) selected
+                        </span>
+                        <span style="color: #64748b; font-size: 0.82rem;">• Choose children to share their therapy schedule</span>
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                        <button type="button" id="btn-schedule-select-all" class="btn-secondary btn-sm" style="background: #fff; font-size: 0.8rem; padding: 5px 10px; font-weight: 600;">
+                            Select All Visible
+                        </button>
+                        <button type="button" id="btn-schedule-select-scheduled" class="btn-secondary btn-sm" style="background: #fff; font-size: 0.8rem; padding: 5px 10px; font-weight: 600; color: #0284c7;">
+                            Select Scheduled Only
+                        </button>
+                        <button type="button" id="btn-schedule-clear-selection" class="btn-secondary btn-sm" style="background: #fff; font-size: 0.8rem; padding: 5px 10px; font-weight: 600; color: #b91c1c;">
+                            Clear
+                        </button>
+                        <button type="button" id="btn-share-selected" class="btn-primary btn-sm" style="font-size: 0.82rem; padding: 6px 14px; background: #2563eb; color: #fff; font-weight: 700; display: flex; align-items: center; gap: 5px; box-shadow: 0 1px 3px rgba(37,99,235,0.3);">
+                            <span>📤</span> Share Selected
+                        </button>
                     </div>
                 </div>
 
@@ -2353,7 +2377,12 @@
                     <table class="schedule-table">
                         <thead>
                             <tr>
-                                <th class="sticky-col">NAME</th>
+                                <th class="sticky-col" style="min-width: 175px;">
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <input type="checkbox" id="schedule-select-all-cb" title="Select / Deselect all visible children" style="cursor: pointer; width: 16px; height: 16px; accent-color: #2563eb; margin: 0;">
+                                        <span style="font-weight: 700;">NAME</span>
+                                    </div>
+                                </th>
                                 <th>10.00 -<br>10.30</th>
                                 <th>10.30 -<br>11.00</th>
                                 <th>11.00 -<br>11.30</th>
@@ -2863,6 +2892,63 @@
                 </div>
             </div>
 
+            <!-- Modal for Sharing Schedule (Single or Multiple Children) -->
+            <div id="schedule-share-modal" class="modal hidden">
+                <div class="modal-content" style="max-width: 650px; width: 95vw; max-height: 90vh; display: flex; flex-direction: column;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid #e2e8f0;">
+                        <div>
+                            <h3 style="margin: 0; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+                                <span>📤</span> Share Daily Therapy Schedule
+                            </h3>
+                            <p id="schedule-share-modal-subtitle" style="color: #64748b; margin: 4px 0 0; font-size: 0.88rem;">
+                                Select children and share their daily schedule via WhatsApp or clipboard.
+                            </p>
+                        </div>
+                        <span id="close-schedule-share-modal" class="close-modal" style="font-size: 1.5rem; cursor: pointer; color: #94a3b8; line-height: 1;">&times;</span>
+                    </div>
+
+                    <!-- Quick Child Selection Panel inside Modal -->
+                    <div style="margin-bottom: 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 6px;">
+                            <span style="font-size: 0.85rem; font-weight: 700; color: #334155;">
+                                Included Children (<span id="share-modal-selected-count">0</span>):
+                            </span>
+                            <div style="display: flex; gap: 6px;">
+                                <button type="button" id="btn-share-modal-select-all" class="btn-sm btn-secondary" style="font-size: 0.75rem; padding: 2px 8px; background: #fff;">Select All</button>
+                                <button type="button" id="btn-share-modal-select-scheduled" class="btn-sm btn-secondary" style="font-size: 0.75rem; padding: 2px 8px; background: #fff; color: #0284c7;">Scheduled Only</button>
+                                <button type="button" id="btn-share-modal-clear" class="btn-sm btn-secondary" style="font-size: 0.75rem; padding: 2px 8px; background: #fff; color: #b91c1c;">Clear</button>
+                            </div>
+                        </div>
+                        <div id="share-modal-children-checklist" style="max-height: 125px; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 6px; padding: 6px; background: #fff; border: 1px solid #cbd5e1; border-radius: 6px;">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Live Message Preview Box -->
+                    <div style="margin-bottom: 16px; flex: 1; display: flex; flex-direction: column;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                            <label style="font-size: 0.85rem; font-weight: 700; color: #334155; margin: 0;">Message Preview (WhatsApp Ready):</label>
+                            <span style="font-size: 0.75rem; color: #64748b;">Formatted with emojis & bolding</span>
+                        </div>
+                        <textarea id="schedule-share-preview" readonly style="width: 100%; height: 180px; padding: 12px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 0.85rem; line-height: 1.5; color: #1e293b; background: #fdfdfd; border: 1px solid #cbd5e1; border-radius: 6px; resize: vertical; white-space: pre-wrap;"></textarea>
+                    </div>
+
+                    <!-- Share Action Buttons -->
+                    <div style="display: flex; gap: 10px; justify-content: flex-end; align-items: center; flex-wrap: wrap; padding-top: 10px; border-top: 1px solid #e2e8f0;">
+                        <button type="button" id="btn-share-cancel" class="btn-secondary" style="padding: 8px 16px;">Close</button>
+                        <button type="button" id="btn-share-copy" class="btn-secondary" style="display: flex; align-items: center; gap: 6px; font-weight: 600; padding: 8px 16px; background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe;">
+                            <span>📋</span> Copy to Clipboard
+                        </button>
+                        <button type="button" id="btn-share-whatsapp" class="btn-primary" style="display: flex; align-items: center; gap: 6px; font-weight: 700; padding: 8px 18px; background: #22c55e; border-color: #16a34a; color: #fff;">
+                            <span>💬</span> Send via WhatsApp
+                        </button>
+                        <button type="button" id="btn-share-device" class="btn-secondary" style="display: none; align-items: center; gap: 6px; font-weight: 600; padding: 8px 16px;">
+                            <span>📲</span> Share...
+                        </button>
+                    </div>
+                </div>
+            </div>
+
 
             <!-- Assessment Panel Overlay (fullscreen) -->
             <div id="assessment-panel" class="assessment-panel hidden">
@@ -3206,7 +3292,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="app.js?v=24"></script>
+    <script src="app.js?v=25"></script>
 </body>
 
 </html>

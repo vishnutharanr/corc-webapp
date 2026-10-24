@@ -3159,6 +3159,7 @@ document.addEventListener('DOMContentLoaded', () => {
     ];
     let currentScheduleData = [];
     let scheduleChildrenList = [];
+    let selectedScheduleChildIds = new Set();
 
     const scheduleDateInput = document.getElementById('schedule-date');
     if (scheduleDateInput) {
@@ -3233,9 +3234,21 @@ document.addEventListener('DOMContentLoaded', () => {
             filteredChildren.forEach((child, index) => {
                 const childHasSessions = currentScheduleData.some(s => s.child_id === child.id);
                 const rowClass = childHasSessions ? 'has-sessions' : 'schedule-row-empty';
+                const isSelected = selectedScheduleChildIds.has(String(child.id));
+                const rowSelectedClass = isSelected ? ' schedule-row-selected' : '';
                 const admBadge = child.admission_no ? `<span class="adm-badge" style="display:inline-block; font-size:0.75rem; background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe; border-radius:4px; padding:1px 6px; font-weight:700; margin-bottom:3px;">${child.admission_no}</span><br>` : '';
-                html += `<tr class="${rowClass}">`;
-                html += `<td class="sticky-col">${index + 1}. ${admBadge}<strong>${child.name}</strong></td>`;
+                const cb = `<input type="checkbox" class="schedule-child-cb" data-child-id="${child.id}" ${isSelected ? 'checked' : ''} style="cursor: pointer; width: 16px; height: 16px; accent-color: #2563eb; margin-top: 3px; flex-shrink: 0;">`;
+                html += `<tr class="${rowClass}${rowSelectedClass}" data-child-id="${child.id}">`;
+                html += `<td class="sticky-col" data-child-id="${child.id}" style="min-width: 175px;">
+                            <div style="display: flex; align-items: flex-start; gap: 8px;">
+                                ${cb}
+                                <div>
+                                    <span style="font-size: 0.78rem; color: #64748b;">${index + 1}.</span>
+                                    ${admBadge}
+                                    <strong style="color: #1e293b;">${child.name}</strong>
+                                </div>
+                            </div>
+                         </td>`;
                 
                 TIME_SLOTS.forEach(slot => {
                     const block = currentScheduleData.find(s => s.child_id === child.id && s.time_slot === slot);
@@ -3267,6 +3280,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 html += `</tr>`;
             });
             tbody.innerHTML = html;
+            updateScheduleSelectionUI();
         } catch (err) {
             tbody.innerHTML = '<tr><td colspan="14" style="text-align: center; color: red;">Failed to load schedule.</td></tr>';
         }
@@ -3291,6 +3305,34 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     document.getElementById('schedule-table-body')?.addEventListener('click', (e) => {
+        const cb = e.target.closest('.schedule-child-cb');
+        if (cb) {
+            const childId = String(cb.dataset.childId);
+            if (cb.checked) {
+                selectedScheduleChildIds.add(childId);
+            } else {
+                selectedScheduleChildIds.delete(childId);
+            }
+            updateScheduleSelectionUI();
+            return;
+        }
+
+        const stickyTd = e.target.closest('td.sticky-col');
+        if (stickyTd && !e.target.closest('a') && !e.target.closest('button')) {
+            const childCb = stickyTd.querySelector('.schedule-child-cb');
+            if (childCb && e.target !== childCb) {
+                childCb.checked = !childCb.checked;
+                const childId = String(childCb.dataset.childId);
+                if (childCb.checked) {
+                    selectedScheduleChildIds.add(childId);
+                } else {
+                    selectedScheduleChildIds.delete(childId);
+                }
+                updateScheduleSelectionUI();
+            }
+            return;
+        }
+
         const td = e.target.closest('td');
         if (!td || td.classList.contains('sticky-col')) return;
 
@@ -3376,30 +3418,126 @@ document.addEventListener('DOMContentLoaded', () => {
         window.print();
     });
 
-    function getScheduleMessageAndChild() {
-        const date = scheduleDateInput.value;
-        if (!date) {
-            showToast('Please select a date first', true);
-            return null;
+    // ── Schedule Selection & Sharing Logic ─────────────────────────────
+    function updateScheduleSelectionUI() {
+        const selectionBar = document.getElementById('schedule-selection-bar');
+        const selectedCountEl = document.getElementById('schedule-selected-count');
+        const selectAllCb = document.getElementById('schedule-select-all-cb');
+        const btnShare = document.getElementById('btn-share-schedule');
+
+        const visibleCbs = Array.from(document.querySelectorAll('.schedule-child-cb'));
+        const checkedVisible = visibleCbs.filter(cb => cb.checked);
+        const totalSelected = selectedScheduleChildIds.size;
+
+        if (selectedCountEl) selectedCountEl.textContent = totalSelected;
+        if (selectionBar) {
+            selectionBar.style.display = totalSelected > 0 ? 'flex' : 'none';
         }
 
-        const formattedDate = formatDisplayDate(date);
+        if (btnShare) {
+            if (totalSelected > 0) {
+                btnShare.innerHTML = `<span>📤</span> Share Selected (${totalSelected})`;
+                btnShare.classList.add('btn-primary');
+                btnShare.classList.remove('btn-secondary');
+            } else {
+                btnShare.innerHTML = `<span>📤</span> Share`;
+                btnShare.classList.remove('btn-primary');
+                btnShare.classList.add('btn-secondary');
+            }
+        }
+
+        if (selectAllCb) {
+            if (visibleCbs.length === 0) {
+                selectAllCb.checked = false;
+                selectAllCb.indeterminate = false;
+            } else if (checkedVisible.length === visibleCbs.length) {
+                selectAllCb.checked = true;
+                selectAllCb.indeterminate = false;
+            } else if (checkedVisible.length > 0) {
+                selectAllCb.checked = false;
+                selectAllCb.indeterminate = true;
+            } else {
+                selectAllCb.checked = false;
+                selectAllCb.indeterminate = false;
+            }
+        }
+
+        // Highlight table rows
+        document.querySelectorAll('#schedule-table-body tr').forEach(tr => {
+            const cid = tr.getAttribute('data-child-id');
+            if (cid && selectedScheduleChildIds.has(String(cid))) {
+                tr.classList.add('schedule-row-selected');
+            } else {
+                tr.classList.remove('schedule-row-selected');
+            }
+        });
+    }
+
+    // Header Select-All Checkbox
+    document.getElementById('schedule-select-all-cb')?.addEventListener('change', (e) => {
+        const checked = e.target.checked;
+        document.querySelectorAll('.schedule-child-cb').forEach(cb => {
+            cb.checked = checked;
+            const cid = String(cb.dataset.childId);
+            if (checked) {
+                selectedScheduleChildIds.add(cid);
+            } else {
+                selectedScheduleChildIds.delete(cid);
+            }
+        });
+        updateScheduleSelectionUI();
+    });
+
+    // Toolbar Selection Bar Buttons
+    document.getElementById('btn-schedule-select-all')?.addEventListener('click', () => {
+        document.querySelectorAll('.schedule-child-cb').forEach(cb => {
+            cb.checked = true;
+            selectedScheduleChildIds.add(String(cb.dataset.childId));
+        });
+        updateScheduleSelectionUI();
+    });
+
+    document.getElementById('btn-schedule-select-scheduled')?.addEventListener('click', () => {
+        selectedScheduleChildIds.clear();
+        document.querySelectorAll('.schedule-child-cb').forEach(cb => {
+            const cid = String(cb.dataset.childId);
+            const hasSessions = currentScheduleData.some(s => String(s.child_id) === cid);
+            cb.checked = hasSessions;
+            if (hasSessions) selectedScheduleChildIds.add(cid);
+        });
+        updateScheduleSelectionUI();
+    });
+
+    document.getElementById('btn-schedule-clear-selection')?.addEventListener('click', () => {
+        selectedScheduleChildIds.clear();
+        document.querySelectorAll('.schedule-child-cb').forEach(cb => cb.checked = false);
+        updateScheduleSelectionUI();
+    });
+
+    document.getElementById('btn-share-selected')?.addEventListener('click', () => {
+        openScheduleShareModal();
+    });
+
+    // Helper: Build WhatsApp-formatted schedule text for selected children
+    function buildScheduleMessageForChildren(childIds = [], dateStr) {
+        if (!dateStr) return '';
+        const formattedDate = formatDisplayDate(dateStr);
         const timeOrder = {};
         TIME_SLOTS.forEach((slot, index) => timeOrder[slot] = index);
 
-        const filterChildId = scheduleFilterInput ? scheduleFilterInput.value : '';
+        let permittedChildren = scheduleChildrenList;
+        if (userRole === 'staff' || userRole === 'staff8') {
+            permittedChildren = scheduleChildrenList.filter(child => matchesAgeFilter(child));
+        }
 
-        // Specific child selected
-        if (filterChildId && filterChildId !== '__scheduled__') {
-            const child = scheduleChildrenList.find(c => c.id == filterChildId);
-            if (!child) return null;
+        const selectedChildren = permittedChildren.filter(c => childIds.includes(String(c.id)));
+        if (selectedChildren.length === 0) {
+            return `*CHILDREN OCCUPATIONAL REHABILITATION CENTRE (CORC)*\n*Daily Therapy Schedule*\n*Date:* ${formattedDate}\n\n_No children selected._`;
+        }
 
+        if (selectedChildren.length === 1) {
+            const child = selectedChildren[0];
             const blocks = currentScheduleData.filter(s => s.child_id == child.id);
-            if (blocks.length === 0) {
-                showToast('No sessions scheduled for this child on this date.', true);
-                return null;
-            }
-
             blocks.sort((a, b) => (timeOrder[a.time_slot] ?? 99) - (timeOrder[b.time_slot] ?? 99));
 
             let message = `*CHILDREN OCCUPATIONAL REHABILITATION CENTRE (CORC)*\n`;
@@ -3408,96 +3546,286 @@ document.addEventListener('DOMContentLoaded', () => {
             message += `*Date:* ${formattedDate}\n\n`;
             message += `*Scheduled Sessions:*\n`;
 
-            blocks.forEach(block => {
-                message += `• *${block.time_slot}* : ${block.therapy_type}\n`;
-            });
-
-            return { 
-                isFull: false, 
-                message: message.trim(), 
-                child, 
-                title: `Therapy Schedule - ${child.name}` 
-            };
-        }
-
-        // Full Schedule: Share all children who HAVE scheduled sessions on this date (EXCLUDE children without schedule)
-        let permittedChildren = scheduleChildrenList;
-        if (userRole === 'staff' || userRole === 'staff8') {
-            permittedChildren = scheduleChildrenList.filter(child => matchesAgeFilter(child));
-        }
-
-        const scheduledChildren = [];
-        permittedChildren.forEach(child => {
-            const blocks = currentScheduleData.filter(s => s.child_id == child.id);
-            if (blocks && blocks.length > 0) {
-                blocks.sort((a, b) => (timeOrder[a.time_slot] ?? 99) - (timeOrder[b.time_slot] ?? 99));
-                scheduledChildren.push({ child, blocks });
+            if (blocks.length === 0) {
+                message += `• _No therapy sessions scheduled for this date._\n`;
+            } else {
+                blocks.forEach(block => {
+                    const therapist = block.therapist_name ? ` (${block.therapist_name})` : '';
+                    message += `• *${block.time_slot}* : ${block.therapy_type}${therapist}\n`;
+                });
             }
-        });
 
-        if (scheduledChildren.length === 0) {
-            showToast('No therapy sessions scheduled for any child on this date.', true);
-            return null;
+            return message.trim();
         }
 
         let message = `*CHILDREN OCCUPATIONAL REHABILITATION CENTRE (CORC)*\n`;
         message += `*Daily Therapy Schedule*\n`;
         message += `*Date:* ${formattedDate}\n`;
-        message += `*Scheduled Children:* ${scheduledChildren.length}\n\n`;
+        message += `*Selected Children:* ${selectedChildren.length}\n\n`;
 
-        scheduledChildren.forEach(({ child, blocks }, index) => {
-            const admStr = child.admission_no ? ` (Adm: ${child.admission_no})` : '';
-            message += `*${index + 1}. ${child.name}*${admStr}\n`;
-            blocks.forEach(block => {
-                message += `• *${block.time_slot}* : ${block.therapy_type}\n`;
-            });
+        selectedChildren.forEach(({ id, name, admission_no }, index) => {
+            const blocks = currentScheduleData.filter(s => s.child_id == id);
+            blocks.sort((a, b) => (timeOrder[a.time_slot] ?? 99) - (timeOrder[b.time_slot] ?? 99));
+
+            const admStr = admission_no ? ` (Adm: ${admission_no})` : '';
+            message += `*${index + 1}. ${name}*${admStr}\n`;
+            if (blocks.length === 0) {
+                message += `• _No sessions scheduled for this date._\n`;
+            } else {
+                blocks.forEach(block => {
+                    const therapist = block.therapist_name ? ` (${block.therapist_name})` : '';
+                    message += `• *${block.time_slot}* : ${block.therapy_type}${therapist}\n`;
+                });
+            }
             message += `\n`;
         });
 
-        return { 
-            isFull: true, 
-            message: message.trim(), 
-            child: null, 
-            title: `CORC Daily Schedule - ${formattedDate}` 
-        };
+        return message.trim();
     }
 
-    document.getElementById('btn-share-schedule')?.addEventListener('click', async () => {
-        const data = getScheduleMessageAndChild();
-        if (!data) return;
+    const scheduleShareModal = document.getElementById('schedule-share-modal');
 
-        const successMsg = data.isFull 
-            ? 'Full schedule copied to clipboard!' 
-            : `Schedule for ${data.child.name} copied to clipboard!`;
+    function openScheduleShareModal() {
+        const date = scheduleDateInput ? scheduleDateInput.value : '';
+        if (!date) {
+            showToast('Please select a date first', true);
+            return;
+        }
 
+        let permittedChildren = scheduleChildrenList;
+        if (userRole === 'staff' || userRole === 'staff8') {
+            permittedChildren = scheduleChildrenList.filter(child => matchesAgeFilter(child));
+        }
+
+        // If no children selected in table, pre-select default
+        if (selectedScheduleChildIds.size === 0) {
+            const filterChildId = scheduleFilterInput ? scheduleFilterInput.value : '';
+            if (filterChildId && filterChildId !== '__scheduled__') {
+                selectedScheduleChildIds.add(String(filterChildId));
+            } else {
+                // Pre-select all who have sessions today
+                const scheduledIds = permittedChildren
+                    .filter(c => currentScheduleData.some(s => s.child_id === c.id))
+                    .map(c => String(c.id));
+                if (scheduledIds.length > 0) {
+                    scheduledIds.forEach(id => selectedScheduleChildIds.add(id));
+                } else {
+                    permittedChildren.forEach(c => selectedScheduleChildIds.add(String(c.id)));
+                }
+            }
+            updateScheduleSelectionUI();
+        }
+
+        const subtitleEl = document.getElementById('schedule-share-modal-subtitle');
+        if (subtitleEl) {
+            subtitleEl.textContent = `Schedule Date: ${formatDisplayDate(date)} • Total Permitted Children: ${permittedChildren.length}`;
+        }
+
+        renderShareModalChecklist();
+        updateShareModalPreview();
+
+        if (scheduleShareModal) {
+            scheduleShareModal.classList.add('show');
+            scheduleShareModal.classList.remove('hidden');
+        }
+    }
+
+    function renderShareModalChecklist() {
+        const checklistEl = document.getElementById('share-modal-children-checklist');
+        const countEl = document.getElementById('share-modal-selected-count');
+        if (!checklistEl) return;
+
+        let permittedChildren = scheduleChildrenList;
+        if (userRole === 'staff' || userRole === 'staff8') {
+            permittedChildren = scheduleChildrenList.filter(child => matchesAgeFilter(child));
+        }
+
+        if (countEl) countEl.textContent = selectedScheduleChildIds.size;
+
+        checklistEl.innerHTML = permittedChildren.map(child => {
+            const isChecked = selectedScheduleChildIds.has(String(child.id));
+            const blocks = currentScheduleData.filter(s => s.child_id == child.id);
+            const badge = child.admission_no ? `<span style="color:#1e40af; font-weight:600;">[${child.admission_no}]</span> ` : '';
+            const sessionText = blocks.length > 0 
+                ? `<span style="color:#16a34a; font-weight:600; font-size:0.75rem;">(${blocks.length} session${blocks.length > 1 ? 's' : ''})</span>`
+                : `<span style="color:#94a3b8; font-size:0.75rem;">(none)</span>`;
+
+            return `
+                <label class="schedule-share-item">
+                    <input type="checkbox" class="share-modal-child-cb" data-child-id="${child.id}" ${isChecked ? 'checked' : ''}>
+                    <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        ${badge}<strong>${child.name}</strong> ${sessionText}
+                    </span>
+                </label>
+            `;
+        }).join('');
+
+        checklistEl.querySelectorAll('.share-modal-child-cb').forEach(cb => {
+            cb.addEventListener('change', (e) => {
+                const cid = String(e.target.dataset.childId);
+                if (e.target.checked) {
+                    selectedScheduleChildIds.add(cid);
+                } else {
+                    selectedScheduleChildIds.delete(cid);
+                }
+                if (countEl) countEl.textContent = selectedScheduleChildIds.size;
+                updateScheduleSelectionUI();
+                updateShareModalPreview();
+            });
+        });
+    }
+
+    function updateShareModalPreview() {
+        const previewEl = document.getElementById('schedule-share-preview');
+        const countEl = document.getElementById('share-modal-selected-count');
+        const date = scheduleDateInput ? scheduleDateInput.value : '';
+        const childIds = Array.from(selectedScheduleChildIds);
+        if (countEl) countEl.textContent = childIds.length;
+
+        const msg = buildScheduleMessageForChildren(childIds, date);
+        if (previewEl) {
+            previewEl.value = msg;
+        }
+        return msg;
+    }
+
+    // Modal Selection Buttons
+    document.getElementById('btn-share-modal-select-all')?.addEventListener('click', () => {
+        let permittedChildren = scheduleChildrenList;
+        if (userRole === 'staff' || userRole === 'staff8') {
+            permittedChildren = scheduleChildrenList.filter(child => matchesAgeFilter(child));
+        }
+        permittedChildren.forEach(c => selectedScheduleChildIds.add(String(c.id)));
+        renderShareModalChecklist();
+        updateScheduleSelectionUI();
+        updateShareModalPreview();
+    });
+
+    document.getElementById('btn-share-modal-select-scheduled')?.addEventListener('click', () => {
+        selectedScheduleChildIds.clear();
+        let permittedChildren = scheduleChildrenList;
+        if (userRole === 'staff' || userRole === 'staff8') {
+            permittedChildren = scheduleChildrenList.filter(child => matchesAgeFilter(child));
+        }
+        permittedChildren.forEach(c => {
+            if (currentScheduleData.some(s => s.child_id === c.id)) {
+                selectedScheduleChildIds.add(String(c.id));
+            }
+        });
+        renderShareModalChecklist();
+        updateScheduleSelectionUI();
+        updateShareModalPreview();
+    });
+
+    document.getElementById('btn-share-modal-clear')?.addEventListener('click', () => {
+        selectedScheduleChildIds.clear();
+        renderShareModalChecklist();
+        updateScheduleSelectionUI();
+        updateShareModalPreview();
+    });
+
+    document.getElementById('close-schedule-share-modal')?.addEventListener('click', () => {
+        scheduleShareModal?.classList.remove('show');
+    });
+
+    document.getElementById('btn-share-cancel')?.addEventListener('click', () => {
+        scheduleShareModal?.classList.remove('show');
+    });
+
+    window.addEventListener('click', (e) => {
+        if (e.target === scheduleShareModal) {
+            scheduleShareModal?.classList.remove('show');
+        }
+    });
+
+    // Copy to Clipboard
+    document.getElementById('btn-share-copy')?.addEventListener('click', async () => {
+        const previewEl = document.getElementById('schedule-share-preview');
+        const text = previewEl ? previewEl.value : '';
+        if (!text) {
+            showToast('No schedule text to copy', true);
+            return;
+        }
+        const count = selectedScheduleChildIds.size;
+        const copyBtn = document.getElementById('btn-share-copy');
+
+        let copied = false;
         if (navigator.clipboard && navigator.clipboard.writeText) {
             try {
-                await navigator.clipboard.writeText(data.message);
-                showToast(successMsg);
-                return;
-            } catch (err) {
-                // Fallback to execCommand below
-            }
+                await navigator.clipboard.writeText(text);
+                copied = true;
+            } catch (err) {}
         }
 
-        try {
-            const ta = document.createElement('textarea');
-            ta.value = data.message;
-            ta.style.position = 'fixed';
-            ta.style.opacity = '0';
-            document.body.appendChild(ta);
-            ta.focus();
-            ta.select();
-            const successful = document.execCommand('copy');
-            document.body.removeChild(ta);
-            if (successful) {
-                showToast(successMsg);
-            } else {
-                showToast('Failed to copy schedule to clipboard.', true);
-            }
-        } catch (err) {
-            showToast('Failed to copy schedule to clipboard.', true);
+        if (!copied) {
+            try {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.opacity = '0';
+                document.body.appendChild(ta);
+                ta.focus();
+                ta.select();
+                copied = document.execCommand('copy');
+                document.body.removeChild(ta);
+            } catch (err) {}
         }
+
+        if (copied) {
+            showToast(`Schedule for ${count} child(ren) copied to clipboard!`);
+            if (copyBtn) {
+                const originalHtml = copyBtn.innerHTML;
+                copyBtn.innerHTML = '<span>✓</span> Copied!';
+                setTimeout(() => { copyBtn.innerHTML = originalHtml; }, 2000);
+            }
+        } else {
+            showToast('Failed to copy to clipboard', true);
+        }
+    });
+
+    // Share via WhatsApp
+    document.getElementById('btn-share-whatsapp')?.addEventListener('click', () => {
+        const previewEl = document.getElementById('schedule-share-preview');
+        const text = previewEl ? previewEl.value : '';
+        if (!text) {
+            showToast('No schedule text to share', true);
+            return;
+        }
+
+        // Also copy to clipboard for convenience
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).catch(() => {});
+        }
+
+        const waUrl = 'https://api.whatsapp.com/send?text=' + encodeURIComponent(text);
+        window.open(waUrl, '_blank');
+        showToast('Opening WhatsApp with schedule...');
+    });
+
+    // Device Share (Web Share API)
+    const btnShareDevice = document.getElementById('btn-share-device');
+    if (btnShareDevice && navigator.share) {
+        btnShareDevice.style.display = 'inline-flex';
+        btnShareDevice.addEventListener('click', async () => {
+            const previewEl = document.getElementById('schedule-share-preview');
+            const text = previewEl ? previewEl.value : '';
+            if (!text) return;
+            const date = scheduleDateInput ? scheduleDateInput.value : '';
+            try {
+                await navigator.share({
+                    title: `CORC Therapy Schedule - ${formatDisplayDate(date)}`,
+                    text: text
+                });
+                showToast('Shared successfully!');
+            } catch (err) {
+                // user cancelled or share failed
+            }
+        });
+    }
+
+    // Connect main Share button
+    document.getElementById('btn-share-schedule')?.addEventListener('click', () => {
+        openScheduleShareModal();
     });
 
     // ── PDF Generation: Clinical Assessment Report ───────────
