@@ -183,8 +183,13 @@
                                 <input type="date" id="consultation-dob" name="dob">
                             </div>
                             <div class="input-group">
-                                <label for="consultation-age">Age</label>
-                                <input type="text" id="consultation-age" name="age" placeholder="e.g. 2y 6m">
+                                <label for="consultation-age-at-creation">Age at Consultation <span style="font-size:0.75rem; color:#059669; font-weight:700; background:#ecfdf5; padding:2px 7px; border-radius:4px; border:1px solid #a7f3d0; margin-left:4px;">Static / Permanent</span></label>
+                                <input type="text" id="consultation-age-at-creation" name="age_at_creation" placeholder="e.g. 2 yrs 6 mo" readonly style="background:#f1f5f9; font-weight:700; color:#0f172a; cursor:not-allowed;" title="Static age recorded when this Consultation Form is created. Never changes as dates advance.">
+                                <input type="hidden" id="consultation-age" name="age">
+                            </div>
+                            <div class="input-group">
+                                <label for="consultation-live-age">Current Age <span style="font-size:0.75rem; color:#2563eb; font-weight:700; background:#eff6ff; padding:2px 7px; border-radius:4px; border:1px solid #bfdbfe; margin-left:4px;">Live Today</span></label>
+                                <input type="text" id="consultation-live-age" name="current_live_age" placeholder="Live age today" readonly style="background:#f8fafc; color:#475569; font-weight:600; cursor:not-allowed;" title="Current dynamically calculated age from Date of Birth to today.">
                             </div>
                             <div class="input-group" style="display:flex; align-items:center; gap:8px; margin-top:24px;">
                                 <label style="cursor:pointer; display:flex; align-items:center; gap:8px; font-weight:600; color:#4338ca; user-select:none;">

@@ -566,13 +566,16 @@ document.addEventListener('DOMContentLoaded', () => {
         updateFormEditBanners();
         if (activeChild && activeChild.id) {
             const rd = activeChild._consultationData || activeChild._rapidData || {};
-            const childAge = rd.age || activeChild.age || (activeChild.dob ? calcAge(activeChild.dob) : '');
+            const staticAge = rd.age_at_creation || rd.age || activeChild.age_at_creation || activeChild.age || (activeChild.dob ? calcAge(activeChild.dob) : '');
+            const liveAge = activeChild.dob ? calcAge(activeChild.dob) : '';
             const populate = [
                 ['input[name="child_name"]', activeChild.name || ''],
                 ['input[name="admission_no"]', activeChild.admission_no || ''],
                 ['select[name="sex"]', activeChild.sex || rd.sex || ''],
                 ['input[name="dob"]', activeChild.dob || rd.dob || ''],
-                ['input[name="age"]', childAge],
+                ['input[name="age_at_creation"]', staticAge],
+                ['input[name="age"]', staticAge],
+                ['input[name="current_live_age"]', liveAge],
                 ['textarea[name="address"]', rd.address || ''],
                 ['input[name="mobile"]', activeChild.mobile || rd.mobile || ''],
                 ['textarea[name="symptoms"]', rd.symptoms || ''],
@@ -791,6 +794,10 @@ document.addEventListener('DOMContentLoaded', () => {
         setActiveChild(null);
         const cf = document.getElementById('form-consultation') || document.getElementById('form-rapid');
         if (cf) cf.reset();
+        const ageAtCreationInp = document.getElementById('consultation-age-at-creation');
+        if (ageAtCreationInp) ageAtCreationInp.value = '';
+        const liveAgeInp = document.getElementById('consultation-live-age');
+        if (liveAgeInp) liveAgeInp.value = '';
         await primeConsultationAdmissionNo();
         const dateInp = cf && cf.querySelector('input[name="assessment_date"]');
         if (dateInp) dateInp.value = new Date().toISOString().split('T')[0];
@@ -855,11 +862,26 @@ document.addEventListener('DOMContentLoaded', () => {
         if (isNaN(birth.getTime())) return;
         const dateInp = document.querySelector('#form-consultation input[name="assessment_date"]') || document.querySelector('#form-rapid input[name="assessment_date"]');
         const ref = dateInp?.value ? new Date(dateInp.value) : new Date();
-        const calculatedAge = calcAge(val, dateInp?.value || null);
+        const calculatedAgeAtDate = calcAge(val, dateInp?.value || null);
+        const liveAge = calcAge(val);
+
+        const ageAtCreationInp = document.getElementById('consultation-age-at-creation');
         const ageInp = document.getElementById('consultation-age') || document.getElementById('rapid-age');
-        if (ageInp && calculatedAge) {
-            ageInp.value = calculatedAge;
+        const liveAgeInp = document.getElementById('consultation-live-age');
+
+        if (liveAgeInp) {
+            liveAgeInp.value = liveAge || '';
         }
+
+        // Only calculate static age when creating a new consultation (or if static age is not yet recorded)
+        // If an existing child already has a permanent static age, DO NOT overwrite it!
+        const existingStaticAge = (activeChild && (activeChild.age_at_creation || activeChild.age)) ||
+                                 (currentEditingAssessments['Consultation Form'] && ageAtCreationInp?.value);
+        if (!existingStaticAge || !ageAtCreationInp?.value) {
+            if (ageAtCreationInp && calculatedAgeAtDate) ageAtCreationInp.value = calculatedAgeAtDate;
+            if (ageInp && calculatedAgeAtDate) ageInp.value = calculatedAgeAtDate;
+        }
+
         let years = ref.getFullYear() - birth.getFullYear();
         let months = ref.getMonth() - birth.getMonth();
         if (months < 0 || (months === 0 && ref.getDate() < birth.getDate())) {
@@ -885,6 +907,10 @@ document.addEventListener('DOMContentLoaded', () => {
         setActiveChild(null);
         const cf = document.getElementById('form-consultation') || document.getElementById('form-rapid');
         cf && cf.reset();
+        const ageAtCreationInp = document.getElementById('consultation-age-at-creation');
+        if (ageAtCreationInp) ageAtCreationInp.value = '';
+        const liveAgeInp = document.getElementById('consultation-live-age');
+        if (liveAgeInp) liveAgeInp.value = '';
         switchTab('consultation-form');
         const nextAdm = await fetchNextAdmissionNo();
         const admInp = document.getElementById('consultation-admission-no') || document.getElementById('rapid-admission-no');
@@ -1146,10 +1172,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const dob = childOrRow.dob || childOrRow.child_dob;
         const liveStr = dob ? calcAge(dob) : null;
 
-        const refAge = (childOrRow.age && childOrRow.age !== 'null') ? String(childOrRow.age).trim() :
+        const refAge = (childOrRow.age_at_creation && childOrRow.age_at_creation !== 'null') ? String(childOrRow.age_at_creation).trim() :
+                      (childOrRow.child_age_at_creation && childOrRow.child_age_at_creation !== 'null') ? String(childOrRow.child_age_at_creation).trim() :
+                      (childOrRow.age && childOrRow.age !== 'null') ? String(childOrRow.age).trim() :
                       (childOrRow.child_age && childOrRow.child_age !== 'null') ? String(childOrRow.child_age).trim() :
-                      (childOrRow._consultationData && childOrRow._consultationData.age) ? String(childOrRow._consultationData.age).trim() :
-                      (childOrRow._rapidData && childOrRow._rapidData.age) ? String(childOrRow._rapidData.age).trim() : null;
+                      (childOrRow._consultationData && (childOrRow._consultationData.age_at_creation || childOrRow._consultationData.age)) ? String(childOrRow._consultationData.age_at_creation || childOrRow._consultationData.age).trim() :
+                      (childOrRow._rapidData && (childOrRow._rapidData.age_at_creation || childOrRow._rapidData.age)) ? String(childOrRow._rapidData.age_at_creation || childOrRow._rapidData.age).trim() : null;
 
         if (liveStr && refAge && refAge !== liveStr) {
             return `${liveStr} (Adm: ${refAge})`;
@@ -1250,13 +1278,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const ageEl = document.getElementById(ageId);
         if (!dobEl || !ageEl) return;
         ageEl.setAttribute('readonly', true);
-        ageEl.style.backgroundColor = '#e8e8e8';
+        ageEl.style.backgroundColor = '#f1f5f9';
         ageEl.style.cursor = 'not-allowed';
-        ageEl.title = 'Permanent age calculated at time of assessment/admission';
+        ageEl.title = 'Permanent static age calculated at time of assessment/admission';
         const update = () => { 
             const formEl = dobEl.closest('form');
             const dateInp = formEl?.querySelector('input[name="assessment_date"]');
-            ageEl.value = calcAge(dobEl.value, dateInp?.value || null); 
+            // If already has a saved permanent age and an active child is selected, keep it static!
+            if (!ageEl.value || !activeChild) {
+                ageEl.value = calcAge(dobEl.value, dateInp?.value || null); 
+            }
         };
         dobEl.addEventListener('change', update);
         dobEl.addEventListener('input',  update);
@@ -1265,6 +1296,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Consultation Form & Rapid Assessment
+    wireAgeDob('consultation-dob', 'consultation-age-at-creation');
     wireAgeDob('consultation-dob', 'consultation-age');
     wireAgeDob('rapid-dob', 'rapid-age');
 
@@ -1366,6 +1398,17 @@ document.addEventListener('DOMContentLoaded', () => {
                          (data.is_autism === true || data.is_autism === 'true');
         data.is_autism = isAutism;
 
+        // Ensure permanent static age at creation is preserved and saved
+        const staticAge = (data.age_at_creation && String(data.age_at_creation).trim()) ? String(data.age_at_creation).trim() :
+                         (data.age && String(data.age).trim()) ? String(data.age).trim() :
+                         (activeChild && (activeChild.age_at_creation || activeChild.age)) ||
+                         (data.dob ? calcAge(data.dob, data.assessment_date || null) : null);
+        data.age_at_creation = staticAge;
+        data.age = staticAge;
+        if (data.dob) {
+            data.current_live_age = calcAge(data.dob);
+        }
+
         if (userRole === 'staff8' && ageNum < 8) {
             showToast('Staff for older children can only enter details for children aged 8 or above.', true);
             return;
@@ -1392,7 +1435,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         name, 
                         admission_no: data.admission_no || activeChild.admission_no || null, 
                         dob: data.dob || null, 
-                        age: data.age || activeChild.age || null, 
+                        age: staticAge,
+                        age_at_creation: staticAge,
                         sex: data.sex || null, 
                         mobile: data.mobile || null,
                         is_autism: isAutism
@@ -1443,7 +1487,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     name, 
                     admission_no: data.admission_no || null, 
                     dob: data.dob || null, 
-                    age: data.age || null, 
+                    age: staticAge,
+                    age_at_creation: staticAge,
                     sex: data.sex || null, 
                     mobile: data.mobile || null,
                     is_autism: isAutism
@@ -1981,8 +2026,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!data.sex && child && child.sex) {
                 data.sex = child.sex;
             }
+            if (!data.age_at_creation) {
+                data.age_at_creation = rec.age_at_creation || (child && (child.age_at_creation || child.age)) || data.age || (data.dob ? calcAge(data.dob, data.assessment_date || null) : '');
+            }
             if (!data.age) {
-                data.age = (child && child.age) || (data.dob ? calcAge(data.dob, data.assessment_date || null) : '');
+                data.age = data.age_at_creation;
+            }
+            if (!data.current_live_age && data.dob) {
+                data.current_live_age = calcAge(data.dob);
             }
 
             const FORM_MAP = {
@@ -5172,6 +5223,7 @@ document.addEventListener('DOMContentLoaded', () => {
             exists: !!rapid,
             id: rapid?.id,
             date: rData.assessment_date || (rapid?.created_at ? new Date(rapid.created_at).toLocaleDateString('en-IN') : null),
+            age: rData.age_at_creation || rData.age || rapid?.age_at_creation || child?.age_at_creation || child?.age || '',
             observations: rData.observations || '',
             suggestions: rData.suggestions || '',
             diagnosis: rData.observations ? (rData.observations.length > 50 ? rData.observations.slice(0, 50) + '...' : rData.observations) : (rData.diagnosis || 'Consultation conducted'),
@@ -6586,7 +6638,7 @@ function printChildSummarySheet(child, assessments = []) {
                     ${r.exists ? `
                         <div class="matrix-snippet-box">
                             <strong>${r.diagnosis}</strong>
-                            <div style="color: #475569; font-size: 0.76rem;">📅 ${r.date}</div>
+                            <div style="color: #475569; font-size: 0.76rem;">📅 ${r.date}${r.age ? ` · <span style="color:#059669; font-weight:700;">Age: ${r.age}</span>` : ''}</div>
                             <div style="color: #64748b; font-size: 0.76rem; margin-top: 2px;">Symptoms: ${r.symptoms}</div>
                         </div>
                     ` : '<span style="color: #cbd5e1;">—</span>'}
@@ -8403,7 +8455,7 @@ function printChildSummarySheet(child, assessments = []) {
         document.getElementById('edit-child-adm').value = child.admission_no || '';
         document.getElementById('edit-child-name').value = child.name || '';
         document.getElementById('edit-child-dob').value = child.dob || '';
-        document.getElementById('edit-child-age').value = child.age || extractChildAgeString(child) || '';
+        document.getElementById('edit-child-age').value = child.age_at_creation || child.age || extractChildAgeString(child) || '';
         document.getElementById('edit-child-sex').value = child.sex || '';
         document.getElementById('edit-child-mobile').value = child.mobile || '';
         const autismEl = document.getElementById('edit-child-is-autism');
@@ -8446,11 +8498,13 @@ function printChildSummarySheet(child, assessments = []) {
     childEditForm?.addEventListener('submit', async (e) => {
         e.preventDefault();
         const id = document.getElementById('edit-child-id').value;
+        const staticAge = document.getElementById('edit-child-age').value.trim() || null;
         const payload = {
             admission_no: document.getElementById('edit-child-adm').value.trim() || null,
             name: document.getElementById('edit-child-name').value.trim(),
             dob: document.getElementById('edit-child-dob').value || null,
-            age: document.getElementById('edit-child-age').value.trim() || null,
+            age: staticAge,
+            age_at_creation: staticAge,
             sex: document.getElementById('edit-child-sex').value || null,
             mobile: document.getElementById('edit-child-mobile').value.trim() || null,
             is_autism: document.getElementById('edit-child-is-autism')?.checked === true

@@ -65,6 +65,7 @@ const INIT_SQL = `
     ALTER TABLE children ADD COLUMN IF NOT EXISTS admission_no TEXT;
     ALTER TABLE children ADD COLUMN IF NOT EXISTS is_autism BOOLEAN DEFAULT FALSE;
     ALTER TABLE children ADD COLUMN IF NOT EXISTS age TEXT;
+    ALTER TABLE children ADD COLUMN IF NOT EXISTS age_at_creation TEXT;
 
     CREATE TABLE IF NOT EXISTS assessments (
         id SERIAL PRIMARY KEY,
@@ -74,6 +75,8 @@ const INIT_SQL = `
         data JSONB NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
+
+    ALTER TABLE assessments ADD COLUMN IF NOT EXISTS age_at_creation TEXT;
 
     DO $$
     BEGIN
@@ -152,6 +155,8 @@ const INIT_SQL = `
     UPDATE therapy_attendance SET time_slot = '4.00 - 4.30' WHERE time_slot = '4.00 - 5.00';
     UPDATE assessments SET form_type = 'Consultation Form' WHERE form_type = 'Rapid Assessment';
     UPDATE children SET admission_no = REGEXP_REPLACE(admission_no, '^ADM([-_]?)', 'EIC\\1', 'i') WHERE admission_no ILIKE 'ADM%';
+    UPDATE children SET age_at_creation = age WHERE age_at_creation IS NULL AND age IS NOT NULL;
+    UPDATE assessments SET age_at_creation = COALESCE(data->>'age_at_creation', data->>'age') WHERE form_type IN ('Consultation Form', 'Rapid Assessment') AND age_at_creation IS NULL;
 `;
 
 const DEFAULT_THERAPY_FEES = [
@@ -276,9 +281,16 @@ async function ensureDbInit() {
             await seedDefaultUsers();
         }
         await pool.query(`
+            ALTER TABLE children ADD COLUMN IF NOT EXISTS admission_no TEXT;
+            ALTER TABLE children ADD COLUMN IF NOT EXISTS is_autism BOOLEAN DEFAULT FALSE;
+            ALTER TABLE children ADD COLUMN IF NOT EXISTS age TEXT;
+            ALTER TABLE children ADD COLUMN IF NOT EXISTS age_at_creation TEXT;
+            ALTER TABLE assessments ADD COLUMN IF NOT EXISTS age_at_creation TEXT;
+            UPDATE children SET age_at_creation = age WHERE age_at_creation IS NULL AND age IS NOT NULL;
+            UPDATE assessments SET age_at_creation = COALESCE(data->>'age_at_creation', data->>'age') WHERE form_type IN ('Consultation Form', 'Rapid Assessment') AND age_at_creation IS NULL;
             UPDATE children 
             SET admission_no = REGEXP_REPLACE(admission_no, '^ADM([-_]?)', 'EIC\\1', 'i')
-            WHERE admission_no ILIKE 'ADM%'
+            WHERE admission_no ILIKE 'ADM%';
         `);
         await migrateAdmissionNumbersAndAutism();
         await backfillMissingAdmissionNumbers();
@@ -621,13 +633,13 @@ app.get('/api/children/next-admission-no', async (req, res) => {
 });
 
 app.post('/api/children', async (req, res) => {
-    const { name, admission_no, dob, age, sex, mobile, is_autism } = req.body;
+    const { name, admission_no, dob, age, age_at_creation, sex, mobile, is_autism } = req.body;
     const trimmedName = name ? name.trim() : '';
     if (!trimmedName) return res.status(400).json({ error: 'Child name is required' });
 
     try {
         let prefix = 'EIC';
-        const parsedYears = parseAgeYears(age);
+        const parsedYears = parseAgeYears(age || age_at_creation);
         if (parsedYears !== null) {
             if (parsedYears >= 8) prefix = 'TH';
         } else if (dob) {
@@ -642,10 +654,11 @@ app.post('/api/children', async (req, res) => {
         }
         const finalAdmNo = admission_no && admission_no.trim() ? admission_no.trim() : await getNextAdmissionNo(prefix);
         const isAutismBool = is_autism === true || is_autism === 'true' || is_autism === 1;
+        const staticAge = (age_at_creation && String(age_at_creation).trim()) ? String(age_at_creation).trim() : (age ? String(age).trim() : null);
 
         const result = await pool.query(
-            `INSERT INTO children (name, admission_no, dob, age, sex, mobile, is_autism) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, name, admission_no, dob, age, sex, mobile, is_autism`,
-            [trimmedName, finalAdmNo, dob || null, age ? String(age).trim() : null, sex || null, mobile || null, isAutismBool]
+            `INSERT INTO children (name, admission_no, dob, age, age_at_creation, sex, mobile, is_autism) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id, name, admission_no, dob, age, age_at_creation, sex, mobile, is_autism`,
+            [trimmedName, finalAdmNo, dob || null, staticAge, staticAge, sex || null, mobile || null, isAutismBool]
         );
         res.status(201).json(result.rows[0]);
     } catch (err) {
@@ -655,18 +668,18 @@ app.post('/api/children', async (req, res) => {
 });
 
 app.put('/api/children/:id', async (req, res) => {
-    const { name, admission_no, dob, age, sex, mobile, is_autism } = req.body;
+    const { name, admission_no, dob, age, age_at_creation, sex, mobile, is_autism } = req.body;
     const trimmedName = name ? name.trim() : '';
     if (!trimmedName) return res.status(400).json({ error: 'Child name is required' });
 
     try {
         let finalAdmNo = admission_no && admission_no.trim() ? admission_no.trim() : null;
         if (!finalAdmNo) {
-            const cur = await pool.query(`SELECT admission_no, dob, age FROM children WHERE id = $1`, [req.params.id]);
+            const cur = await pool.query(`SELECT admission_no, dob, age, age_at_creation FROM children WHERE id = $1`, [req.params.id]);
             finalAdmNo = cur.rows[0]?.admission_no;
             if (!finalAdmNo) {
                 let prefix = 'EIC';
-                const checkAge = age || cur.rows[0]?.age;
+                const checkAge = age || age_at_creation || cur.rows[0]?.age_at_creation || cur.rows[0]?.age;
                 const parsedYears = parseAgeYears(checkAge);
                 if (parsedYears !== null) {
                     if (parsedYears >= 8) prefix = 'TH';
@@ -687,18 +700,20 @@ app.put('/api/children/:id', async (req, res) => {
             }
         }
         const isAutismBool = is_autism === true || is_autism === 'true' || is_autism === 1;
+        const staticAge = (age_at_creation && String(age_at_creation).trim()) ? String(age_at_creation).trim() : (age ? String(age).trim() : null);
 
         const result = await pool.query(
             `UPDATE children SET 
                 name = $1, 
                 admission_no = $2, 
                 dob = $3, 
+                age_at_creation = COALESCE(age_at_creation, $4),
                 age = COALESCE($4, age),
                 sex = $5, 
                 mobile = $6,
                 is_autism = COALESCE($7, is_autism)
-            WHERE id = $8 RETURNING id, name, admission_no, dob, age, sex, mobile, is_autism`,
-            [trimmedName, finalAdmNo, dob || null, age ? String(age).trim() : null, sex || null, mobile || null, is_autism !== undefined ? isAutismBool : null, req.params.id]
+            WHERE id = $8 RETURNING id, name, admission_no, dob, age, age_at_creation, sex, mobile, is_autism`,
+            [trimmedName, finalAdmNo, dob || null, staticAge, sex || null, mobile || null, is_autism !== undefined ? isAutismBool : null, req.params.id]
         );
         if (result.rowCount === 0) return res.status(404).json({ error: 'Child not found' });
 
@@ -815,7 +830,14 @@ app.post('/api/assessments', async (req, res) => {
     if (!child_name || !form_type || !data) return res.status(400).json({ error: 'Missing required fields' });
 
     try {
-        const stringifiedData = typeof data === 'string' ? data : JSON.stringify(data);
+        const parsedData = typeof data === 'string' ? JSON.parse(data) : data;
+        const staticAge = (parsedData && parsedData.age_at_creation && String(parsedData.age_at_creation).trim()) ? String(parsedData.age_at_creation).trim() :
+                         (parsedData && parsedData.age && String(parsedData.age).trim()) ? String(parsedData.age).trim() : null;
+        if (parsedData && staticAge) {
+            parsedData.age_at_creation = staticAge;
+            parsedData.age = staticAge;
+        }
+        const stringifiedData = typeof parsedData === 'object' ? JSON.stringify(parsedData) : (typeof data === 'string' ? data : JSON.stringify(data));
 
         // If an assessment for this child and form type already exists, update it to avoid duplicate records
         if (child_id) {
@@ -826,24 +848,35 @@ app.post('/api/assessments', async (req, res) => {
             if (existing.rows.length > 0) {
                 const existingId = existing.rows[0].id;
                 await pool.query(
-                    `UPDATE assessments SET data = $1, child_name = $2 WHERE id = $3`,
-                    [stringifiedData, child_name, existingId]
+                    `UPDATE assessments SET data = $1, child_name = $2, age_at_creation = COALESCE(age_at_creation, $4) WHERE id = $3`,
+                    [stringifiedData, child_name, existingId, staticAge]
                 );
+                if (staticAge && (form_type === 'Consultation Form' || form_type === 'Rapid Assessment')) {
+                    await pool.query(
+                        `UPDATE children SET age_at_creation = COALESCE(age_at_creation, $1), age = COALESCE(age, $1) WHERE id = $2`,
+                        [staticAge, child_id]
+                    );
+                }
                 return res.json({ message: 'Assessment updated successfully', id: existingId, updated: true });
             }
         }
 
-        const parsedData = typeof data === 'string' ? JSON.parse(data) : data;
         if (child_id && parsedData) {
             const isAutism = parsedData.is_autism === true || parsedData.is_autism === 'true' || parsedData.category_type === 'autism' || (parsedData.diagnosis && /\b(autism|asd)\b/i.test(String(parsedData.diagnosis))) || (parsedData.dev_diagnosis && /\b(autism|asd)\b/i.test(String(parsedData.dev_diagnosis)));
             if (isAutism) {
                 await pool.query(`UPDATE children SET is_autism = true WHERE id = $1`, [child_id]);
             }
+            if (staticAge && (form_type === 'Consultation Form' || form_type === 'Rapid Assessment')) {
+                await pool.query(
+                    `UPDATE children SET age_at_creation = COALESCE(age_at_creation, $1), age = COALESCE(age, $1) WHERE id = $2`,
+                    [staticAge, child_id]
+                );
+            }
         }
 
         const result = await pool.query(
-            `INSERT INTO assessments (child_id, child_name, form_type, data) VALUES ($1, $2, $3, $4) RETURNING id`,
-            [child_id || null, child_name, form_type, stringifiedData]
+            `INSERT INTO assessments (child_id, child_name, form_type, data, age_at_creation) VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+            [child_id || null, child_name, form_type, stringifiedData, staticAge]
         );
         res.status(201).json({ message: 'Assessment saved successfully', id: result.rows[0].id });
     } catch (err) {
@@ -858,7 +891,7 @@ app.get('/api/assessments', async (req, res) => {
         const reqRole = getUserRoleFromReq(req);
         const isAutismReq = autism === 'true' || reqRole === 'autism';
 
-        let sql = `SELECT id, child_id, child_name, form_type, created_at, data FROM assessments`;
+        let sql = `SELECT id, child_id, child_name, form_type, created_at, data, age_at_creation FROM assessments`;
         let params = [];
         let conditions = [];
         if (search) {
@@ -907,17 +940,18 @@ app.put('/api/assessments/:id', async (req, res) => {
     if (!data) return res.status(400).json({ error: 'Missing data field' });
 
     try {
-        const stringifiedData = typeof data === 'string' ? data : JSON.stringify(data);
         const parsedData = typeof data === 'string' ? JSON.parse(data) : data;
-
-        const currentResult = await pool.query(`SELECT child_id, form_type FROM assessments WHERE id = $1`, [req.params.id]);
-        if (currentResult.rows.length === 0) return res.status(404).json({ error: 'Assessment not found' });
-
-        const { child_id, form_type } = currentResult.rows[0];
+        const staticAge = (parsedData && parsedData.age_at_creation && String(parsedData.age_at_creation).trim()) ? String(parsedData.age_at_creation).trim() :
+                         (parsedData && parsedData.age && String(parsedData.age).trim()) ? String(parsedData.age).trim() : null;
+        if (parsedData && staticAge) {
+            parsedData.age_at_creation = staticAge;
+            parsedData.age = staticAge;
+        }
+        const stringifiedData = typeof parsedData === 'object' ? JSON.stringify(parsedData) : (typeof data === 'string' ? data : JSON.stringify(data));
 
         await pool.query(
-            `UPDATE assessments SET data = $1 WHERE id = $2`,
-            [stringifiedData, req.params.id]
+            `UPDATE assessments SET data = $1, age_at_creation = COALESCE(age_at_creation, $2) WHERE id = $3`,
+            [stringifiedData, staticAge, req.params.id]
         );
 
         // Sync basic details to children profile if Consultation Form (or legacy Rapid Assessment)
@@ -925,7 +959,6 @@ app.put('/api/assessments/:id', async (req, res) => {
             const childName = parsedData.child_name || parsedData.name;
             const admissionNo = parsedData.admission_no !== undefined ? parsedData.admission_no : null;
             const dob = parsedData.dob !== undefined ? parsedData.dob : null;
-            const age = parsedData.age !== undefined ? parsedData.age : null;
             const sex = parsedData.sex !== undefined ? parsedData.sex : null;
             const mobile = parsedData.mobile !== undefined ? parsedData.mobile : null;
             const isAutism = parsedData.is_autism === true || parsedData.is_autism === 'true' || parsedData.category_type === 'autism';
@@ -935,12 +968,13 @@ app.put('/api/assessments/:id', async (req, res) => {
                     name = COALESCE($1, name), 
                     admission_no = COALESCE($2, admission_no),
                     dob = COALESCE($3, dob), 
+                    age_at_creation = COALESCE(age_at_creation, $4),
                     age = COALESCE($4, age),
                     sex = COALESCE($5, sex), 
                     mobile = COALESCE($6, mobile),
                     is_autism = CASE WHEN $7 = true THEN true ELSE is_autism END
                 WHERE id = $8`,
-                [childName || null, admissionNo ? admissionNo.trim() : null, dob || null, age ? String(age).trim() : null, sex || null, mobile || null, isAutism, child_id]
+                [childName || null, admissionNo ? admissionNo.trim() : null, dob || null, staticAge, sex || null, mobile || null, isAutism, child_id]
             );
 
             if (childName) {
@@ -1012,7 +1046,7 @@ app.get('/api/reports/attendance', async (req, res) => {
         const isAutismReq = autism === 'true' || reqRole === 'autism';
 
         let sql = `
-            SELECT t.*, c.name as child_name, c.dob as child_dob, c.age as child_age, c.admission_no as child_admission_no, c.is_autism as child_is_autism,
+            SELECT t.*, c.name as child_name, c.dob as child_dob, c.age as child_age, c.age_at_creation as child_age_at_creation, c.admission_no as child_admission_no, c.is_autism as child_is_autism,
                    (SELECT data FROM assessments WHERE child_id = c.id AND (form_type = 'Consultation Form' OR form_type = 'Rapid Assessment') ORDER BY created_at DESC LIMIT 1) as rapid_data
             FROM therapy_attendance t 
             JOIN children c ON t.child_id = c.id 
