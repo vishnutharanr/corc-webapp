@@ -561,17 +561,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateRapidFormState() {
-        const rf = document.getElementById('form-rapid');
+        const rf = document.getElementById('form-consultation') || document.getElementById('form-rapid');
         if (!rf) return;
         updateFormEditBanners();
         if (activeChild && activeChild.id) {
             const rd = activeChild._consultationData || activeChild._rapidData || {};
+            const childAge = rd.age || activeChild.age || (activeChild.dob ? calcAge(activeChild.dob) : '');
             const populate = [
                 ['input[name="child_name"]', activeChild.name || ''],
                 ['input[name="admission_no"]', activeChild.admission_no || ''],
                 ['select[name="sex"]', activeChild.sex || rd.sex || ''],
                 ['input[name="dob"]', activeChild.dob || rd.dob || ''],
-                ['input[name="age"]', rd.age || activeChild.age || ''],
+                ['input[name="age"]', childAge],
                 ['textarea[name="address"]', rd.address || ''],
                 ['input[name="mobile"]', activeChild.mobile || rd.mobile || ''],
                 ['textarea[name="symptoms"]', rd.symptoms || ''],
@@ -594,8 +595,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 const el = rf.querySelector(sel);
                 if (el) el.value = val;
             });
+            const dateInp = rf.querySelector('input[name="assessment_date"]');
+            if (dateInp && !dateInp.value) {
+                dateInp.value = getLocalTodayDateString();
+            }
         }
     }
+    const updateConsultationFormState = updateRapidFormState;
 
     function updateDevFormState() {
         const devForm = document.getElementById('form-development');
@@ -624,12 +630,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function prefillFromActive() {
-        // ── Lock child name in all assessment forms ──────────────
+        // ── Lock / fill child name in all assessment forms ──────────────
         const nameFields = [
             document.getElementById('physio-name'),
             document.getElementById('speech-name'),
             document.getElementById('prog-name'),
-            document.querySelector('#form-development input[name="child_name"]')
+            document.querySelector('#form-development input[name="child_name"]'),
+            document.getElementById('consultation-name')
         ];
         nameFields.forEach(f => {
             if (!f) return;
@@ -651,7 +658,8 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('physio-admission-no'),
             document.getElementById('speech-admission-no'),
             document.getElementById('prog-admission-no'),
-            document.querySelector('#form-development input[name="admission_no"]')
+            document.querySelector('#form-development input[name="admission_no"]'),
+            document.getElementById('consultation-admission-no')
         ];
         admFields.forEach(f => {
             if (!f) return;
@@ -659,6 +667,72 @@ document.addEventListener('DOMContentLoaded', () => {
                 f.value = activeChild.admission_no;
             } else if (!activeChild) {
                 f.value = '';
+            }
+        });
+
+        // ── Fill Date of Birth in all assessment forms ─────────────
+        const dobFields = [
+            document.getElementById('physio-dob'),
+            document.getElementById('speech-dob'),
+            document.getElementById('prog-dob'),
+            document.querySelector('#form-development input[name="dob"]'),
+            document.getElementById('consultation-dob')
+        ];
+        dobFields.forEach(f => {
+            if (!f) return;
+            if (activeChild && activeChild.dob) {
+                f.value = activeChild.dob;
+            } else if (!activeChild) {
+                f.value = '';
+            }
+        });
+
+        // ── Fill Age in all assessment forms ────────────────────────
+        const currentAgeStr = activeChild ? (activeChild.age || (activeChild.dob ? calcAge(activeChild.dob) : '')) : '';
+        const ageFields = [
+            document.getElementById('physio-age'),
+            document.getElementById('speech-age'),
+            document.getElementById('prog-age'),
+            document.querySelector('#form-development input[name="age"]'),
+            document.getElementById('consultation-age')
+        ];
+        ageFields.forEach(f => {
+            if (!f) return;
+            if (activeChild && currentAgeStr) {
+                f.value = currentAgeStr;
+            } else if (!activeChild) {
+                f.value = '';
+            }
+        });
+
+        // ── Fill Sex in all assessment forms ────────────────────────
+        const sexFields = [
+            document.getElementById('physio-sex'),
+            document.getElementById('speech-sex'),
+            document.getElementById('prog-sex'),
+            document.querySelector('#form-development select[name="sex"]'),
+            document.getElementById('consultation-sex')
+        ];
+        sexFields.forEach(f => {
+            if (!f) return;
+            if (activeChild && activeChild.sex) {
+                f.value = activeChild.sex;
+            } else if (!activeChild) {
+                f.value = '';
+            }
+        });
+
+        // ── Ensure assessment date defaults to today if empty ───────
+        const dateFields = [
+            document.getElementById('physio-date'),
+            document.getElementById('speech-date'),
+            document.getElementById('prog-date'),
+            document.querySelector('#form-development input[name="assessment_date"]'),
+            document.getElementById('consultation-date')
+        ];
+        dateFields.forEach(f => {
+            if (f && !f.value) {
+                f.value = getLocalTodayDateString();
             }
         });
 
@@ -774,22 +848,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     const primeRapidAdmissionNo = primeConsultationAdmissionNo;
 
-    document.getElementById('consultation-dob')?.addEventListener('change', async function() {
-        const val = this.value;
+    const updateConsultationDobAndAge = async function() {
+        const val = document.getElementById('consultation-dob')?.value;
         if (!val) return;
         const birth = new Date(val);
         if (isNaN(birth.getTime())) return;
         const dateInp = document.querySelector('#form-consultation input[name="assessment_date"]') || document.querySelector('#form-rapid input[name="assessment_date"]');
         const ref = dateInp?.value ? new Date(dateInp.value) : new Date();
+        const calculatedAge = calcAge(val, dateInp?.value || null);
+        const ageInp = document.getElementById('consultation-age') || document.getElementById('rapid-age');
+        if (ageInp && calculatedAge) {
+            ageInp.value = calculatedAge;
+        }
         let years = ref.getFullYear() - birth.getFullYear();
         let months = ref.getMonth() - birth.getMonth();
         if (months < 0 || (months === 0 && ref.getDate() < birth.getDate())) {
             years--;
-            months += 12;
-        }
-        const ageInp = document.getElementById('consultation-age');
-        if (ageInp) {
-            ageInp.value = `${years}y ${Math.max(0, months)}m`;
         }
         const admInp = document.getElementById('consultation-admission-no') || document.getElementById('rapid-admission-no');
         if (admInp) {
@@ -802,7 +876,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (nextNo) admInp.value = nextNo;
             }
         }
-    });
+    };
+    document.getElementById('consultation-dob')?.addEventListener('change', updateConsultationDobAndAge);
+    document.getElementById('consultation-dob')?.addEventListener('input', updateConsultationDobAndAge);
+    document.querySelector('#form-consultation input[name="assessment_date"]')?.addEventListener('change', updateConsultationDobAndAge);
 
     btnNew && btnNew.addEventListener('click', async () => {
         setActiveChild(null);
@@ -1187,24 +1264,30 @@ document.addEventListener('DOMContentLoaded', () => {
         if (dobEl.value && !ageEl.value) update();
     }
 
-    // Rapid Assessment
+    // Consultation Form & Rapid Assessment
+    wireAgeDob('consultation-dob', 'consultation-age');
     wireAgeDob('rapid-dob', 'rapid-age');
 
-    // Child Development form (name-based selectors — target by form context)
-    const devDob = devForm && devForm.querySelector('input[name="dob"]');
-    const devAge = devForm && devForm.querySelector('input[name="age"]');
+    // Child Development form
+    const devFormElement = document.getElementById('form-development');
+    const devDob = devFormElement?.querySelector('input[name="dob"]');
+    const devAge = devFormElement?.querySelector('input[name="age"]');
     if (devDob && devAge) {
         devAge.setAttribute('readonly', true);
         devAge.style.backgroundColor = '#e8e8e8';
         devAge.style.cursor = 'not-allowed';
         devAge.title = 'Permanent age at time of assessment';
         const updateDevAge = () => { 
-            const dateInp = devForm.querySelector('input[name="assessment_date"]');
+            const dateInp = devFormElement.querySelector('input[name="assessment_date"]');
             devAge.value = calcAge(devDob.value, dateInp?.value || null); 
         };
         devDob.addEventListener('change', updateDevAge);
         devDob.addEventListener('input',  updateDevAge);
-        // Only fill on load if age is currently empty!
+        const devDateInp = devFormElement.querySelector('input[name="assessment_date"]');
+        if (devDateInp) {
+            devDateInp.addEventListener('change', updateDevAge);
+            devDateInp.addEventListener('input',  updateDevAge);
+        }
         if (devDob.value && !devAge.value) updateDevAge();
     }
 
@@ -1639,7 +1722,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const card = document.createElement('div');
                 card.className = 'child-folder-card' + (isActive ? ' folder-active' : '');
-                const meta = [child.admission_no ? admPrefixLabel + child.admission_no : '', child.sex, child.dob ? 'DOB: '+child.dob : '', child.mobile ? '📱 '+child.mobile : '', child.assessments.length + ' assessment(s)'].filter(Boolean).join(' · ');
+                const ageDisplay = extractChildAgeString(child);
+                const meta = [
+                    child.admission_no ? admPrefixLabel + child.admission_no : '', 
+                    child.sex, 
+                    child.dob ? 'DOB: ' + child.dob : '', 
+                    (ageDisplay && ageDisplay !== '—') ? 'Age: ' + ageDisplay : '',
+                    child.mobile ? '📱 ' + child.mobile : '', 
+                    child.assessments.length + ' assessment(s)'
+                ].filter(Boolean).join(' · ');
                 const badgeBg = isTH ? '#c2410c' : '#1e40af';
                 const admBadge = child.admission_no 
                     ? '<span class="adm-badge" style="display:inline-block; font-size:0.8rem; background:' + badgeBg + '; color:#ffffff; border-radius:4px; padding:2px 8px; margin-right:8px; font-weight:700; letter-spacing:0.02em;">' + child.admission_no + '</span>'
@@ -1876,6 +1967,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 } catch (e) {}
             }
             currentViewingChild = child;
+
+            // Ensure essential patient demographic info and dates are never blank
+            if (!data.assessment_date) {
+                data.assessment_date = data.date || data.review_date || (rec.created_at ? rec.created_at.split('T')[0] : '');
+            }
+            if (!data.dob && child && child.dob) {
+                data.dob = child.dob;
+            }
+            if (!data.admission_no && child && child.admission_no) {
+                data.admission_no = child.admission_no;
+            }
+            if (!data.sex && child && child.sex) {
+                data.sex = child.sex;
+            }
+            if (!data.age) {
+                data.age = (child && child.age) || (data.dob ? calcAge(data.dob, data.assessment_date || null) : '');
+            }
 
             const FORM_MAP = {
                 'Consultation Form':         'form-consultation',
