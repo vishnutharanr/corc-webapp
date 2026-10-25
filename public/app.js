@@ -63,8 +63,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const u = JSON.parse(localStorage.getItem('currentUser') || '{}');
             const roleLabels = {
                 admin: 'Administrator',
-                staff: 'Staff (< 8 yrs)',
-                staff8: 'Staff (≥ 8 yrs)'
+                staff: 'Staff (< 8 yrs - EIC)',
+                staff8: 'Staff (≥ 8 yrs - TH)',
+                autism: 'Staff (Autism / ASD)'
             };
             const displayName = u.fullName || u.username || 'User';
             const displayRole = roleLabels[userRole] || userRole;
@@ -89,7 +90,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function applyRoleRestrictions() {
-        const isStaff = userRole === 'staff' || userRole === 'staff8';
+        const isStaff = userRole === 'staff' || userRole === 'staff8' || userRole === 'autism';
         
         document.querySelectorAll('.admin-only-filter').forEach(el => {
             if (userRole === 'admin') {
@@ -447,11 +448,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const rd = (activeChild && (activeChild._consultationData || activeChild._rapidData)) || {};
 
-        let ageVal = rd.age || '';
+        let ageVal = (activeChild && activeChild.age) || rd.age || '';
         if (!ageVal && (activeChild.dob || rd.dob)) {
             const birthDate = new Date(activeChild.dob || rd.dob);
             if (!isNaN(birthDate.getTime())) {
-                const today = new Date();
+                const today = (activeChild && activeChild.created_at) ? new Date(activeChild.created_at) : (rd.assessment_date ? new Date(rd.assessment_date) : new Date());
                 let years = today.getFullYear() - birthDate.getFullYear();
                 let months = today.getMonth() - birthDate.getMonth();
                 if (today.getDate() < birthDate.getDate()) months--;
@@ -570,7 +571,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 ['input[name="admission_no"]', activeChild.admission_no || ''],
                 ['select[name="sex"]', activeChild.sex || rd.sex || ''],
                 ['input[name="dob"]', activeChild.dob || rd.dob || ''],
-                ['input[name="age"]', rd.age || ''],
+                ['input[name="age"]', rd.age || activeChild.age || ''],
                 ['textarea[name="address"]', rd.address || ''],
                 ['input[name="mobile"]', activeChild.mobile || rd.mobile || ''],
                 ['textarea[name="symptoms"]', rd.symptoms || ''],
@@ -724,9 +725,23 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-consultation-new-child')?.addEventListener('click', handleNewChildInConsultation);
     document.getElementById('btn-rapid-new-child')?.addEventListener('click', handleNewChildInConsultation);
 
-    async function fetchNextAdmissionNo() {
+    async function fetchNextAdmissionNo(prefix, dob) {
         try {
-            const res = await fetch('/api/children/next-admission-no');
+            let url = '/api/children/next-admission-no';
+            const params = new URLSearchParams();
+            if (prefix) {
+                params.set('prefix', prefix);
+            } else if (dob) {
+                params.set('dob', dob);
+            } else if (userRole === 'staff8') {
+                params.set('prefix', 'TH');
+            } else if (userRole === 'staff') {
+                params.set('prefix', 'EIC');
+            }
+            const qs = params.toString();
+            if (qs) url += '?' + qs;
+
+            const res = await fetch(url);
             if (res.ok) {
                 const data = await res.json();
                 return data.next_admission_no || '';
@@ -748,8 +763,46 @@ document.addEventListener('DOMContentLoaded', () => {
                 admInp.value = nextAdm;
             }
         }
+        const autismCheck = document.getElementById('consultation-is-autism');
+        if (autismCheck) {
+            if (userRole === 'autism') {
+                autismCheck.checked = true;
+            } else if (activeChild) {
+                autismCheck.checked = isAutismChild(activeChild);
+            }
+        }
     }
     const primeRapidAdmissionNo = primeConsultationAdmissionNo;
+
+    document.getElementById('consultation-dob')?.addEventListener('change', async function() {
+        const val = this.value;
+        if (!val) return;
+        const birth = new Date(val);
+        if (isNaN(birth.getTime())) return;
+        const dateInp = document.querySelector('#form-consultation input[name="assessment_date"]') || document.querySelector('#form-rapid input[name="assessment_date"]');
+        const ref = dateInp?.value ? new Date(dateInp.value) : new Date();
+        let years = ref.getFullYear() - birth.getFullYear();
+        let months = ref.getMonth() - birth.getMonth();
+        if (months < 0 || (months === 0 && ref.getDate() < birth.getDate())) {
+            years--;
+            months += 12;
+        }
+        const ageInp = document.getElementById('consultation-age');
+        if (ageInp) {
+            ageInp.value = `${years}y ${Math.max(0, months)}m`;
+        }
+        const admInp = document.getElementById('consultation-admission-no') || document.getElementById('rapid-admission-no');
+        if (admInp) {
+            const cur = admInp.value.trim().toUpperCase();
+            if (years >= 8 && (!cur || cur.startsWith('EIC'))) {
+                const nextNo = await fetchNextAdmissionNo('TH');
+                if (nextNo) admInp.value = nextNo;
+            } else if (years < 8 && (!cur || cur.startsWith('TH'))) {
+                const nextNo = await fetchNextAdmissionNo('EIC');
+                if (nextNo) admInp.value = nextNo;
+            }
+        }
+    });
 
     btnNew && btnNew.addEventListener('click', async () => {
         setActiveChild(null);
@@ -759,6 +812,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const nextAdm = await fetchNextAdmissionNo();
         const admInp = document.getElementById('consultation-admission-no') || document.getElementById('rapid-admission-no');
         if (admInp && nextAdm) admInp.value = nextAdm;
+        const autismCheck = document.getElementById('consultation-is-autism');
+        if (autismCheck && userRole === 'autism') autismCheck.checked = true;
         const dateInp = cf && cf.querySelector('input[name="assessment_date"]');
         if (dateInp) dateInp.value = new Date().toISOString().split('T')[0];
         showToast('New Child registration started' + (nextAdm ? ` · Auto Admission No: ${nextAdm}` : ''));
@@ -926,8 +981,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const devForm = document.getElementById('form-development');
     window.setupBmiAutoCalc(devForm);
 
-    // ── Age Auto-calculate from DOB ──────────────────────────
-    function calcAgeYearsFromDob(dobValue) {
+    // ── Age Auto-calculate from DOB (Fixed against admission / assessment reference date) ──
+    function calcAgeYearsFromDob(dobValue, refDateValue) {
         if (!dobValue) return null;
         const parts = String(dobValue).split('T')[0].split('-');
         let birth;
@@ -937,17 +992,21 @@ document.addEventListener('DOMContentLoaded', () => {
             birth = new Date(dobValue);
         }
         if (isNaN(birth.getTime())) return null;
-        const today = new Date();
-        let years = today.getFullYear() - birth.getFullYear();
-        const months = today.getMonth() - birth.getMonth();
-        if (months < 0 || (months === 0 && today.getDate() < birth.getDate())) {
+        let ref = new Date();
+        if (refDateValue) {
+            const parsed = new Date(refDateValue);
+            if (!isNaN(parsed.getTime())) ref = parsed;
+        }
+        let years = ref.getFullYear() - birth.getFullYear();
+        const months = ref.getMonth() - birth.getMonth();
+        if (months < 0 || (months === 0 && ref.getDate() < birth.getDate())) {
             years--;
         }
         return Math.max(0, years);
     }
 
     function parseAgeStringToYears(ageStr) {
-        if (!ageStr) return 0;
+        if (!ageStr) return null;
         const str = String(ageStr).trim().toLowerCase();
         // If string only has months (e.g. "9 months", "less than 1 month"), they are under 1 year old (0 years)
         if (str.includes('month') && !str.includes('yr') && !str.includes('year')) {
@@ -958,62 +1017,109 @@ document.addEventListener('DOMContentLoaded', () => {
             return parseInt(match[1], 10) || 0;
         }
         const val = parseInt(str, 10);
-        return isNaN(val) ? 0 : val;
+        return isNaN(val) ? null : val;
     }
 
+    // Returns completed age in years: increments dynamically with real calendar time
     function extractChildAge(childOrRow) {
         if (!childOrRow) return 0;
 
-        // 1. Try DOB from child or attendance row
+        // 1. Calculate live incrementing age from Date of Birth
         const dob = childOrRow.dob || childOrRow.child_dob;
-        const yearsFromDob = calcAgeYearsFromDob(dob);
-        if (yearsFromDob !== null) return yearsFromDob;
-
-        // 2. Try rapid_data (from attendance report query)
-        if (childOrRow.rapid_data) {
-            try {
-                const rd = typeof childOrRow.rapid_data === 'string' ? JSON.parse(childOrRow.rapid_data) : childOrRow.rapid_data;
-                if (rd) {
-                    const yDob = calcAgeYearsFromDob(rd.dob);
-                    if (yDob !== null) return yDob;
-                    if (rd.age) return parseAgeStringToYears(rd.age);
-                }
-            } catch (e) {}
+        if (dob) {
+            const liveYears = calcAgeYearsFromDob(dob);
+            if (liveYears !== null) return liveYears;
         }
 
-        // 3. Try assessments array (from /api/children)
+        // 2. Try _consultationData / _rapidData
+        const rd = childOrRow._consultationData || childOrRow._rapidData || 
+                  (childOrRow.rapid_data ? (typeof childOrRow.rapid_data === 'string' ? JSON.parse(childOrRow.rapid_data) : childOrRow.rapid_data) : null);
+        if (rd && rd.dob) {
+            const liveYearsRd = calcAgeYearsFromDob(rd.dob);
+            if (liveYearsRd !== null) return liveYearsRd;
+        }
+
+        // 3. Fallback to reference age at admission if DOB missing
+        const directAge = childOrRow.age || childOrRow.child_age || (rd && rd.age);
+        if (directAge) {
+            const p = parseAgeStringToYears(directAge);
+            if (p !== null) return p;
+        }
+
         if (Array.isArray(childOrRow.assessments)) {
-            const rapid = childOrRow.assessments.find(a => a.form_type === 'Consultation Form' || a.form_type === 'Rapid Assessment');
-            if (rapid && rapid.data) {
-                try {
-                    const rd = typeof rapid.data === 'string' ? JSON.parse(rapid.data) : rapid.data;
-                    if (rd) {
-                        const yDob = calcAgeYearsFromDob(rd.dob);
-                        if (yDob !== null) return yDob;
-                        if (rd.age) return parseAgeStringToYears(rd.age);
-                    }
-                } catch (e) {}
+            const cf = childOrRow.assessments.find(a => a.form_type === 'Consultation Form' || a.form_type === 'Rapid Assessment');
+            if (cf && cf.data) {
+                if (cf.data.dob) {
+                    const y = calcAgeYearsFromDob(cf.data.dob);
+                    if (y !== null) return y;
+                }
+                if (cf.data.age) {
+                    const p = parseAgeStringToYears(cf.data.age);
+                    if (p !== null) return p;
+                }
             }
-        }
-
-        // 4. Try _consultationData / _rapidData on activeChild
-        if (childOrRow._consultationData || childOrRow._rapidData) {
-            const rd = childOrRow._consultationData || childOrRow._rapidData;
-            const yDob = calcAgeYearsFromDob(rd.dob);
-            if (yDob !== null) return yDob;
-            if (rd.age) return parseAgeStringToYears(rd.age);
         }
 
         return 0;
     }
 
+    // Returns live incremented age, accompanied by the permanent admission age for reference
+    function extractChildAgeString(childOrRow) {
+        if (!childOrRow) return '—';
+        const dob = childOrRow.dob || childOrRow.child_dob;
+        const liveStr = dob ? calcAge(dob) : null;
+
+        const refAge = (childOrRow.age && childOrRow.age !== 'null') ? String(childOrRow.age).trim() :
+                      (childOrRow.child_age && childOrRow.child_age !== 'null') ? String(childOrRow.child_age).trim() :
+                      (childOrRow._consultationData && childOrRow._consultationData.age) ? String(childOrRow._consultationData.age).trim() :
+                      (childOrRow._rapidData && childOrRow._rapidData.age) ? String(childOrRow._rapidData.age).trim() : null;
+
+        if (liveStr && refAge && refAge !== liveStr) {
+            return `${liveStr} (Adm: ${refAge})`;
+        }
+        return liveStr || refAge || '—';
+    }
+
+    function isAutismChild(childOrRow) {
+        if (!childOrRow) return false;
+        if (childOrRow.is_autism === true || childOrRow.is_autism === 'true' || childOrRow.is_autism === 1) return true;
+        if (childOrRow.child_is_autism === true || childOrRow.child_is_autism === 'true' || childOrRow.child_is_autism === 1) return true;
+        if (childOrRow.diagnosis && /\b(autism|asd)\b/i.test(String(childOrRow.diagnosis))) return true;
+
+        if (Array.isArray(childOrRow.assessments)) {
+            for (const a of childOrRow.assessments) {
+                const d = a.data;
+                if (!d) continue;
+                if (d.is_autism === true || d.is_autism === 'true' || d.category_type === 'autism') return true;
+                if (d.diagnosis && /\b(autism|asd)\b/i.test(String(d.diagnosis))) return true;
+                if (d.dev_diagnosis && /\b(autism|asd)\b/i.test(String(d.dev_diagnosis))) return true;
+            }
+        }
+        const rd = childOrRow._consultationData || childOrRow._rapidData || childOrRow.rapid_data;
+        if (rd) {
+            try {
+                const parsed = typeof rd === 'string' ? JSON.parse(rd) : rd;
+                if (parsed) {
+                    if (parsed.is_autism === true || parsed.is_autism === 'true' || parsed.category_type === 'autism') return true;
+                    if (parsed.diagnosis && /\b(autism|asd)\b/i.test(String(parsed.diagnosis))) return true;
+                    if (parsed.dev_diagnosis && /\b(autism|asd)\b/i.test(String(parsed.dev_diagnosis))) return true;
+                }
+            } catch (e) {}
+        }
+        return false;
+    }
+
     function matchesAgeFilter(childOrRow, ageFilterVal = 'all') {
         const ageNum = extractChildAge(childOrRow);
+        const isAutism = isAutismChild(childOrRow);
+
+        if (userRole === 'autism') return isAutism;
         if (userRole === 'staff') return ageNum < 8;
         if (userRole === 'staff8') return ageNum >= 8;
         if (userRole === 'admin') {
             if (ageFilterVal === 'under8') return ageNum < 8;
             if (ageFilterVal === '8plus') return ageNum >= 8;
+            if (ageFilterVal === 'autism') return isAutism;
         }
         return true;
     }
@@ -1036,7 +1142,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return `${year}-${month}-${day}`;
     }
 
-    function calcAge(dobValue) {
+    function calcAge(dobValue, refDateValue) {
         if (!dobValue) return '';
         const parts = String(dobValue).split('T')[0].split('-');
         let birth;
@@ -1046,10 +1152,14 @@ document.addEventListener('DOMContentLoaded', () => {
             birth = new Date(dobValue);
         }
         if (isNaN(birth.getTime())) return '';
-        const today = new Date();
-        let years  = today.getFullYear() - birth.getFullYear();
-        let months = today.getMonth()    - birth.getMonth();
-        if (today.getDate() < birth.getDate()) months--;
+        let ref = new Date();
+        if (refDateValue) {
+            const parsed = new Date(refDateValue);
+            if (!isNaN(parsed.getTime())) ref = parsed;
+        }
+        let years  = ref.getFullYear() - birth.getFullYear();
+        let months = ref.getMonth()    - birth.getMonth();
+        if (ref.getDate() < birth.getDate()) months--;
         if (months < 0) { years--; months += 12; }
         if (years < 0) return '';
         if (years === 0 && months === 0) return 'Less than 1 month';
@@ -1065,11 +1175,16 @@ document.addEventListener('DOMContentLoaded', () => {
         ageEl.setAttribute('readonly', true);
         ageEl.style.backgroundColor = '#e8e8e8';
         ageEl.style.cursor = 'not-allowed';
-        ageEl.title = 'Auto-calculated from Date of Birth';
-        const update = () => { ageEl.value = calcAge(dobEl.value); };
+        ageEl.title = 'Permanent age calculated at time of assessment/admission';
+        const update = () => { 
+            const formEl = dobEl.closest('form');
+            const dateInp = formEl?.querySelector('input[name="assessment_date"]');
+            ageEl.value = calcAge(dobEl.value, dateInp?.value || null); 
+        };
         dobEl.addEventListener('change', update);
         dobEl.addEventListener('input',  update);
-        if (dobEl.value) update(); // fill on load if DOB already set
+        // Only fill on load if age is currently empty! Never overwrite existing saved permanent age!
+        if (dobEl.value && !ageEl.value) update();
     }
 
     // Rapid Assessment
@@ -1082,11 +1197,15 @@ document.addEventListener('DOMContentLoaded', () => {
         devAge.setAttribute('readonly', true);
         devAge.style.backgroundColor = '#e8e8e8';
         devAge.style.cursor = 'not-allowed';
-        devAge.title = 'Auto-calculated from Date of Birth';
-        const updateDevAge = () => { devAge.value = calcAge(devDob.value); };
+        devAge.title = 'Permanent age at time of assessment';
+        const updateDevAge = () => { 
+            const dateInp = devForm.querySelector('input[name="assessment_date"]');
+            devAge.value = calcAge(devDob.value, dateInp?.value || null); 
+        };
         devDob.addEventListener('change', updateDevAge);
         devDob.addEventListener('input',  updateDevAge);
-        if (devDob.value) updateDevAge();
+        // Only fill on load if age is currently empty!
+        if (devDob.value && !devAge.value) updateDevAge();
     }
 
     // ── Progress Goals ───────────────────────────────────────
@@ -1159,6 +1278,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const name = data.child_name;
         if (!name) { showToast('Child name is required.', true); return; }
         const ageNum = extractChildAge({ dob: data.dob, _consultationData: data, _rapidData: data });
+        const isAutism = (userRole === 'autism') || 
+                         (document.getElementById('consultation-is-autism')?.checked === true) || 
+                         (data.is_autism === true || data.is_autism === 'true');
+        data.is_autism = isAutism;
 
         if (userRole === 'staff8' && ageNum < 8) {
             showToast('Staff for older children can only enter details for children aged 8 or above.', true);
@@ -1167,6 +1290,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (userRole === 'staff' && ageNum >= 8) {
             alert("More than 8 years");
+            return;
+        }
+
+        if (userRole === 'autism' && !isAutism) {
+            showToast('Please confirm child has Autism (ASD) to register under Autism unit.', true);
             return;
         }
 
@@ -1181,8 +1309,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         name, 
                         admission_no: data.admission_no || activeChild.admission_no || null, 
                         dob: data.dob || null, 
+                        age: data.age || activeChild.age || null, 
                         sex: data.sex || null, 
-                        mobile: data.mobile || null 
+                        mobile: data.mobile || null,
+                        is_autism: isAutism
                     })
                 });
                 if (!cr.ok) { showToast('Error updating child: ' + (await cr.json()).error, true); return; }
@@ -1230,8 +1360,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     name, 
                     admission_no: data.admission_no || null, 
                     dob: data.dob || null, 
+                    age: data.age || null, 
                     sex: data.sex || null, 
-                    mobile: data.mobile || null 
+                    mobile: data.mobile || null,
+                    is_autism: isAutism
                 })
             });
             if (!cr.ok) { showToast('Error creating child profile: ' + (await cr.json()).error, true); return; }
@@ -1261,7 +1393,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const handleRapid = handleConsultation;
 
     async function saveAssessment(childId, childName, formType, data, el) {
-        if ((userRole === 'staff8' || userRole === 'staff') && activeChild) {
+        if ((userRole === 'staff8' || userRole === 'staff' || userRole === 'autism') && activeChild) {
             const ageNum = extractChildAge(activeChild);
             
             if (userRole === 'staff8' && ageNum < 8) {
@@ -1270,6 +1402,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             if (userRole === 'staff' && ageNum >= 8) {
                 alert("More than 8 years");
+                return;
+            }
+            if (userRole === 'autism' && !isAutismChild(activeChild)) {
+                showToast('Autism staff can only manage children registered for Autism/ASD care.', true);
                 return;
             }
         }
@@ -1408,7 +1544,11 @@ document.addEventListener('DOMContentLoaded', () => {
     async function fetchChildFolders(q) {
         q = q || '';
         try {
-            const url = q ? '/api/children?search=' + encodeURIComponent(q) : '/api/children';
+            let url = '/api/children';
+            const params = [];
+            if (q) params.push('search=' + encodeURIComponent(q));
+            if (userRole === 'autism') params.push('autism=true');
+            if (params.length) url += '?' + params.join('&');
             const res = await fetch(url);
             if (!res.ok) {
                 const errData = await res.json().catch(() => ({}));
@@ -1426,7 +1566,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const therapyFilter = document.getElementById('records-therapy-filter')?.value || 'all';
             let filteredChildren = children;
             
-            if (userRole === 'staff' || userRole === 'staff8' || (userRole === 'admin' && ageFilter !== 'all')) {
+            if (userRole === 'autism') {
+                filteredChildren = children.filter(child => isAutismChild(child));
+            } else if (userRole === 'staff' || userRole === 'staff8' || (userRole === 'admin' && ageFilter !== 'all')) {
                 filteredChildren = children.filter(child => matchesAgeFilter(child, ageFilter));
             }
 
@@ -1437,7 +1579,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (!filteredChildren.length) {
-                foldersEl.innerHTML = '<div class="empty-folders"><span style="font-size:3rem">\ud83d\udcc2</span><p>No child profiles found.</p></div>';
+                const emptyMsg = userRole === 'autism' 
+                    ? 'No child profiles found for Autism (ASD) unit.' 
+                    : 'No child profiles found.';
+                foldersEl.innerHTML = '<div class="empty-folders"><span style="font-size:3rem">📂</span><p>' + emptyMsg + '</p></div>';
                 return;
             }
 
@@ -1457,13 +1602,22 @@ document.addEventListener('DOMContentLoaded', () => {
                         '</div>').join('')
                     : '<div class="folder-empty-msg">No assessments saved yet.</div>';
 
+                const isAutism = isAutismChild(child);
+                const asdBadge = isAutism
+                    ? '<span class="asd-badge" style="display:inline-flex; align-items:center; gap:3px; font-size:0.75rem; background:#ede9fe; color:#6d28d9; border:1px solid #c4b5fd; border-radius:12px; padding:1px 8px; margin-left:6px; font-weight:700;">🧩 ASD</span>'
+                    : '';
+                const isTH = child.admission_no && child.admission_no.toUpperCase().startsWith('TH');
+                const admPrefixLabel = isTH ? 'TH No: ' : 'EIC No: ';
+
                 const childJson    = JSON.stringify({
                     id: child.id, 
                     name: child.name, 
                     admission_no: child.admission_no || '', 
                     dob: child.dob, 
+                    age: child.age || '',
                     sex: child.sex, 
                     mobile: child.mobile,
+                    is_autism: isAutism,
                     assessments: child.assessments || []
                 });
                 const safeChildJson = childJson.replace(/"/g, '&quot;');
@@ -1485,16 +1639,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const card = document.createElement('div');
                 card.className = 'child-folder-card' + (isActive ? ' folder-active' : '');
-                const meta = [child.admission_no ? 'EIC No: ' + child.admission_no : '', child.sex, child.dob ? 'DOB: '+child.dob : '', child.mobile ? '📱 '+child.mobile : '', child.assessments.length + ' assessment(s)'].filter(Boolean).join(' · ');
+                const meta = [child.admission_no ? admPrefixLabel + child.admission_no : '', child.sex, child.dob ? 'DOB: '+child.dob : '', child.mobile ? '📱 '+child.mobile : '', child.assessments.length + ' assessment(s)'].filter(Boolean).join(' · ');
+                const badgeBg = isTH ? '#c2410c' : '#1e40af';
                 const admBadge = child.admission_no 
-                    ? '<span class="adm-badge" style="display:inline-block; font-size:0.8rem; background:#1e40af; color:#ffffff; border-radius:4px; padding:2px 8px; margin-right:8px; font-weight:700; letter-spacing:0.02em;">' + child.admission_no + '</span>'
+                    ? '<span class="adm-badge" style="display:inline-block; font-size:0.8rem; background:' + badgeBg + '; color:#ffffff; border-radius:4px; padding:2px 8px; margin-right:8px; font-weight:700; letter-spacing:0.02em;">' + child.admission_no + '</span>'
                     : '';
                 card.innerHTML =
                     '<div class="folder-header" data-child-id="' + child.id + '">' +
                         '<div class="folder-title">' +
                             '<span class="folder-icon">' + (isActive ? '\ud83d\udcc2' : '\ud83d\udcc1') + '</span>' +
                             '<div>' +
-                                '<strong class="folder-child-name">' + admBadge + child.name + '</strong>' +
+                                '<strong class="folder-child-name">' + admBadge + child.name + asdBadge + '</strong>' +
                                 '<small class="folder-meta">' + meta + '</small>' +
                             '</div>' +
                         '</div>' +
@@ -2240,10 +2395,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const currentActive = select.value;
 
         try {
-            let children = await (await fetch('/api/children')).json();
+            let children = await (await fetch('/api/children' + (userRole === 'autism' ? '?autism=true' : ''))).json();
             const ageFilter = document.getElementById('report-age-filter')?.value || 'all';
 
-            if (userRole === 'staff' || userRole === 'staff8' || (userRole === 'admin' && ageFilter !== 'all')) {
+            if (userRole === 'staff' || userRole === 'staff8' || userRole === 'autism' || (userRole === 'admin' && ageFilter !== 'all')) {
                 children = children.filter(child => matchesAgeFilter(child, ageFilter));
             }
             
@@ -2436,6 +2591,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (startDate) query.push('start_date=' + encodeURIComponent(startDate));
         if (endDate) query.push('end_date=' + encodeURIComponent(endDate));
         if (childId) query.push('child_id=' + encodeURIComponent(childId));
+        if (userRole === 'autism') query.push('autism=true');
         
         const url = '/api/reports/attendance' + (query.length ? '?' + query.join('&') : '');
 
@@ -2460,7 +2616,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (therapistFilter && row.therapist_name !== therapistFilter) match = false;
                 if (pendingBalanceOnly && (parseFloat(row.balance) || 0) <= 0) match = false;
                 
-                if (userRole === 'staff' || userRole === 'staff8' || (userRole === 'admin' && ageFilter !== 'all')) {
+                if (userRole === 'staff' || userRole === 'staff8' || userRole === 'autism' || (userRole === 'admin' && ageFilter !== 'all')) {
                     if (!matchesAgeFilter(row, ageFilter)) match = false;
                 }
                 
@@ -3185,16 +3341,17 @@ document.addEventListener('DOMContentLoaded', () => {
         tbody.innerHTML = '<tr><td colspan="14" style="text-align: center;">Loading...</td></tr>';
         try {
             // Always fetch fresh children list so newly added/updated children appear immediately
-            const respChild = await fetch('/api/children');
+            const respChild = await fetch('/api/children' + (userRole === 'autism' ? '?autism=true' : ''));
             scheduleChildrenList = await respChild.json();
 
             let permittedChildren = scheduleChildrenList;
-            if (userRole === 'staff' || userRole === 'staff8') {
+            if (userRole === 'staff' || userRole === 'staff8' || userRole === 'autism') {
                 permittedChildren = scheduleChildrenList.filter(child => matchesAgeFilter(child));
             }
 
             // Fetch schedules for the date
-            const respSched = await fetch(`/api/schedules?date=${encodeURIComponent(date)}`);
+            const schedUrl = `/api/schedules?date=${encodeURIComponent(date)}` + (userRole === 'autism' ? '&autism=true' : '');
+            const respSched = await fetch(schedUrl);
             currentScheduleData = await respSched.json();
 
             // Populate filter dropdown
@@ -3421,7 +3578,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const formattedDate = dateValue ? formatDisplayDate(dateValue) : '';
 
         let permittedChildren = scheduleChildrenList;
-        if (userRole === 'staff' || userRole === 'staff8') {
+        if (userRole === 'staff' || userRole === 'staff8' || userRole === 'autism') {
             permittedChildren = scheduleChildrenList.filter(child => matchesAgeFilter(child));
         }
 
@@ -3634,7 +3791,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const formattedDate = formatDisplayDate(dateValue);
 
         let permittedChildren = scheduleChildrenList;
-        if (userRole === 'staff' || userRole === 'staff8') {
+        if (userRole === 'staff' || userRole === 'staff8' || userRole === 'autism') {
             permittedChildren = scheduleChildrenList.filter(child => matchesAgeFilter(child));
         }
 
@@ -3916,7 +4073,7 @@ document.addEventListener('DOMContentLoaded', () => {
         TIME_SLOTS.forEach((slot, index) => timeOrder[slot] = index);
 
         let permittedChildren = scheduleChildrenList;
-        if (userRole === 'staff' || userRole === 'staff8') {
+        if (userRole === 'staff' || userRole === 'staff8' || userRole === 'autism') {
             permittedChildren = scheduleChildrenList.filter(child => matchesAgeFilter(child));
         }
 
@@ -3983,7 +4140,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         let permittedChildren = scheduleChildrenList;
-        if (userRole === 'staff' || userRole === 'staff8') {
+        if (userRole === 'staff' || userRole === 'staff8' || userRole === 'autism') {
             permittedChildren = scheduleChildrenList.filter(child => matchesAgeFilter(child));
         }
 
@@ -4026,7 +4183,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!checklistEl) return;
 
         let permittedChildren = scheduleChildrenList;
-        if (userRole === 'staff' || userRole === 'staff8') {
+        if (userRole === 'staff' || userRole === 'staff8' || userRole === 'autism') {
             permittedChildren = scheduleChildrenList.filter(child => matchesAgeFilter(child));
         }
 
@@ -4082,7 +4239,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Modal Selection Buttons
     document.getElementById('btn-share-modal-select-all')?.addEventListener('click', () => {
         let permittedChildren = scheduleChildrenList;
-        if (userRole === 'staff' || userRole === 'staff8') {
+        if (userRole === 'staff' || userRole === 'staff8' || userRole === 'autism') {
             permittedChildren = scheduleChildrenList.filter(child => matchesAgeFilter(child));
         }
         permittedChildren.forEach(c => selectedScheduleChildIds.add(String(c.id)));
@@ -4094,7 +4251,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-share-modal-select-scheduled')?.addEventListener('click', () => {
         selectedScheduleChildIds.clear();
         let permittedChildren = scheduleChildrenList;
-        if (userRole === 'staff' || userRole === 'staff8') {
+        if (userRole === 'staff' || userRole === 'staff8' || userRole === 'autism') {
             permittedChildren = scheduleChildrenList.filter(child => matchesAgeFilter(child));
         }
         permittedChildren.forEach(c => {
@@ -5128,7 +5285,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const sData = s.raw?.speech || {};
 
         const ageYears = extractChildAge(child);
-        const ageStr = ageYears ? `${ageYears} yrs` : (child.dob ? `DOB: ${child.dob}` : '—');
+        const ageStr = extractChildAgeString(child);
         const assessmentDate = rData.assessment_date || dData.assessment_date || pData.assessment_date || s.rapid.date || s.dev.date || s.physio.date || new Date().toLocaleDateString('en-IN');
         const slNo = child.admission_no || `#${child.id}`;
 
@@ -5948,7 +6105,7 @@ function printChildSummarySheet(child, assessments = []) {
     function renderChildConsolidatedCardHtml(child, assessments = [], isFullModal = false) {
         const summary = extractAssessmentSummaries(child, assessments);
         const ageYears = extractChildAge(child);
-        const ageStr = ageYears ? `${ageYears} yrs` : (child.dob ? `DOB: ${child.dob}` : 'Age not specified');
+        const ageStr = extractChildAgeString(child);
         const safeChildJson = JSON.stringify({ id: child.id, name: child.name, admission_no: child.admission_no || '', dob: child.dob, sex: child.sex, mobile: child.mobile }).replace(/"/g, '&quot;');
 
         const statusBadgeText = summary.coreCount === 4 
@@ -6293,7 +6450,7 @@ function printChildSummarySheet(child, assessments = []) {
     function renderMatrixTableRowHtml(child, assessments = [], index = 0) {
         const summary = extractAssessmentSummaries(child, assessments);
         const ageYears = extractChildAge(child);
-        const ageStr = ageYears ? `${ageYears}y` : (child.dob || '-');
+        const ageStr = extractChildAgeString(child);
         const safeChildJson = JSON.stringify({ id: child.id, name: child.name, admission_no: child.admission_no || '', dob: child.dob, sex: child.sex, mobile: child.mobile }).replace(/"/g, '&quot;');
 
         const r = summary.rapid;
@@ -6384,7 +6541,7 @@ function printChildSummarySheet(child, assessments = []) {
         matrixTbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 30px; color: var(--text-light);">Loading assessment matrix...</td></tr>';
 
         try {
-            const res = await fetch('/api/children');
+            const res = await fetch('/api/children' + (userRole === 'autism' ? '?autism=true' : ''));
             if (!res.ok) {
                 cardsContainer.innerHTML = '<div style="color: var(--danger); text-align: center; padding: 30px;">Failed to load children assessment records.</div>';
                 return;
@@ -6561,7 +6718,7 @@ function printChildSummarySheet(child, assessments = []) {
             sheetsContainer.innerHTML = list.map(c => {
                 const summary = extractAssessmentSummaries(c, c.assessments || []);
                 const ageYears = extractChildAge(c);
-                const ageStr = ageYears ? `${ageYears} yrs` : (c.dob ? `DOB: ${c.dob}` : 'Age -');
+                const ageStr = extractChildAgeString(c);
                 const statusBadgeBg = summary.coreCount === 4 ? '#dcfce7' : (summary.coreCount > 0 ? '#fef9c3' : '#fee2e2');
                 const statusBadgeColor = summary.coreCount === 4 ? '#166534' : (summary.coreCount > 0 ? '#854d0e' : '#991b1b');
                 const statusBadgeText = summary.coreCount === 4 ? 'Fully Assessed' : (summary.coreCount > 0 ? `${summary.coreCount}/4 Completed` : 'Not Assessed');
@@ -6901,7 +7058,7 @@ function printChildSummarySheet(child, assessments = []) {
         modal.classList.remove('hidden');
 
         try {
-            const res = await fetch('/api/children');
+            const res = await fetch('/api/children' + (userRole === 'autism' ? '?autism=true' : ''));
             if (!res.ok) {
                 if (tbody) tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: var(--danger); padding: 20px;">Failed to load child records</td></tr>';
                 return;
@@ -7102,7 +7259,7 @@ function printChildSummarySheet(child, assessments = []) {
 
         tbody.innerHTML = children.map(c => {
             const ageYears = extractChildAge(c);
-            const ageStr = ageYears ? `${ageYears} yrs` : (c.dob ? `DOB: ${c.dob}` : 'N/A');
+            const ageStr = extractChildAgeString(c);
             const aList = c.assessments || [];
 
             const renderBadge = (formType) => {
@@ -7804,7 +7961,7 @@ function printChildSummarySheet(child, assessments = []) {
 
             const tableBody = children.map((c, idx) => {
                 const ageYears = extractChildAge(c);
-                const ageStr = ageYears ? `${ageYears}y` : (c.dob || '-');
+                const ageStr = extractChildAgeString(c);
                 const summary = extractAssessmentSummaries(c, c.assessments || []);
 
                 const rapidTxt = summary.rapid.exists ? `${summary.rapid.diagnosis}\n(Date: ${summary.rapid.date})` : '-';
@@ -7896,7 +8053,7 @@ function printChildSummarySheet(child, assessments = []) {
                 `"${(c.name || '').replace(/"/g, '""')}"`,
                 `"${c.sex || ''}"`,
                 `"${c.dob || ''}"`,
-                ageYears || '',
+                `"${(extractChildAgeString(c) || '').replace(/"/g, '""')}"`, 
                 `"${c.mobile || ''}"`,
                 `"${summary.workupStatus}"`,
                 summary.totalCount,
@@ -8138,10 +8295,30 @@ function printChildSummarySheet(child, assessments = []) {
         document.getElementById('edit-child-adm').value = child.admission_no || '';
         document.getElementById('edit-child-name').value = child.name || '';
         document.getElementById('edit-child-dob').value = child.dob || '';
+        document.getElementById('edit-child-age').value = child.age || extractChildAgeString(child) || '';
         document.getElementById('edit-child-sex').value = child.sex || '';
         document.getElementById('edit-child-mobile').value = child.mobile || '';
+        const autismEl = document.getElementById('edit-child-is-autism');
+        if (autismEl) autismEl.checked = isAutismChild(child);
         childEditModal.classList.add('show');
     }
+
+    document.getElementById('edit-child-dob')?.addEventListener('change', async function() {
+        const val = this.value;
+        if (!val) return;
+        const years = calcAgeYearsFromDob(val); // live incremented age
+        if (years === null) return;
+        const admInp = document.getElementById('edit-child-adm');
+        if (!admInp) return;
+        const curAdm = admInp.value.trim().toUpperCase();
+        if (years >= 8 && (!curAdm || curAdm.startsWith('EIC'))) {
+            const nextNo = await fetchNextAdmissionNo('TH');
+            if (nextNo) admInp.value = nextNo;
+        } else if (years < 8 && (!curAdm || curAdm.startsWith('TH'))) {
+            const nextNo = await fetchNextAdmissionNo('EIC');
+            if (nextNo) admInp.value = nextNo;
+        }
+    });
 
     function closeChildEditModalDialog() {
         if (childEditModal) childEditModal.classList.remove('show');
@@ -8165,8 +8342,10 @@ function printChildSummarySheet(child, assessments = []) {
             admission_no: document.getElementById('edit-child-adm').value.trim() || null,
             name: document.getElementById('edit-child-name').value.trim(),
             dob: document.getElementById('edit-child-dob').value || null,
+            age: document.getElementById('edit-child-age').value.trim() || null,
             sex: document.getElementById('edit-child-sex').value || null,
-            mobile: document.getElementById('edit-child-mobile').value.trim() || null
+            mobile: document.getElementById('edit-child-mobile').value.trim() || null,
+            is_autism: document.getElementById('edit-child-is-autism')?.checked === true
         };
         try {
             const resp = await fetch(`/api/children/${id}`, {
@@ -8260,12 +8439,13 @@ function printChildSummarySheet(child, assessments = []) {
             tbody.innerHTML = users.map(u => {
                 const roleBadges = {
                     admin: '<span style="background:#fee2e2;color:#991b1b;padding:3px 8px;border-radius:12px;font-weight:600;font-size:0.75rem;">Admin</span>',
-                    staff: '<span style="background:#dbeafe;color:#1e40af;padding:3px 8px;border-radius:12px;font-weight:600;font-size:0.75rem;">Staff (&lt;8)</span>',
-                    staff8: '<span style="background:#fef3c7;color:#92400e;padding:3px 8px;border-radius:12px;font-weight:600;font-size:0.75rem;">Staff (≥8)</span>'
+                    staff: '<span style="background:#dbeafe;color:#1e40af;padding:3px 8px;border-radius:12px;font-weight:600;font-size:0.75rem;">Staff (&lt;8 EIC)</span>',
+                    staff8: '<span style="background:#fef3c7;color:#92400e;padding:3px 8px;border-radius:12px;font-weight:600;font-size:0.75rem;">Staff (≥8 TH)</span>',
+                    autism: '<span style="background:#ede9fe;color:#6d28d9;padding:3px 8px;border-radius:12px;font-weight:600;font-size:0.75rem;">Staff (ASD)</span>'
                 };
                 const createdStr = u.created_at ? new Date(u.created_at).toLocaleDateString('en-IN') : '-';
-                const deleteBtn = u.username === 'admin' 
-                    ? '<span style="color:#94a3b8;font-size:0.8rem;">Default Admin</span>'
+                const deleteBtn = ['admin', 'staff', 'staff8', 'autism'].includes(u.username) 
+                    ? '<span style="color:#94a3b8;font-size:0.8rem;">System Default</span>'
                     : `<button class="btn-delete-user btn-danger btn-sm" data-id="${u.id}" data-name="${u.username}" style="padding:3px 8px;font-size:0.8rem;background:var(--danger);color:white;border:none;border-radius:4px;cursor:pointer;">🗑️ Delete</button>`;
                 
                 return `<tr>

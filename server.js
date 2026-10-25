@@ -63,6 +63,8 @@ const INIT_SQL = `
     );
 
     ALTER TABLE children ADD COLUMN IF NOT EXISTS admission_no TEXT;
+    ALTER TABLE children ADD COLUMN IF NOT EXISTS is_autism BOOLEAN DEFAULT FALSE;
+    ALTER TABLE children ADD COLUMN IF NOT EXISTS age TEXT;
 
     CREATE TABLE IF NOT EXISTS assessments (
         id SERIAL PRIMARY KEY,
@@ -229,19 +231,30 @@ async function seedDefaultTherapists() {
 
 async function seedDefaultUsers() {
     try {
+        const adminHash = await bcrypt.hash('admin', 10);
+        const staffHash = await bcrypt.hash('staff', 10);
+        const staff8Hash = await bcrypt.hash('staff8', 10);
+        const autismHash = await bcrypt.hash('autism', 10);
+
         const existing = await pool.query(`SELECT count(*) FROM users`);
         if (parseInt(existing.rows[0].count, 10) === 0) {
-            const adminHash = await bcrypt.hash('admin', 10);
-            const staffHash = await bcrypt.hash('staff', 10);
-            const staff8Hash = await bcrypt.hash('staff8', 10);
-
             await pool.query(`
                 INSERT INTO users (username, password_hash, role, full_name) VALUES
                 ('admin', $1, 'admin', 'Administrator'),
                 ('staff', $2, 'staff', 'Staff (Under 8)'),
-                ('staff8', $3, 'staff8', 'Staff (8 & Above)')
-            `, [adminHash, staffHash, staff8Hash]);
+                ('staff8', $3, 'staff8', 'Staff (8 & Above)'),
+                ('autism', $4, 'autism', 'Staff (Autism / ASD)')
+            `, [adminHash, staffHash, staff8Hash, autismHash]);
             console.log('Default users seeded successfully.');
+        } else {
+            const checkAutism = await pool.query(`SELECT 1 FROM users WHERE LOWER(username) IN ('autism', 'asd')`);
+            if (checkAutism.rows.length === 0) {
+                await pool.query(
+                    `INSERT INTO users (username, password_hash, role, full_name) VALUES ('autism', $1, 'autism', 'Staff (Autism / ASD)')`,
+                    [autismHash]
+                );
+                console.log('Default autism user seeded successfully.');
+            }
         }
     } catch (e) {
         console.error('Error seeding default users:', e.message);
@@ -259,12 +272,15 @@ async function ensureDbInit() {
             await seedDefaultUsers();
             await seedDefaultTherapyFees();
             await seedDefaultTherapists();
+        } else {
+            await seedDefaultUsers();
         }
         await pool.query(`
             UPDATE children 
             SET admission_no = REGEXP_REPLACE(admission_no, '^ADM([-_]?)', 'EIC\\1', 'i')
             WHERE admission_no ILIKE 'ADM%'
         `);
+        await migrateAdmissionNumbersAndAutism();
         await backfillMissingAdmissionNumbers();
         isDbReady = true;
     } catch (err) {
@@ -292,6 +308,21 @@ function requireAdmin(req, res, next) {
         return res.status(403).json({ error: 'Administrator access required' });
     }
     next();
+}
+
+function getUserRoleFromReq(req) {
+    if (req.user && req.user.role) return req.user.role;
+    if (req.query && req.query.role) return req.query.role;
+    if (req.query && req.query.autism === 'true') return 'autism';
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    if (token) {
+        try {
+            const decoded = jwt.verify(token, JWT_SECRET);
+            return decoded?.role;
+        } catch (e) {}
+    }
+    return null;
 }
 
 // ─── DB Init API ─────────────────────────────────────────────────────────────
@@ -328,10 +359,14 @@ app.post('/api/login', async (req, res) => {
             // Fallback for bootstrap
             if ((u === 'admin' && password === 'admin') ||
                 (u === 'staff' && password === 'staff') ||
-                (u === 'staff8' && password === 'staff8')) {
+                (u === 'staff8' && password === 'staff8') ||
+                (u === 'autism' && (password === 'autism' || password === 'asd')) ||
+                (u === 'asd' && (password === 'asd' || password === 'autism'))) {
                 const hash = await bcrypt.hash(password, 10);
-                const role = u;
-                const name = u === 'admin' ? 'Administrator' : (u === 'staff' ? 'Staff (Under 8)' : 'Staff (8 & Above)');
+                const role = (u === 'asd' || u === 'autism') ? 'autism' : u;
+                const name = u === 'admin' ? 'Administrator' : 
+                    (u === 'staff' ? 'Staff (Under 8)' : 
+                    (u === 'staff8' ? 'Staff (8 & Above)' : 'Staff (Autism / ASD)'));
                 const inserted = await pool.query(
                     `INSERT INTO users (username, password_hash, role, full_name) VALUES ($1, $2, $3, $4) RETURNING *`,
                     [u, hash, role, name]
@@ -463,34 +498,93 @@ app.delete('/api/users/:id', authenticateToken, requireAdmin, async (req, res) =
 
 // ─── Children API ─────────────────────────────────────────────────────────────
 
-async function getNextAdmissionNo() {
+async function getNextAdmissionNo(prefix = 'EIC') {
+    const cleanPrefix = (prefix && String(prefix).trim().toUpperCase().startsWith('TH')) ? 'TH' : 'EIC';
     const result = await pool.query(`
         SELECT admission_no FROM children WHERE admission_no IS NOT NULL AND TRIM(admission_no) != ''
     `);
     let maxNum = 0;
     for (const row of result.rows) {
-        const val = String(row.admission_no).trim();
-        const match = val.match(/\d+/);
-        if (match) {
-            const num = parseInt(match[0], 10);
-            if (!isNaN(num) && num > maxNum) {
-                maxNum = num;
+        const val = String(row.admission_no).trim().toUpperCase();
+        if (val.startsWith(cleanPrefix)) {
+            const match = val.match(/\d+/);
+            if (match) {
+                const num = parseInt(match[0], 10);
+                if (!isNaN(num) && num > maxNum) {
+                    maxNum = num;
+                }
             }
         }
     }
     const nextNum = maxNum + 1;
-    return `EIC-${String(nextNum).padStart(3, '0')}`;
+    return `${cleanPrefix}-${String(nextNum).padStart(3, '0')}`;
+}
+
+function parseAgeYears(ageStr) {
+    if (!ageStr) return null;
+    const str = String(ageStr).toLowerCase().trim();
+    if (str.includes('month') && !str.includes('yr') && !str.includes('year')) return 0;
+    const m = str.match(/(\d+)\s*(yr|year)?/);
+    return m ? parseInt(m[1], 10) : null;
+}
+
+async function migrateAdmissionNumbersAndAutism() {
+    try {
+        await pool.query(`ALTER TABLE children ADD COLUMN IF NOT EXISTS is_autism BOOLEAN DEFAULT FALSE;`);
+        await pool.query(`ALTER TABLE children ADD COLUMN IF NOT EXISTS age TEXT;`);
+        const res = await pool.query(`SELECT id, name, dob, age, created_at, admission_no FROM children ORDER BY id ASC`);
+        for (const child of res.rows) {
+            let years = null;
+            if (child.dob) {
+                const birth = new Date(child.dob);
+                if (!isNaN(birth.getTime())) {
+                    const today = new Date();
+                    years = today.getFullYear() - birth.getFullYear();
+                    const months = today.getMonth() - birth.getMonth();
+                    if (months < 0 || (months === 0 && today.getDate() < birth.getDate())) years--;
+                }
+            }
+            if (years === null && child.age) {
+                years = parseAgeYears(child.age);
+            }
+            if (years !== null && years >= 8) {
+                const curAdm = (child.admission_no || '').trim().toUpperCase();
+                if (!curAdm.startsWith('TH')) {
+                    const newAdm = await getNextAdmissionNo('TH');
+                    await pool.query(`UPDATE children SET admission_no = $1 WHERE id = $2`, [newAdm, child.id]);
+                    console.log(`Migrated child "${child.name}" (current age ${years}) from ${curAdm} to ${newAdm}`);
+                }
+            }
+        }
+    } catch (e) {
+        console.error('Error in migrateAdmissionNumbersAndAutism:', e.message);
+    }
 }
 
 async function backfillMissingAdmissionNumbers() {
     try {
         const unassigned = await pool.query(`
-            SELECT id, name FROM children WHERE admission_no IS NULL OR TRIM(admission_no) = '' ORDER BY id ASC
+            SELECT id, name, dob, age, created_at FROM children WHERE admission_no IS NULL OR TRIM(admission_no) = '' ORDER BY id ASC
         `);
         if (unassigned.rows.length > 0) {
             console.log(`Backfilling admission numbers for ${unassigned.rows.length} children...`);
             for (const child of unassigned.rows) {
-                const adm = await getNextAdmissionNo();
+                let prefix = 'EIC';
+                let years = null;
+                if (child.dob) {
+                    const birth = new Date(child.dob);
+                    if (!isNaN(birth.getTime())) {
+                        const today = new Date();
+                        years = today.getFullYear() - birth.getFullYear();
+                        const months = today.getMonth() - birth.getMonth();
+                        if (months < 0 || (months === 0 && today.getDate() < birth.getDate())) years--;
+                    }
+                }
+                if (years === null && child.age) {
+                    years = parseAgeYears(child.age);
+                }
+                if (years !== null && years >= 8) prefix = 'TH';
+                const adm = await getNextAdmissionNo(prefix);
                 await pool.query(`UPDATE children SET admission_no = $1 WHERE id = $2`, [adm, child.id]);
                 console.log(`Assigned ${adm} to "${child.name}" (ID ${child.id})`);
             }
@@ -502,8 +596,24 @@ async function backfillMissingAdmissionNumbers() {
 
 app.get('/api/children/next-admission-no', async (req, res) => {
     try {
-        const nextNo = await getNextAdmissionNo();
-        res.json({ next_admission_no: nextNo });
+        let prefix = req.query.prefix;
+        if (!prefix && req.query.age) {
+            const y = parseAgeYears(req.query.age);
+            if (y !== null) prefix = y >= 8 ? 'TH' : 'EIC';
+        }
+        if (!prefix && req.query.dob) {
+            const birth = new Date(req.query.dob);
+            if (!isNaN(birth.getTime())) {
+                const today = new Date();
+                let years = today.getFullYear() - birth.getFullYear();
+                const months = today.getMonth() - birth.getMonth();
+                if (months < 0 || (months === 0 && today.getDate() < birth.getDate())) years--;
+                prefix = years >= 8 ? 'TH' : 'EIC';
+            }
+        }
+        if (!prefix) prefix = 'EIC';
+        const nextNo = await getNextAdmissionNo(prefix);
+        res.json({ next_admission_no: nextNo, prefix: nextNo.startsWith('TH') ? 'TH' : 'EIC' });
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: err.message });
@@ -511,16 +621,31 @@ app.get('/api/children/next-admission-no', async (req, res) => {
 });
 
 app.post('/api/children', async (req, res) => {
-    const { name, admission_no, dob, sex, mobile } = req.body;
+    const { name, admission_no, dob, age, sex, mobile, is_autism } = req.body;
     const trimmedName = name ? name.trim() : '';
     if (!trimmedName) return res.status(400).json({ error: 'Child name is required' });
 
     try {
-        const finalAdmNo = admission_no && admission_no.trim() ? admission_no.trim() : await getNextAdmissionNo();
+        let prefix = 'EIC';
+        const parsedYears = parseAgeYears(age);
+        if (parsedYears !== null) {
+            if (parsedYears >= 8) prefix = 'TH';
+        } else if (dob) {
+            const birth = new Date(dob);
+            if (!isNaN(birth.getTime())) {
+                const today = new Date();
+                let years = today.getFullYear() - birth.getFullYear();
+                const months = today.getMonth() - birth.getMonth();
+                if (months < 0 || (months === 0 && today.getDate() < birth.getDate())) years--;
+                if (years >= 8) prefix = 'TH';
+            }
+        }
+        const finalAdmNo = admission_no && admission_no.trim() ? admission_no.trim() : await getNextAdmissionNo(prefix);
+        const isAutismBool = is_autism === true || is_autism === 'true' || is_autism === 1;
 
         const result = await pool.query(
-            `INSERT INTO children (name, admission_no, dob, sex, mobile) VALUES ($1, $2, $3, $4, $5) RETURNING id, name, admission_no, dob, sex, mobile`,
-            [trimmedName, finalAdmNo, dob || null, sex || null, mobile || null]
+            `INSERT INTO children (name, admission_no, dob, age, sex, mobile, is_autism) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, name, admission_no, dob, age, sex, mobile, is_autism`,
+            [trimmedName, finalAdmNo, dob || null, age ? String(age).trim() : null, sex || null, mobile || null, isAutismBool]
         );
         res.status(201).json(result.rows[0]);
     } catch (err) {
@@ -530,26 +655,50 @@ app.post('/api/children', async (req, res) => {
 });
 
 app.put('/api/children/:id', async (req, res) => {
-    const { name, admission_no, dob, sex, mobile } = req.body;
+    const { name, admission_no, dob, age, sex, mobile, is_autism } = req.body;
     const trimmedName = name ? name.trim() : '';
     if (!trimmedName) return res.status(400).json({ error: 'Child name is required' });
 
     try {
         let finalAdmNo = admission_no && admission_no.trim() ? admission_no.trim() : null;
         if (!finalAdmNo) {
-            const cur = await pool.query(`SELECT admission_no FROM children WHERE id = $1`, [req.params.id]);
-            finalAdmNo = cur.rows[0]?.admission_no || await getNextAdmissionNo();
+            const cur = await pool.query(`SELECT admission_no, dob, age FROM children WHERE id = $1`, [req.params.id]);
+            finalAdmNo = cur.rows[0]?.admission_no;
+            if (!finalAdmNo) {
+                let prefix = 'EIC';
+                const checkAge = age || cur.rows[0]?.age;
+                const parsedYears = parseAgeYears(checkAge);
+                if (parsedYears !== null) {
+                    if (parsedYears >= 8) prefix = 'TH';
+                } else {
+                    const checkDob = dob || cur.rows[0]?.dob;
+                    if (checkDob) {
+                        const birth = new Date(checkDob);
+                        if (!isNaN(birth.getTime())) {
+                            const today = new Date();
+                            let years = today.getFullYear() - birth.getFullYear();
+                            const months = today.getMonth() - birth.getMonth();
+                            if (months < 0 || (months === 0 && today.getDate() < birth.getDate())) years--;
+                            if (years >= 8) prefix = 'TH';
+                        }
+                    }
+                }
+                finalAdmNo = await getNextAdmissionNo(prefix);
+            }
         }
+        const isAutismBool = is_autism === true || is_autism === 'true' || is_autism === 1;
 
         const result = await pool.query(
             `UPDATE children SET 
                 name = $1, 
                 admission_no = $2, 
                 dob = $3, 
-                sex = $4, 
-                mobile = $5 
-            WHERE id = $6 RETURNING id, name, admission_no, dob, sex, mobile`,
-            [trimmedName, finalAdmNo, dob || null, sex || null, mobile || null, req.params.id]
+                age = COALESCE($4, age),
+                sex = $5, 
+                mobile = $6,
+                is_autism = COALESCE($7, is_autism)
+            WHERE id = $8 RETURNING id, name, admission_no, dob, age, sex, mobile, is_autism`,
+            [trimmedName, finalAdmNo, dob || null, age ? String(age).trim() : null, sex || null, mobile || null, is_autism !== undefined ? isAutismBool : null, req.params.id]
         );
         if (result.rowCount === 0) return res.status(404).json({ error: 'Child not found' });
 
@@ -564,13 +713,25 @@ app.put('/api/children/:id', async (req, res) => {
 });
 
 app.get('/api/children', async (req, res) => {
-    const { search } = req.query;
+    const { search, autism } = req.query;
     try {
+        const reqRole = getUserRoleFromReq(req);
+        const isAutismReq = autism === 'true' || reqRole === 'autism';
+
         let sql = `SELECT * FROM children`;
         let params = [];
+        let conditions = [];
+
         if (search) {
-            sql += ` WHERE (name ILIKE $1 OR admission_no ILIKE $1 OR mobile ILIKE $1)`;
             params.push(`%${search}%`);
+            conditions.push(`(name ILIKE $${params.length} OR admission_no ILIKE $${params.length} OR mobile ILIKE $${params.length})`);
+        }
+        if (isAutismReq) {
+            conditions.push(`is_autism = TRUE`);
+        }
+
+        if (conditions.length > 0) {
+            sql += ` WHERE ` + conditions.join(' AND ');
         }
         sql += ` ORDER BY created_at DESC`;
 
@@ -672,6 +833,14 @@ app.post('/api/assessments', async (req, res) => {
             }
         }
 
+        const parsedData = typeof data === 'string' ? JSON.parse(data) : data;
+        if (child_id && parsedData) {
+            const isAutism = parsedData.is_autism === true || parsedData.is_autism === 'true' || parsedData.category_type === 'autism' || (parsedData.diagnosis && /\b(autism|asd)\b/i.test(String(parsedData.diagnosis))) || (parsedData.dev_diagnosis && /\b(autism|asd)\b/i.test(String(parsedData.dev_diagnosis)));
+            if (isAutism) {
+                await pool.query(`UPDATE children SET is_autism = true WHERE id = $1`, [child_id]);
+            }
+        }
+
         const result = await pool.query(
             `INSERT INTO assessments (child_id, child_name, form_type, data) VALUES ($1, $2, $3, $4) RETURNING id`,
             [child_id || null, child_name, form_type, stringifiedData]
@@ -684,8 +853,11 @@ app.post('/api/assessments', async (req, res) => {
 });
 
 app.get('/api/assessments', async (req, res) => {
-    const { search, child_id } = req.query;
+    const { search, child_id, autism } = req.query;
     try {
+        const reqRole = getUserRoleFromReq(req);
+        const isAutismReq = autism === 'true' || reqRole === 'autism';
+
         let sql = `SELECT id, child_id, child_name, form_type, created_at, data FROM assessments`;
         let params = [];
         let conditions = [];
@@ -696,6 +868,9 @@ app.get('/api/assessments', async (req, res) => {
         if (child_id) {
             params.push(child_id);
             conditions.push(`child_id = $${params.length}`);
+        }
+        if (isAutismReq) {
+            conditions.push(`child_id IN (SELECT id FROM children WHERE is_autism = TRUE)`);
         }
         if (conditions.length > 0) {
             sql += ` WHERE ` + conditions.join(' AND ');
@@ -750,22 +925,31 @@ app.put('/api/assessments/:id', async (req, res) => {
             const childName = parsedData.child_name || parsedData.name;
             const admissionNo = parsedData.admission_no !== undefined ? parsedData.admission_no : null;
             const dob = parsedData.dob !== undefined ? parsedData.dob : null;
+            const age = parsedData.age !== undefined ? parsedData.age : null;
             const sex = parsedData.sex !== undefined ? parsedData.sex : null;
             const mobile = parsedData.mobile !== undefined ? parsedData.mobile : null;
+            const isAutism = parsedData.is_autism === true || parsedData.is_autism === 'true' || parsedData.category_type === 'autism';
 
             await pool.query(
                 `UPDATE children SET 
                     name = COALESCE($1, name), 
                     admission_no = COALESCE($2, admission_no),
                     dob = COALESCE($3, dob), 
-                    sex = COALESCE($4, sex), 
-                    mobile = COALESCE($5, mobile) 
-                WHERE id = $6`,
-                [childName || null, admissionNo ? admissionNo.trim() : null, dob || null, sex || null, mobile || null, child_id]
+                    age = COALESCE($4, age),
+                    sex = COALESCE($5, sex), 
+                    mobile = COALESCE($6, mobile),
+                    is_autism = CASE WHEN $7 = true THEN true ELSE is_autism END
+                WHERE id = $8`,
+                [childName || null, admissionNo ? admissionNo.trim() : null, dob || null, age ? String(age).trim() : null, sex || null, mobile || null, isAutism, child_id]
             );
 
             if (childName) {
                 await pool.query(`UPDATE assessments SET child_name = $1 WHERE id = $2`, [childName, req.params.id]);
+            }
+        } else if (child_id && parsedData) {
+            const isAutism = parsedData.is_autism === true || parsedData.is_autism === 'true' || parsedData.category_type === 'autism' || (parsedData.diagnosis && /\b(autism|asd)\b/i.test(String(parsedData.diagnosis))) || (parsedData.dev_diagnosis && /\b(autism|asd)\b/i.test(String(parsedData.dev_diagnosis)));
+            if (isAutism) {
+                await pool.query(`UPDATE children SET is_autism = true WHERE id = $1`, [child_id]);
             }
         } else if (parsedData) {
             const anyName = parsedData.child_name || parsedData.name;
@@ -822,10 +1006,13 @@ app.post('/api/attendance', async (req, res) => {
 });
 
 app.get('/api/reports/attendance', async (req, res) => {
-    const { start_date, end_date, child_id } = req.query;
+    const { start_date, end_date, child_id, autism } = req.query;
     try {
+        const reqRole = getUserRoleFromReq(req);
+        const isAutismReq = autism === 'true' || reqRole === 'autism';
+
         let sql = `
-            SELECT t.*, c.name as child_name, c.dob as child_dob, c.admission_no as child_admission_no,
+            SELECT t.*, c.name as child_name, c.dob as child_dob, c.age as child_age, c.admission_no as child_admission_no, c.is_autism as child_is_autism,
                    (SELECT data FROM assessments WHERE child_id = c.id AND (form_type = 'Consultation Form' OR form_type = 'Rapid Assessment') ORDER BY created_at DESC LIMIT 1) as rapid_data
             FROM therapy_attendance t 
             JOIN children c ON t.child_id = c.id 
@@ -845,6 +1032,9 @@ app.get('/api/reports/attendance', async (req, res) => {
         if (child_id) {
             sql += ` AND t.child_id = $${paramIndex++}`;
             params.push(child_id);
+        }
+        if (isAutismReq) {
+            sql += ` AND c.is_autism = TRUE`;
         }
 
         sql += ` ORDER BY t.date DESC`;
@@ -1006,15 +1196,24 @@ app.delete('/api/therapists/:id', async (req, res) => {
 
 app.get('/api/schedules', async (req, res) => {
     const date = req.query.date;
+    const autism = req.query.autism;
     if (!date) return res.status(400).json({ error: 'Date is required' });
 
     try {
-        const result = await pool.query(`
-            SELECT s.*, c.name as child_name, c.dob as child_dob, c.admission_no as child_admission_no 
+        const reqRole = getUserRoleFromReq(req);
+        const isAutismReq = autism === 'true' || reqRole === 'autism';
+
+        let sql = `
+            SELECT s.*, c.name as child_name, c.dob as child_dob, c.age as child_age, c.admission_no as child_admission_no, c.is_autism as child_is_autism 
             FROM schedules s 
             JOIN children c ON s.child_id = c.id 
             WHERE s.date = $1
-        `, [date]);
+        `;
+        if (isAutismReq) {
+            sql += ` AND c.is_autism = TRUE`;
+        }
+
+        const result = await pool.query(sql, [date]);
         res.json(result.rows);
     } catch (err) {
         console.error(err);

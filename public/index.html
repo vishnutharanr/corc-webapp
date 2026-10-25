@@ -155,9 +155,9 @@
                                 <input type="date" id="consultation-date" name="assessment_date" required>
                             </div>
                             <div class="input-group">
-                                <label for="consultation-admission-no">SL.NO / EIC NO <span style="font-size:0.75rem; color:#2563eb; font-weight:600; background:#eff6ff; padding:1px 6px; border-radius:4px; border:1px solid #bfdbfe;">Auto-generated</span></label>
+                                <label for="consultation-admission-no">SL.NO / ADMISSION NO (EIC &lt;8y / TH ≥8y) <span style="font-size:0.75rem; color:#2563eb; font-weight:600; background:#eff6ff; padding:1px 6px; border-radius:4px; border:1px solid #bfdbfe;">Auto-generated</span></label>
                                 <input type="text" id="consultation-admission-no" name="admission_no"
-                                    placeholder="e.g. EIC-028" style="font-weight: 600; color: #1e40af;">
+                                    placeholder="e.g. EIC-028 or TH-001" style="font-weight: 600; color: #1e40af;">
                             </div>
                         </div>
                     </div>
@@ -185,6 +185,12 @@
                             <div class="input-group">
                                 <label for="consultation-age">Age</label>
                                 <input type="text" id="consultation-age" name="age" placeholder="e.g. 2y 6m">
+                            </div>
+                            <div class="input-group" style="display:flex; align-items:center; gap:8px; margin-top:24px;">
+                                <label style="cursor:pointer; display:flex; align-items:center; gap:8px; font-weight:600; color:#4338ca; user-select:none;">
+                                    <input type="checkbox" id="consultation-is-autism" name="is_autism" value="true" style="width:18px; height:18px; accent-color:#7c3aed; cursor:pointer;">
+                                    <span>🧩 Child has Autism (ASD)</span>
+                                </label>
                             </div>
                             <div class="input-group full-width">
                                 <label for="consultation-address">Address with Mobile No</label>
@@ -296,8 +302,8 @@
                                 <input type="text" name="sl_no" placeholder="Sl. No">
                             </div>
                             <div class="input-group">
-                                <label>Admission No / EIC NO</label>
-                                <input type="text" name="admission_no" placeholder="e.g. EIC-001">
+                                <label>Admission No (EIC &lt;8y / TH ≥8y)</label>
+                                <input type="text" name="admission_no" placeholder="e.g. EIC-001 or TH-001">
                             </div>
                             <div class="input-group">
                                 <label>Informant</label>
@@ -2130,9 +2136,10 @@
                     </select>
                     <select id="records-age-filter" class="admin-only-filter"
                         style="display: none; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0; background: white; font-size: 0.9rem;">
-                        <option value="all">All Ages</option>
-                        <option value="under8">Less than 8</option>
-                        <option value="8plus">8 or more than 8</option>
+                        <option value="all">All Children</option>
+                        <option value="under8">Less than 8 (EIC)</option>
+                        <option value="8plus">8 &amp; Above (TH)</option>
+                        <option value="autism">Autism (ASD)</option>
                     </select>
                     <button id="search-btn" class="btn-primary">Search</button>
                     <button id="btn-all-assessments-summary" class="btn-secondary"
@@ -2251,9 +2258,10 @@
                             style="font-size: 0.85rem; font-weight: 600; color: var(--text-light); white-space: nowrap;">Age:</label>
                         <select id="main-summary-age-filter"
                             style="padding: 9px 12px; border-radius: 6px; border: 1px solid var(--border); background: white; font-size: 0.9rem;">
-                            <option value="all">All Ages</option>
-                            <option value="under8">Less than 8</option>
-                            <option value="8plus">8 or more than 8</option>
+                            <option value="all">All Children</option>
+                            <option value="under8">Less than 8 (EIC)</option>
+                            <option value="8plus">8 &amp; Above (TH)</option>
+                            <option value="autism">Autism (ASD)</option>
                         </select>
                     </div>
 
@@ -2472,11 +2480,12 @@
                     </div>
                     <div class="input-group admin-only-filter"
                         style="display: none; margin-bottom: 0; min-width: 120px;">
-                        <label>Age Filter</label>
+                        <label>Category Filter</label>
                         <select id="report-age-filter">
-                            <option value="all">All Ages</option>
-                            <option value="under8">Less than 8</option>
-                            <option value="8plus">8 or more than 8</option>
+                            <option value="all">All Children</option>
+                            <option value="under8">Less than 8 (EIC)</option>
+                            <option value="8plus">8 &amp; Above (TH)</option>
+                            <option value="autism">Autism (ASD)</option>
                         </select>
                     </div>
                     <div class="input-group" style="margin-bottom: 0; min-width: 150px;">
@@ -2673,8 +2682,9 @@
                             <div class="input-group">
                                 <label>Role</label>
                                 <select id="new-user-role" required>
-                                    <option value="staff">Staff (Under 8 Years)</option>
-                                    <option value="staff8">Staff (8 & Above Years)</option>
+                                    <option value="staff">Staff (Under 8 Years - EIC)</option>
+                                    <option value="staff8">Staff (8 &amp; Above Years - TH)</option>
+                                    <option value="autism">Staff (Autism / ASD)</option>
                                     <option value="admin">Administrator (Full Access)</option>
                                 </select>
                             </div>
@@ -3266,8 +3276,8 @@
                     <form id="child-edit-form">
                         <input type="hidden" id="edit-child-id">
                         <div class="input-group">
-                            <label for="edit-child-adm">Admission Number (EIC) <span style="font-size:0.75rem; color:#2563eb; font-weight:600;">(Identifier)</span></label>
-                            <input type="text" id="edit-child-adm" placeholder="e.g. EIC-001" style="font-weight: 600; color: #1e40af;">
+                            <label for="edit-child-adm">Admission Number (EIC &lt;8y / TH ≥8y) <span style="font-size:0.75rem; color:#2563eb; font-weight:600;">(Identifier)</span></label>
+                            <input type="text" id="edit-child-adm" placeholder="e.g. EIC-001 or TH-001" style="font-weight: 600; color: #1e40af;">
                         </div>
                         <div class="input-group">
                             <label for="edit-child-name">Child Name *</label>
@@ -3276,6 +3286,10 @@
                         <div class="input-group">
                             <label for="edit-child-dob">Date of Birth</label>
                             <input type="date" id="edit-child-dob">
+                        </div>
+                        <div class="input-group">
+                            <label for="edit-child-age">Age at Admission <span style="font-size:0.75rem; color:#6b7280; font-weight:normal;">(Permanent)</span></label>
+                            <input type="text" id="edit-child-age" placeholder="e.g. 2y 6m or 7 yrs">
                         </div>
                         <div class="input-group">
                             <label for="edit-child-sex">Sex</label>
@@ -3289,6 +3303,12 @@
                         <div class="input-group">
                             <label for="edit-child-mobile">Mobile Number</label>
                             <input type="tel" id="edit-child-mobile" placeholder="Mobile number">
+                        </div>
+                        <div class="input-group" style="display:flex; align-items:center; gap:8px; margin-top:8px;">
+                            <label style="cursor:pointer; display:flex; align-items:center; gap:8px; font-weight:600; color:#4338ca; user-select:none;">
+                                <input type="checkbox" id="edit-child-is-autism" style="width:18px; height:18px; accent-color:#7c3aed; cursor:pointer;">
+                                <span>🧩 Child diagnosed with Autism (ASD)</span>
+                            </label>
                         </div>
                         <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
                             <button type="button" class="btn-secondary" id="btn-cancel-child-edit">Cancel</button>
