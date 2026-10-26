@@ -3475,6 +3475,15 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentScheduleData = [];
     let scheduleChildrenList = [];
     let selectedScheduleChildIds = new Set();
+    let selectedFilterChildIds = new Set();
+
+    function getPermittedScheduleChildren() {
+        let list = scheduleChildrenList;
+        if (userRole === 'staff' || userRole === 'staff8' || userRole === 'autism') {
+            list = scheduleChildrenList.filter(child => matchesAgeFilter(child));
+        }
+        return list;
+    }
 
     const scheduleDateInput = document.getElementById('schedule-date');
     if (scheduleDateInput) {
@@ -3488,115 +3497,399 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const scheduleHideUnscheduled = document.getElementById('schedule-hide-unscheduled');
     if (scheduleHideUnscheduled) {
-        scheduleHideUnscheduled.addEventListener('change', loadDailySchedule);
+        scheduleHideUnscheduled.addEventListener('change', () => {
+            renderDailyScheduleTable();
+        });
+    }
+
+    // ── Schedule Child Multi-Select Filter Handlers ──────────────────
+    const multiselectWrapper = document.getElementById('schedule-child-multiselect');
+    const multiselectBtn = document.getElementById('schedule-child-multiselect-btn');
+    const multiselectDropdown = document.getElementById('schedule-multiselect-dropdown');
+    const multiselectClearBtn = document.getElementById('schedule-multiselect-clear');
+    const multiselectDoneBtn = document.getElementById('btn-schedule-multiselect-done');
+    const multiselectSearchInput = document.getElementById('schedule-multiselect-search');
+    const multiselectSearchClear = document.getElementById('schedule-multiselect-search-clear');
+    const multiselectList = document.getElementById('schedule-multiselect-list');
+
+    function openScheduleMultiselect() {
+        if (!multiselectDropdown) return;
+        multiselectDropdown.style.display = 'flex';
+        multiselectBtn?.classList.add('active');
+        multiselectBtn?.setAttribute('aria-expanded', 'true');
+        if (multiselectSearchInput) {
+            multiselectSearchInput.value = '';
+            filterMultiselectOptions('');
+            setTimeout(() => multiselectSearchInput.focus(), 60);
+        }
+    }
+
+    function closeScheduleMultiselect() {
+        if (!multiselectDropdown) return;
+        multiselectDropdown.style.display = 'none';
+        multiselectBtn?.classList.remove('active');
+        multiselectBtn?.setAttribute('aria-expanded', 'false');
+    }
+
+    function toggleScheduleMultiselect() {
+        if (!multiselectDropdown) return;
+        if (multiselectDropdown.style.display === 'none' || !multiselectDropdown.style.display) {
+            openScheduleMultiselect();
+        } else {
+            closeScheduleMultiselect();
+        }
+    }
+
+    if (multiselectBtn) {
+        multiselectBtn.addEventListener('click', (e) => {
+            if (e.target.closest('#schedule-multiselect-clear')) return;
+            toggleScheduleMultiselect();
+        });
+    }
+
+    if (multiselectClearBtn) {
+        multiselectClearBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            clearScheduleFilter();
+        });
+    }
+
+    if (multiselectDoneBtn) {
+        multiselectDoneBtn.addEventListener('click', () => {
+            closeScheduleMultiselect();
+        });
+    }
+
+    document.addEventListener('click', (e) => {
+        if (multiselectWrapper && !multiselectWrapper.contains(e.target)) {
+            closeScheduleMultiselect();
+        }
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && multiselectDropdown && multiselectDropdown.style.display !== 'none') {
+            closeScheduleMultiselect();
+        }
+    });
+
+    if (multiselectSearchInput) {
+        multiselectSearchInput.addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase().trim();
+            if (multiselectSearchClear) {
+                multiselectSearchClear.style.display = query ? 'block' : 'none';
+            }
+            filterMultiselectOptions(query);
+        });
+    }
+
+    if (multiselectSearchClear) {
+        multiselectSearchClear.addEventListener('click', () => {
+            if (multiselectSearchInput) {
+                multiselectSearchInput.value = '';
+                multiselectSearchClear.style.display = 'none';
+                filterMultiselectOptions('');
+                multiselectSearchInput.focus();
+            }
+        });
+    }
+
+    function filterMultiselectOptions(query) {
+        const items = document.querySelectorAll('#schedule-multiselect-list .multiselect-option-item');
+        let visibleCount = 0;
+        items.forEach(item => {
+            const name = item.dataset.name || '';
+            const adm = item.dataset.adm || '';
+            if (!query || name.includes(query) || adm.includes(query)) {
+                item.style.display = 'flex';
+                visibleCount++;
+            } else {
+                item.style.display = 'none';
+            }
+        });
+
+        let emptyEl = document.getElementById('multiselect-empty-message');
+        if (visibleCount === 0) {
+            if (!emptyEl && multiselectList) {
+                emptyEl = document.createElement('div');
+                emptyEl.id = 'multiselect-empty-message';
+                emptyEl.className = 'multiselect-empty';
+                emptyEl.textContent = 'No matching children found';
+                multiselectList.appendChild(emptyEl);
+            } else if (emptyEl) {
+                emptyEl.style.display = 'block';
+            }
+        } else if (emptyEl) {
+            emptyEl.style.display = 'none';
+        }
+    }
+
+    document.getElementById('btn-filter-select-all')?.addEventListener('click', () => {
+        const permitted = getPermittedScheduleChildren();
+        const searchVal = multiselectSearchInput ? multiselectSearchInput.value.toLowerCase().trim() : '';
+        if (searchVal) {
+            document.querySelectorAll('#schedule-multiselect-list .multiselect-option-item').forEach(item => {
+                if (item.style.display !== 'none') {
+                    const cid = item.dataset.childId;
+                    if (cid) selectedFilterChildIds.add(String(cid));
+                }
+            });
+        } else {
+            permitted.forEach(c => selectedFilterChildIds.add(String(c.id)));
+        }
+        syncFilterCheckboxes();
+        updateScheduleFilterUI();
+        renderDailyScheduleTable();
+    });
+
+    document.getElementById('btn-filter-select-scheduled')?.addEventListener('click', () => {
+        selectedFilterChildIds.clear();
+        const permitted = getPermittedScheduleChildren();
+        const scheduled = permitted.filter(c => currentScheduleData.some(s => s.child_id === c.id));
+        if (scheduled.length === 0) {
+            showToast('No children have scheduled sessions on this date', true);
+        } else {
+            scheduled.forEach(c => selectedFilterChildIds.add(String(c.id)));
+        }
+        syncFilterCheckboxes();
+        updateScheduleFilterUI();
+        renderDailyScheduleTable();
+    });
+
+    document.getElementById('btn-filter-clear-all')?.addEventListener('click', () => {
+        clearScheduleFilter();
+    });
+
+    function clearScheduleFilter() {
+        selectedFilterChildIds.clear();
+        syncFilterCheckboxes();
+        updateScheduleFilterUI();
+        renderDailyScheduleTable();
+    }
+
+    function syncFilterCheckboxes() {
+        document.querySelectorAll('#schedule-multiselect-list .multiselect-option-item').forEach(item => {
+            const cid = item.dataset.childId;
+            const cb = item.querySelector('.multiselect-option-cb');
+            const isChecked = selectedFilterChildIds.has(String(cid));
+            if (cb) cb.checked = isChecked;
+            if (isChecked) {
+                item.classList.add('selected');
+            } else {
+                item.classList.remove('selected');
+            }
+        });
+    }
+
+    if (multiselectList) {
+        multiselectList.addEventListener('change', (e) => {
+            const cb = e.target.closest('.multiselect-option-cb');
+            if (!cb) return;
+            const cid = String(cb.dataset.id);
+            const parentLabel = cb.closest('.multiselect-option-item');
+            if (cb.checked) {
+                selectedFilterChildIds.add(cid);
+                if (parentLabel) parentLabel.classList.add('selected');
+            } else {
+                selectedFilterChildIds.delete(cid);
+                if (parentLabel) parentLabel.classList.remove('selected');
+            }
+            updateScheduleFilterUI();
+            renderDailyScheduleTable();
+        });
+    }
+
+    function renderScheduleFilterOptions(permittedChildren) {
+        if (!multiselectList) return;
+        if (!permittedChildren || permittedChildren.length === 0) {
+            multiselectList.innerHTML = '<div class="multiselect-empty">No permitted children found</div>';
+            return;
+        }
+
+        let html = '';
+        permittedChildren.forEach(child => {
+            const cid = String(child.id);
+            const isChecked = selectedFilterChildIds.has(cid);
+            const sessionsCount = currentScheduleData.filter(s => s.child_id === child.id).length;
+            const schedBadge = sessionsCount > 0 
+                ? `<span class="multiselect-sched-pill" title="${sessionsCount} session(s) scheduled today">● ${sessionsCount} sched</span>`
+                : '';
+            const admBadge = child.admission_no 
+                ? `<span class="multiselect-adm-tag">${child.admission_no}</span>`
+                : '';
+
+            html += `
+                <label class="multiselect-option-item${isChecked ? ' selected' : ''}" data-child-id="${child.id}" data-name="${(child.name || '').toLowerCase()}" data-adm="${(child.admission_no || '').toLowerCase()}">
+                    <input type="checkbox" class="multiselect-option-cb" data-id="${child.id}" ${isChecked ? 'checked' : ''}>
+                    ${admBadge}
+                    <span class="multiselect-name-text">${child.name}</span>
+                    ${schedBadge}
+                </label>
+            `;
+        });
+        multiselectList.innerHTML = html;
+    }
+
+    function updateScheduleFilterUI() {
+        const permitted = getPermittedScheduleChildren();
+        const labelEl = document.getElementById('schedule-multiselect-label');
+        const clearBtn = document.getElementById('schedule-multiselect-clear');
+        const countEl = document.getElementById('schedule-multiselect-count');
+        const footerStatus = document.getElementById('schedule-multiselect-footer-status');
+
+        const totalSelected = selectedFilterChildIds.size;
+        const totalPermitted = permitted.length;
+
+        if (labelEl) {
+            if (totalSelected === 0) {
+                labelEl.textContent = 'All Children';
+                if (clearBtn) clearBtn.style.display = 'none';
+            } else if (totalSelected === 1) {
+                const singleId = Array.from(selectedFilterChildIds)[0];
+                const child = permitted.find(c => String(c.id) === singleId);
+                const name = child ? ((child.admission_no ? `[${child.admission_no}] ` : '') + child.name) : '1 Child Selected';
+                labelEl.innerHTML = `<span class="filter-pill">1</span> <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${name}</span>`;
+                if (clearBtn) clearBtn.style.display = 'inline-flex';
+            } else if (totalSelected === 2) {
+                const names = Array.from(selectedFilterChildIds).map(id => permitted.find(c => String(c.id) === id)?.name || id);
+                labelEl.innerHTML = `<span class="filter-pill">2 Selected</span> <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${names.join(', ')}</span>`;
+                if (clearBtn) clearBtn.style.display = 'inline-flex';
+            } else {
+                const names = Array.from(selectedFilterChildIds).slice(0, 2).map(id => permitted.find(c => String(c.id) === id)?.name || id);
+                const rem = totalSelected - 2;
+                labelEl.innerHTML = `<span class="filter-pill">${totalSelected} Selected</span> <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${names.join(', ')} +${rem} more</span>`;
+                if (clearBtn) clearBtn.style.display = 'inline-flex';
+            }
+        }
+
+        if (countEl) {
+            countEl.textContent = totalSelected === 0 
+                ? `All (${totalPermitted})` 
+                : `${totalSelected} of ${totalPermitted} selected`;
+        }
+
+        if (footerStatus) {
+            footerStatus.textContent = totalSelected === 0 
+                ? 'Showing all children' 
+                : `Showing ${totalSelected} selected child(ren)`;
+        }
+
+        const legacySelect = document.getElementById('schedule-child-filter');
+        if (legacySelect) {
+            legacySelect.value = totalSelected === 1 ? Array.from(selectedFilterChildIds)[0] : '';
+        }
+    }
+
+    function renderDailyScheduleTable() {
+        const tbody = document.getElementById('schedule-table-body');
+        if (!tbody) return;
+
+        const permittedChildren = getPermittedScheduleChildren();
+        if (permittedChildren.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="14" style="text-align: center;">No permitted children registered.</td></tr>';
+            updateScheduleSelectionUI();
+            return;
+        }
+
+        const hideUnscheduled = document.getElementById('schedule-hide-unscheduled')?.checked;
+
+        let filteredChildren = permittedChildren;
+        if (selectedFilterChildIds.size > 0) {
+            filteredChildren = permittedChildren.filter(c => selectedFilterChildIds.has(String(c.id)));
+        }
+        if (hideUnscheduled) {
+            filteredChildren = filteredChildren.filter(c => currentScheduleData.some(s => s.child_id === c.id));
+        }
+
+        if (filteredChildren.length === 0) {
+            const msg = selectedFilterChildIds.size > 0 
+                ? 'No therapy sessions found for the selected child(ren) on this date.'
+                : 'No therapy sessions scheduled for this date.';
+            tbody.innerHTML = `<tr><td colspan="14" style="text-align: center; color: var(--text-light); padding: 25px;">${msg}</td></tr>`;
+            updateScheduleSelectionUI();
+            return;
+        }
+
+        let html = '';
+        filteredChildren.forEach((child, index) => {
+            const childHasSessions = currentScheduleData.some(s => s.child_id === child.id);
+            const rowClass = childHasSessions ? 'has-sessions' : 'schedule-row-empty';
+            const isSelected = selectedScheduleChildIds.has(String(child.id));
+            const rowSelectedClass = isSelected ? ' schedule-row-selected' : '';
+            const admBadge = child.admission_no ? `<span class="adm-badge" style="display:inline-block; font-size:0.75rem; background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe; border-radius:4px; padding:1px 6px; font-weight:700; margin-bottom:3px;">${child.admission_no}</span><br>` : '';
+            const cb = `<input type="checkbox" class="schedule-child-cb" data-child-id="${child.id}" ${isSelected ? 'checked' : ''} style="cursor: pointer; width: 16px; height: 16px; accent-color: #2563eb; margin-top: 3px; flex-shrink: 0;">`;
+            html += `<tr class="${rowClass}${rowSelectedClass}" data-child-id="${child.id}">`;
+            html += `<td class="sticky-col" data-child-id="${child.id}" style="min-width: 175px;">
+                        <div style="display: flex; align-items: flex-start; gap: 8px;">
+                            ${cb}
+                            <div>
+                                <span style="font-size: 0.78rem; color: #64748b;">${index + 1}.</span>
+                                ${admBadge}
+                                <strong style="color: #1e293b;">${child.name}</strong>
+                            </div>
+                        </div>
+                     </td>`;
+            
+            TIME_SLOTS.forEach(slot => {
+                const block = currentScheduleData.find(s => s.child_id === child.id && s.time_slot === slot);
+                
+                if (block) {
+                    let colorClass = 'sched-other';
+                    const t = block.therapy_type.toLowerCase();
+                    if (t.includes('physio')) colorClass = 'sched-physio';
+                    else if (t.includes('occupational') || t.includes('ot')) colorClass = 'sched-ot';
+                    else if (t.includes('hydro')) colorClass = 'sched-hydro';
+                    else if (t.includes('music')) colorClass = 'sched-music';
+                    else if (t.includes('speech')) colorClass = 'sched-speech';
+                    else if (t.includes('assessment')) colorClass = 'sched-assessment';
+
+                    let shortTherapy = block.therapy_type.split(' ')[0];
+                    if (block.therapy_type === 'Occupational Therapy') shortTherapy = 'OT';
+
+                    html += `<td data-child="${child.id}" data-childadm="${child.admission_no || ''}" data-childname="${child.name}" data-slot="${slot}" data-id="${block.id}" data-type="${block.therapy_type}" data-therapist="${block.therapist_name || ''}">
+                                <div class="schedule-cell ${colorClass}">
+                                    <span>${shortTherapy}</span>
+                                    <span class="therapist-name">(${block.therapist_name || 'TBD'})</span>
+                                </div>
+                             </td>`;
+                } else {
+                    html += `<td data-child="${child.id}" data-childadm="${child.admission_no || ''}" data-childname="${child.name}" data-slot="${slot}"></td>`;
+                }
+            });
+            
+            html += `</tr>`;
+        });
+        tbody.innerHTML = html;
+        updateScheduleSelectionUI();
     }
 
     async function loadDailySchedule() {
         const tbody = document.getElementById('schedule-table-body');
         if (!tbody) return;
-        const date = scheduleDateInput.value;
+        const date = scheduleDateInput ? scheduleDateInput.value : '';
         if (!date) return;
 
         tbody.innerHTML = '<tr><td colspan="14" style="text-align: center;">Loading...</td></tr>';
         try {
-            // Always fetch fresh children list so newly added/updated children appear immediately
+            // Fresh children list
             const respChild = await fetch('/api/children' + (userRole === 'autism' ? '?autism=true' : ''));
             scheduleChildrenList = await respChild.json();
 
-            let permittedChildren = scheduleChildrenList;
-            if (userRole === 'staff' || userRole === 'staff8' || userRole === 'autism') {
-                permittedChildren = scheduleChildrenList.filter(child => matchesAgeFilter(child));
-            }
+            const permittedChildren = getPermittedScheduleChildren();
 
             // Fetch schedules for the date
             const schedUrl = `/api/schedules?date=${encodeURIComponent(date)}` + (userRole === 'autism' ? '&autism=true' : '');
             const respSched = await fetch(schedUrl);
             currentScheduleData = await respSched.json();
 
-            // Populate filter dropdown
-            if (scheduleFilterInput) {
-                const currentVal = scheduleFilterInput.value;
-                scheduleFilterInput.innerHTML = '<option value="">All Children</option><option value="__scheduled__">Only Scheduled Children</option>';
-                permittedChildren.forEach(child => {
-                    const opt = document.createElement('option');
-                    opt.value = child.id;
-                    opt.textContent = (child.admission_no ? `[${child.admission_no}] ` : '') + child.name;
-                    scheduleFilterInput.appendChild(opt);
-                });
-                scheduleFilterInput.value = currentVal;
+            // Prune filter selection of any child no longer permitted/existing
+            const validIds = new Set(permittedChildren.map(c => String(c.id)));
+            for (const id of selectedFilterChildIds) {
+                if (!validIds.has(id)) selectedFilterChildIds.delete(id);
             }
 
-            if (permittedChildren.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="14" style="text-align: center;">No permitted children registered.</td></tr>';
-                return;
-            }
-
-            const filterChildId = scheduleFilterInput ? scheduleFilterInput.value : '';
-            const hideUnscheduled = document.getElementById('schedule-hide-unscheduled')?.checked;
-
-            let filteredChildren = permittedChildren;
-            if (filterChildId && filterChildId !== '__scheduled__') {
-                filteredChildren = permittedChildren.filter(c => c.id == filterChildId);
-            } else if (filterChildId === '__scheduled__' || hideUnscheduled) {
-                filteredChildren = permittedChildren.filter(c => currentScheduleData.some(s => s.child_id === c.id));
-            }
-
-            if (filteredChildren.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="14" style="text-align: center; color: var(--text-light); padding: 25px;">No therapy sessions scheduled for this date.</td></tr>';
-                return;
-            }
-
-            let html = '';
-            filteredChildren.forEach((child, index) => {
-                const childHasSessions = currentScheduleData.some(s => s.child_id === child.id);
-                const rowClass = childHasSessions ? 'has-sessions' : 'schedule-row-empty';
-                const isSelected = selectedScheduleChildIds.has(String(child.id));
-                const rowSelectedClass = isSelected ? ' schedule-row-selected' : '';
-                const admBadge = child.admission_no ? `<span class="adm-badge" style="display:inline-block; font-size:0.75rem; background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe; border-radius:4px; padding:1px 6px; font-weight:700; margin-bottom:3px;">${child.admission_no}</span><br>` : '';
-                const cb = `<input type="checkbox" class="schedule-child-cb" data-child-id="${child.id}" ${isSelected ? 'checked' : ''} style="cursor: pointer; width: 16px; height: 16px; accent-color: #2563eb; margin-top: 3px; flex-shrink: 0;">`;
-                html += `<tr class="${rowClass}${rowSelectedClass}" data-child-id="${child.id}">`;
-                html += `<td class="sticky-col" data-child-id="${child.id}" style="min-width: 175px;">
-                            <div style="display: flex; align-items: flex-start; gap: 8px;">
-                                ${cb}
-                                <div>
-                                    <span style="font-size: 0.78rem; color: #64748b;">${index + 1}.</span>
-                                    ${admBadge}
-                                    <strong style="color: #1e293b;">${child.name}</strong>
-                                </div>
-                            </div>
-                         </td>`;
-                
-                TIME_SLOTS.forEach(slot => {
-                    const block = currentScheduleData.find(s => s.child_id === child.id && s.time_slot === slot);
-                    
-                    if (block) {
-                        let colorClass = 'sched-other';
-                        const t = block.therapy_type.toLowerCase();
-                        if (t.includes('physio')) colorClass = 'sched-physio';
-                        else if (t.includes('occupational') || t.includes('ot')) colorClass = 'sched-ot';
-                        else if (t.includes('hydro')) colorClass = 'sched-hydro';
-                        else if (t.includes('music')) colorClass = 'sched-music';
-                        else if (t.includes('speech')) colorClass = 'sched-speech';
-                        else if (t.includes('assessment')) colorClass = 'sched-assessment';
-
-                        let shortTherapy = block.therapy_type.split(' ')[0];
-                        if (block.therapy_type === 'Occupational Therapy') shortTherapy = 'OT';
-
-                        html += `<td data-child="${child.id}" data-childadm="${child.admission_no || ''}" data-childname="${child.name}" data-slot="${slot}" data-id="${block.id}" data-type="${block.therapy_type}" data-therapist="${block.therapist_name || ''}">
-                                    <div class="schedule-cell ${colorClass}">
-                                        <span>${shortTherapy}</span>
-                                        <span class="therapist-name">(${block.therapist_name || 'TBD'})</span>
-                                    </div>
-                                 </td>`;
-                    } else {
-                        html += `<td data-child="${child.id}" data-childadm="${child.admission_no || ''}" data-childname="${child.name}" data-slot="${slot}"></td>`;
-                    }
-                });
-                
-                html += `</tr>`;
-            });
-            tbody.innerHTML = html;
-            updateScheduleSelectionUI();
+            renderScheduleFilterOptions(permittedChildren);
+            updateScheduleFilterUI();
+            renderDailyScheduleTable();
         } catch (err) {
             tbody.innerHTML = '<tr><td colspan="14" style="text-align: center; color: red;">Failed to load schedule.</td></tr>';
         }
@@ -3745,12 +4038,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (selectedScheduleChildIds.size > 0) {
             targetChildren = permittedChildren.filter(c => selectedScheduleChildIds.has(String(c.id)));
         } else {
-            const filterChildId = scheduleFilterInput ? scheduleFilterInput.value : '';
             const hideUnscheduled = document.getElementById('schedule-hide-unscheduled')?.checked;
-            if (filterChildId && filterChildId !== '__scheduled__') {
-                targetChildren = permittedChildren.filter(c => c.id == filterChildId);
-            } else if (filterChildId === '__scheduled__' || hideUnscheduled) {
-                targetChildren = permittedChildren.filter(c => currentScheduleData.some(s => s.child_id === c.id));
+            if (selectedFilterChildIds.size > 0) {
+                targetChildren = permittedChildren.filter(c => selectedFilterChildIds.has(String(c.id)));
+            }
+            if (hideUnscheduled) {
+                targetChildren = targetChildren.filter(c => currentScheduleData.some(s => s.child_id === c.id));
             }
         }
 
@@ -3958,12 +4251,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (selectedScheduleChildIds.size > 0) {
             targetChildren = permittedChildren.filter(c => selectedScheduleChildIds.has(String(c.id)));
         } else {
-            const filterChildId = scheduleFilterInput ? scheduleFilterInput.value : '';
             const hideUnscheduled = document.getElementById('schedule-hide-unscheduled')?.checked;
-            if (filterChildId && filterChildId !== '__scheduled__') {
-                targetChildren = permittedChildren.filter(c => c.id == filterChildId);
-            } else if (filterChildId === '__scheduled__' || hideUnscheduled) {
-                targetChildren = permittedChildren.filter(c => currentScheduleData.some(s => s.child_id === c.id));
+            if (selectedFilterChildIds.size > 0) {
+                targetChildren = permittedChildren.filter(c => selectedFilterChildIds.has(String(c.id)));
+            }
+            if (hideUnscheduled) {
+                targetChildren = targetChildren.filter(c => currentScheduleData.some(s => s.child_id === c.id));
             }
         }
 
@@ -4305,9 +4598,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // If no children selected in table, pre-select default
         if (selectedScheduleChildIds.size === 0) {
-            const filterChildId = scheduleFilterInput ? scheduleFilterInput.value : '';
-            if (filterChildId && filterChildId !== '__scheduled__') {
-                selectedScheduleChildIds.add(String(filterChildId));
+            if (selectedFilterChildIds.size > 0) {
+                selectedFilterChildIds.forEach(id => selectedScheduleChildIds.add(String(id)));
             } else {
                 // Pre-select all who have sessions today
                 const scheduledIds = permittedChildren

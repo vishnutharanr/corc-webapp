@@ -16,7 +16,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="styles.css?v=27">
+    <link rel="stylesheet" href="styles.css?v=28">
 </head>
 
 <body>
@@ -2380,13 +2380,42 @@
                         <h2>📅 Daily Therapy Schedule</h2>
                         <p>Plan daily therapy sessions for all children.</p>
                     </div>
-                    <div style="display: flex; gap: 15px; align-items: flex-end;">
-                        <div class="input-group" style="margin-bottom: 0;">
-                            <label>Filter by Child</label>
-                            <select id="schedule-child-filter">
-                                <option value="">All Children</option>
-                                <option value="__scheduled__">Only Scheduled Children</option>
-                            </select>
+                    <div style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap;">
+                        <div class="input-group schedule-filter-group" style="margin-bottom: 0; position: relative;">
+                            <label for="schedule-child-multiselect-btn">Filter by Child</label>
+                            <div class="schedule-multiselect-wrapper" id="schedule-child-multiselect">
+                                <button type="button" id="schedule-child-multiselect-btn" class="schedule-multiselect-btn" aria-haspopup="listbox" aria-expanded="false" title="Click to filter by multiple children">
+                                    <span class="schedule-multiselect-text" id="schedule-multiselect-label">All Children</span>
+                                    <span class="schedule-multiselect-actions">
+                                        <span id="schedule-multiselect-clear" class="schedule-multiselect-clear-btn" title="Reset filter to all children" style="display: none;">&times;</span>
+                                        <svg class="schedule-multiselect-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                                    </span>
+                                </button>
+                                
+                                <div id="schedule-multiselect-dropdown" class="schedule-multiselect-dropdown" style="display: none;">
+                                    <div class="schedule-multiselect-search-box">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="search-icon"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                                        <input type="text" id="schedule-multiselect-search" placeholder="Search child name or ID..." autocomplete="off">
+                                        <button type="button" id="schedule-multiselect-search-clear" class="search-clear-btn" style="display: none;">&times;</button>
+                                    </div>
+                                    <div class="schedule-multiselect-toolbar">
+                                        <div class="toolbar-actions">
+                                            <button type="button" id="btn-filter-select-all" class="filter-tool-btn">Select All</button>
+                                            <button type="button" id="btn-filter-select-scheduled" class="filter-tool-btn highlight">Scheduled Only</button>
+                                            <button type="button" id="btn-filter-clear-all" class="filter-tool-btn danger">Clear</button>
+                                        </div>
+                                        <span id="schedule-multiselect-count" class="multiselect-count">All (0)</span>
+                                    </div>
+                                    <div id="schedule-multiselect-list" class="schedule-multiselect-options">
+                                        <!-- Child options injected by JS -->
+                                    </div>
+                                    <div class="schedule-multiselect-footer">
+                                        <span id="schedule-multiselect-footer-status" style="font-size: 0.78rem; color: #64748b;">Showing all children</span>
+                                        <button type="button" id="btn-schedule-multiselect-done" class="btn-primary btn-sm" style="padding: 4px 12px; font-size: 0.8rem;">Done</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <select id="schedule-child-filter" style="display: none;"></select>
                         </div>
                         <div class="input-group" style="margin-bottom: 0; align-self: flex-end; padding-bottom: 8px;">
                             <label style="display: flex; align-items: center; gap: 6px; margin: 0; font-size: 0.85rem; font-weight: 500; cursor: pointer; color: var(--text-light); white-space: nowrap;">
@@ -3370,7 +3399,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="app.js?v=27"></script>
+    <script src="app.js?v=28"></script>
 </body>
 
 </html>
