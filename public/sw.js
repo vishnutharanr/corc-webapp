@@ -1,11 +1,11 @@
-const CACHE_NAME = 'corc-v28';
+const CACHE_NAME = 'corc-v30';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
   '/styles.css',
-  '/styles.css?v=28',
+  '/styles.css?v=30',
   '/app.js',
-  '/app.js?v=28',
+  '/app.js?v=30',
   '/logo.jpg',
   '/manifest.json'
 ];
@@ -37,23 +37,32 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // Network-First for HTML navigation documents so updates take effect immediately
-  if (e.request.mode === 'navigate' || e.request.destination === 'document' || e.request.url.endsWith('/') || e.request.url.includes('/index.html')) {
+  // Network-First for HTML navigation documents, scripts, and stylesheets so code updates take effect immediately
+  const isDocOrCode = e.request.mode === 'navigate' || 
+                      e.request.destination === 'document' || 
+                      e.request.destination === 'script' || 
+                      e.request.destination === 'style' ||
+                      e.request.url.includes('.js') || 
+                      e.request.url.includes('.css') || 
+                      e.request.url.endsWith('/') || 
+                      e.request.url.includes('/index.html');
+
+  if (isDocOrCode) {
     e.respondWith(
       fetch(e.request)
         .then((networkRes) => {
-          if (networkRes.status === 200) {
+          if (networkRes.status === 200 && e.request.url.startsWith(self.location.origin)) {
             const resClone = networkRes.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put(e.request, resClone));
           }
           return networkRes;
         })
-        .catch(() => caches.match('/index.html') || caches.match(e.request))
+        .catch(() => caches.match(e.request) || caches.match('/index.html'))
     );
     return;
   }
 
-  // Cache-First for static assets
+  // Cache-First for static assets (images, fonts, manifests)
   e.respondWith(
     caches.match(e.request).then((cached) => {
       return cached || fetch(e.request).then((networkRes) => {

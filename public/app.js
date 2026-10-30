@@ -3,7 +3,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // ── PWA Service Worker Registration ───────────────────────
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            navigator.serviceWorker.register('/sw.js').catch(err => {
+            navigator.serviceWorker.register('/sw.js').then(reg => {
+                reg.update();
+            }).catch(err => {
                 console.log('SW registration error:', err);
             });
         });
@@ -420,6 +422,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (targetId === 'user-management') fetchUsers();
         if (targetId === 'therapies-settings') fetchTherapyFees();
         if (targetId === 'therapists-settings') fetchTherapists();
+        if (targetId === 'schedule') {
+            const schedDate = document.getElementById('schedule-date');
+            if (schedDate && !schedDate.value) {
+                schedDate.value = getLocalTodayDateString();
+            }
+            loadDailySchedule();
+        }
         if (targetId === 'consultation-form' || targetId === 'rapid-assessment') {
             targetId = 'consultation-form';
             if (!activeChild) primeConsultationAdmissionNo();
@@ -3910,7 +3919,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 fetchTherapists();
             }
             if (item.getAttribute('data-target') === 'schedule') {
-                document.getElementById('schedule-date').value = new Date().toISOString().split('T')[0];
+                const schedDate = document.getElementById('schedule-date');
+                if (schedDate && !schedDate.value) {
+                    schedDate.value = getLocalTodayDateString();
+                }
                 loadDailySchedule();
             }
         });
@@ -3941,13 +3953,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (category === 'th' || category === '8plus') {
             if (isAutism) return false;
             if (isTH) return true;
-            if (isEIC) return false;
+            if (isEIC) return ageNum >= 8 && !!child.dob;
             return ageNum >= 8;
         }
         if (category === 'eic' || category === 'under8') {
             if (isAutism) return false;
-            if (isEIC) return true;
             if (isTH) return false;
+            if (isEIC) return true;
             return ageNum < 8;
         }
         return true;
@@ -3967,18 +3979,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const scheduleCategoryFilter = document.getElementById('schedule-category-filter');
     if (scheduleCategoryFilter) {
-        scheduleCategoryFilter.addEventListener('change', () => {
-            const permittedChildren = getPermittedScheduleChildren();
-            const validIds = new Set(permittedChildren.map(c => String(c.id)));
-            for (const id of selectedFilterChildIds) {
-                if (!validIds.has(id)) selectedFilterChildIds.delete(id);
-            }
-            for (const id of selectedScheduleChildIds) {
-                if (!validIds.has(id)) selectedScheduleChildIds.delete(id);
-            }
-            renderScheduleFilterOptions(permittedChildren);
-            updateScheduleFilterUI();
-            renderDailyScheduleTable();
+        ['change', 'input'].forEach(evtName => {
+            scheduleCategoryFilter.addEventListener(evtName, () => {
+                selectedFilterChildIds.clear();
+                selectedScheduleChildIds.clear();
+                const permittedChildren = getPermittedScheduleChildren();
+                renderScheduleFilterOptions(permittedChildren);
+                updateScheduleFilterUI();
+                renderDailyScheduleTable();
+            });
         });
     }
 
