@@ -127,6 +127,29 @@ document.addEventListener('DOMContentLoaded', () => {
         // Filter "+ New Assessment" cards
         filterAssessmentCardsForRole();
 
+        // Configure #schedule-category-filter options
+        const schedCatFilter = document.getElementById('schedule-category-filter');
+        if (schedCatFilter) {
+            if (isAsd) {
+                schedCatFilter.value = 'asd';
+                Array.from(schedCatFilter.options).forEach(opt => {
+                    opt.style.display = (opt.value === 'asd' || opt.value === 'all') ? '' : 'none';
+                });
+            } else if (userRole === 'staff') {
+                schedCatFilter.value = 'eic';
+                Array.from(schedCatFilter.options).forEach(opt => {
+                    opt.style.display = (opt.value === 'eic' || opt.value === 'all') ? '' : 'none';
+                });
+            } else if (userRole === 'staff8') {
+                schedCatFilter.value = 'th';
+                Array.from(schedCatFilter.options).forEach(opt => {
+                    opt.style.display = (opt.value === 'th' || opt.value === 'all') ? '' : 'none';
+                });
+            } else {
+                Array.from(schedCatFilter.options).forEach(opt => opt.style.display = '');
+            }
+        }
+
         // Filter #records-therapy-filter options
         const therapyFilter = document.getElementById('records-therapy-filter');
         if (therapyFilter) {
@@ -3904,12 +3927,59 @@ document.addEventListener('DOMContentLoaded', () => {
     let selectedScheduleChildIds = new Set();
     let selectedFilterChildIds = new Set();
 
+    function matchesScheduleCategory(child, category = 'all') {
+        if (!category || category === 'all') return true;
+        const isAutism = isAutismChild(child);
+        const adm = (child.admission_no || '').trim().toUpperCase();
+        const isTH = adm.startsWith('TH');
+        const isEIC = adm.startsWith('EIC');
+        const ageNum = extractChildAge(child);
+
+        if (category === 'asd' || category === 'autism') {
+            return isAutism;
+        }
+        if (category === 'th' || category === '8plus') {
+            if (isAutism) return false;
+            if (isTH) return true;
+            if (isEIC) return false;
+            return ageNum >= 8;
+        }
+        if (category === 'eic' || category === 'under8') {
+            if (isAutism) return false;
+            if (isEIC) return true;
+            if (isTH) return false;
+            return ageNum < 8;
+        }
+        return true;
+    }
+
     function getPermittedScheduleChildren() {
         let list = scheduleChildrenList;
         if (userRole === 'staff' || userRole === 'staff8' || userRole === 'autism' || userRole === 'asd') {
             list = scheduleChildrenList.filter(child => matchesAgeFilter(child));
         }
+        const categoryFilter = document.getElementById('schedule-category-filter')?.value || 'all';
+        if (categoryFilter !== 'all') {
+            list = list.filter(child => matchesScheduleCategory(child, categoryFilter));
+        }
         return list;
+    }
+
+    const scheduleCategoryFilter = document.getElementById('schedule-category-filter');
+    if (scheduleCategoryFilter) {
+        scheduleCategoryFilter.addEventListener('change', () => {
+            const permittedChildren = getPermittedScheduleChildren();
+            const validIds = new Set(permittedChildren.map(c => String(c.id)));
+            for (const id of selectedFilterChildIds) {
+                if (!validIds.has(id)) selectedFilterChildIds.delete(id);
+            }
+            for (const id of selectedScheduleChildIds) {
+                if (!validIds.has(id)) selectedScheduleChildIds.delete(id);
+            }
+            renderScheduleFilterOptions(permittedChildren);
+            updateScheduleFilterUI();
+            renderDailyScheduleTable();
+        });
     }
 
     const scheduleDateInput = document.getElementById('schedule-date');
@@ -4456,10 +4526,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const dateValue = dateInput ? dateInput.value : '';
         const formattedDate = dateValue ? formatDisplayDate(dateValue) : '';
 
-        let permittedChildren = scheduleChildrenList;
-        if (userRole === 'staff' || userRole === 'staff8' || userRole === 'autism' || userRole === 'asd') {
-            permittedChildren = scheduleChildrenList.filter(child => matchesAgeFilter(child));
-        }
+        let permittedChildren = getPermittedScheduleChildren();
 
         let targetChildren = permittedChildren;
         if (selectedScheduleChildIds.size > 0) {
@@ -4531,6 +4598,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         tableBodyHtml += '</tbody>';
 
+        const catVal = document.getElementById('schedule-category-filter')?.value || 'all';
+        const catMap = { 'eic': 'EIC (Under 8)', 'th': 'TH (8 & Above)', 'asd': 'ASD (Autism)' };
+        const catInfo = catVal !== 'all' ? ` • Category: ${catMap[catVal] || catVal.toUpperCase()}` : '';
+        const printMetaLine = `<p class="meta">Date: ${formattedDate}${catInfo}${selectedScheduleChildIds.size > 0 ? ` • Selected Children: ${targetChildren.length}` : ` • Total Children: ${targetChildren.length}`}</p>`;
+
         const printHtml = `<!DOCTYPE html>
 <html>
 <head>
@@ -4596,7 +4668,7 @@ document.addEventListener('DOMContentLoaded', () => {
     <div class="header">
         <h1>Early Intervention Centre for Children with Cerebral Palsy</h1>
         <h2>Daily Therapy Schedule</h2>
-        <p class="meta">Date: ${formattedDate}${selectedScheduleChildIds.size > 0 ? ` • Selected Children: ${targetChildren.length}` : ` • Total Children: ${targetChildren.length}`}</p>
+        ${printMetaLine}
     </div>
     <table>
         ${tableHeaderHtml}
@@ -4669,10 +4741,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         const formattedDate = formatDisplayDate(dateValue);
 
-        let permittedChildren = scheduleChildrenList;
-        if (userRole === 'staff' || userRole === 'staff8' || userRole === 'autism' || userRole === 'asd') {
-            permittedChildren = scheduleChildrenList.filter(child => matchesAgeFilter(child));
-        }
+        let permittedChildren = getPermittedScheduleChildren();
 
         let targetChildren = permittedChildren;
         if (selectedScheduleChildIds.size > 0) {
@@ -4725,9 +4794,12 @@ document.addEventListener('DOMContentLoaded', () => {
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(8);
             doc.setTextColor(100, 116, 139);
-            const selectionInfo = selectedScheduleChildIds.size > 0
+            const catVal = document.getElementById('schedule-category-filter')?.value || 'all';
+            const catMap = { 'eic': 'EIC', 'th': 'TH', 'asd': 'ASD' };
+            const catBadge = catVal !== 'all' ? ` [${catMap[catVal] || catVal.toUpperCase()}]` : '';
+            const selectionInfo = (selectedScheduleChildIds.size > 0
                 ? `Selected Children: ${targetChildren.length} of ${permittedChildren.length}`
-                : `Total Children Shown: ${targetChildren.length}`;
+                : `Total Children Shown: ${targetChildren.length}`) + catBadge;
             doc.text(selectionInfo, pageWidth - 10, 18.5, { align: 'right' });
 
             // Table Columns: Name column + 13 slots
@@ -4951,10 +5023,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const timeOrder = {};
         TIME_SLOTS.forEach((slot, index) => timeOrder[slot] = index);
 
-        let permittedChildren = scheduleChildrenList;
-        if (userRole === 'staff' || userRole === 'staff8' || userRole === 'autism' || userRole === 'asd') {
-            permittedChildren = scheduleChildrenList.filter(child => matchesAgeFilter(child));
-        }
+        let permittedChildren = getPermittedScheduleChildren();
 
         const selectedChildren = permittedChildren.filter(c => childIds.includes(String(c.id)));
         if (selectedChildren.length === 0) {
@@ -5018,10 +5087,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        let permittedChildren = scheduleChildrenList;
-        if (userRole === 'staff' || userRole === 'staff8' || userRole === 'autism' || userRole === 'asd') {
-            permittedChildren = scheduleChildrenList.filter(child => matchesAgeFilter(child));
-        }
+        let permittedChildren = getPermittedScheduleChildren();
 
         // If no children selected in table, pre-select default
         if (selectedScheduleChildIds.size === 0) {
@@ -5060,10 +5126,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const countEl = document.getElementById('share-modal-selected-count');
         if (!checklistEl) return;
 
-        let permittedChildren = scheduleChildrenList;
-        if (userRole === 'staff' || userRole === 'staff8' || userRole === 'autism' || userRole === 'asd') {
-            permittedChildren = scheduleChildrenList.filter(child => matchesAgeFilter(child));
-        }
+        let permittedChildren = getPermittedScheduleChildren();
 
         if (countEl) countEl.textContent = selectedScheduleChildIds.size;
 
@@ -5116,10 +5179,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Modal Selection Buttons
     document.getElementById('btn-share-modal-select-all')?.addEventListener('click', () => {
-        let permittedChildren = scheduleChildrenList;
-        if (userRole === 'staff' || userRole === 'staff8' || userRole === 'autism' || userRole === 'asd') {
-            permittedChildren = scheduleChildrenList.filter(child => matchesAgeFilter(child));
-        }
+        let permittedChildren = getPermittedScheduleChildren();
         permittedChildren.forEach(c => selectedScheduleChildIds.add(String(c.id)));
         renderShareModalChecklist();
         updateScheduleSelectionUI();
@@ -5128,10 +5188,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('btn-share-modal-select-scheduled')?.addEventListener('click', () => {
         selectedScheduleChildIds.clear();
-        let permittedChildren = scheduleChildrenList;
-        if (userRole === 'staff' || userRole === 'staff8' || userRole === 'autism' || userRole === 'asd') {
-            permittedChildren = scheduleChildrenList.filter(child => matchesAgeFilter(child));
-        }
+        let permittedChildren = getPermittedScheduleChildren();
         permittedChildren.forEach(c => {
             if (currentScheduleData.some(s => s.child_id === c.id)) {
                 selectedScheduleChildIds.add(String(c.id));

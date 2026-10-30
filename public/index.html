@@ -4088,6 +4088,15 @@
                         <p>Plan daily therapy sessions for all children.</p>
                     </div>
                     <div style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap;">
+                        <div class="input-group" style="margin-bottom: 0;">
+                            <label for="schedule-category-filter" style="font-size: 0.85rem; font-weight: 600; color: var(--text-light); margin-bottom: 4px; display: block;">Category (EIC, TH, ASD)</label>
+                            <select id="schedule-category-filter" style="padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border); background: white; font-size: 0.88rem; font-weight: 600; cursor: pointer; height: 38px; color: #1e293b; min-width: 175px;">
+                                <option value="all">All (EIC, TH, ASD)</option>
+                                <option value="eic">EIC (Under 8)</option>
+                                <option value="th">TH (8 &amp; Above)</option>
+                                <option value="asd">ASD (Autism)</option>
+                            </select>
+                        </div>
                         <div class="input-group schedule-filter-group" style="margin-bottom: 0; position: relative;">
                             <label for="schedule-child-multiselect-btn">Filter by Child</label>
                             <div class="schedule-multiselect-wrapper" id="schedule-child-multiselect">
