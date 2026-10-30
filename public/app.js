@@ -124,12 +124,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // Filter Sidebar Navigation for Autism assessments
-        const navAbc = document.getElementById('nav-abc-assessment') || document.querySelector('li[data-target="abc-assessment"]');
-        const navIsaa = document.getElementById('nav-isaa-assessment') || document.querySelector('li[data-target="isaa-assessment"]');
-        if (navAbc) navAbc.style.display = (isGeneralStaff) ? 'none' : 'flex';
-        if (navIsaa) navIsaa.style.display = (isGeneralStaff) ? 'none' : 'flex';
-
         // Filter "+ New Assessment" cards
         filterAssessmentCardsForRole();
 
