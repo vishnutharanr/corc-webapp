@@ -4535,7 +4535,7 @@ document.addEventListener('DOMContentLoaded', () => {
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>CORC Daily Therapy Schedule - ${formattedDate}</title>
+    <title>Daily Therapy Schedule - ${formattedDate}</title>
     <style>
         @page {
             size: A4 landscape;
@@ -4594,7 +4594,7 @@ document.addEventListener('DOMContentLoaded', () => {
 </head>
 <body>
     <div class="header">
-        <h1>Children Occupational Rehabilitation Centre (CORC)</h1>
+        <h1>Early Intervention Centre for Children with Cerebral Palsy</h1>
         <h2>Daily Therapy Schedule</h2>
         <p class="meta">Date: ${formattedDate}${selectedScheduleChildIds.size > 0 ? ` • Selected Children: ${targetChildren.length}` : ` • Total Children: ${targetChildren.length}`}</p>
     </div>
@@ -4710,7 +4710,7 @@ document.addEventListener('DOMContentLoaded', () => {
             doc.setTextColor(255, 255, 255);
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(10.5);
-            doc.text('CHILDREN OCCUPATIONAL REHABILITATION CENTRE (CORC)', 10, 8.5);
+            doc.text('EARLY INTERVENTION CENTRE FOR CHILDREN WITH CEREBRAL PALSY', 10, 8.5);
 
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(8.5);
@@ -4827,12 +4827,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     doc.setFontSize(6.5);
                     doc.setTextColor(148, 163, 184);
                     doc.text(`Page ${data.pageNumber} of ${pageCount}`, pageWidth - 10, pageHeight - 4, { align: 'right' });
-                    doc.text(`CORC Daily Therapy Schedule • Generated on ${new Date().toLocaleDateString()}`, 10, pageHeight - 4);
+                    doc.text(`Daily Therapy Schedule • Generated on ${new Date().toLocaleDateString()}`, 10, pageHeight - 4);
                 }
             });
 
             const safeDate = dateValue.replace(/[^a-zA-Z0-9-]/g, '_');
-            doc.save(`CORC_Daily_Schedule_${safeDate}.pdf`);
+            doc.save(`Daily_Schedule_${safeDate}.pdf`);
             showToast('Schedule PDF downloaded successfully!');
         } catch (err) {
             console.error('Error generating schedule PDF:', err);
@@ -4958,7 +4958,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const selectedChildren = permittedChildren.filter(c => childIds.includes(String(c.id)));
         if (selectedChildren.length === 0) {
-            return `*CHILDREN OCCUPATIONAL REHABILITATION CENTRE (CORC)*\n*Daily Therapy Schedule*\n*Date:* ${formattedDate}\n\n_No children selected._`;
+            return `*EARLY INTERVENTION CENTRE FOR CHILDREN WITH CEREBRAL PALSY*\n*Daily Therapy Schedule*\n*Date:* ${formattedDate}\n\n_No children selected._`;
         }
 
         if (selectedChildren.length === 1) {
@@ -4966,7 +4966,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const blocks = currentScheduleData.filter(s => s.child_id == child.id);
             blocks.sort((a, b) => (timeOrder[a.time_slot] ?? 99) - (timeOrder[b.time_slot] ?? 99));
 
-            let message = `*CHILDREN OCCUPATIONAL REHABILITATION CENTRE (CORC)*\n`;
+            let message = `*EARLY INTERVENTION CENTRE FOR CHILDREN WITH CEREBRAL PALSY*\n`;
             message += `*Daily Therapy Schedule*\n\n`;
             message += `*Child Name:* ${child.name}${child.admission_no ? ` (Adm: ${child.admission_no})` : ''}\n`;
             message += `*Date:* ${formattedDate}\n\n`;
@@ -4984,7 +4984,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return message.trim();
         }
 
-        let message = `*CHILDREN OCCUPATIONAL REHABILITATION CENTRE (CORC)*\n`;
+        let message = `*EARLY INTERVENTION CENTRE FOR CHILDREN WITH CEREBRAL PALSY*\n`;
         message += `*Daily Therapy Schedule*\n`;
         message += `*Date:* ${formattedDate}\n`;
         message += `*Selected Children:* ${selectedChildren.length}\n\n`;
