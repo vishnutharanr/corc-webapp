@@ -57,6 +57,12 @@
                 <li class="nav-item" data-target="assessment-summaries" id="nav-assessment-summaries">
                     <span class="nav-icon">📋</span> Assessment Summaries
                 </li>
+                <li class="nav-item" data-target="abc-assessment" id="nav-abc-assessment" title="Autism Behavior Checklist (Tamil Version)">
+                    <span class="nav-icon">🧩</span> ABC Assessment (Tamil)
+                </li>
+                <li class="nav-item" data-target="isaa-assessment" id="nav-isaa-assessment" title="Indian Scale for Assessment of Autism (Tamil Version)">
+                    <span class="nav-icon">📊</span> ISAA Assessment (Tamil)
+                </li>
                 <li class="nav-item" data-target="schedule">
                     <span class="nav-icon">📅</span> Daily Schedule
                 </li>
@@ -2160,6 +2166,1711 @@
                 </form>
             </section>
 
+
+            <!-- Assessment: ABC (Autism Behavior Checklist) Tamil Version -->
+            <section id="abc-assessment" class="assessment-pane">
+                <div class="tab-header" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%); border: 1px solid #c4b5fd; border-radius: 10px; padding: 16px 20px; margin-bottom: 20px;">
+                    <div>
+                        <div style="display: inline-block; font-size: 0.72rem; font-weight: 700; color: #6d28d9; background: #ddd6fe; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">புரோ-விஷன் · குழந்தைகள் எலும்பு-தசை குறைநீக்கு மையம், மைலாடி</div>
+                        <h2 style="margin: 0; color: #4c1d95; font-size: 1.35rem;">மதியிறுக்கம் நிலையை கணித்தல் (ABC - தமிழ் வடிவம்)</h2>
+                        <p style="margin: 4px 0 0; color: #5b21b6; font-size: 0.88rem;">Autism Behavior Checklist (ABC) · 30 மாதம் முதல் 6 வயது வரை (30 Months to 6 Years)</p>
+                    </div>
+                </div>
+
+                <div id="abc-form-edit-banner" style="display: none; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 10px 14px; margin-bottom: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+                    <span style="font-size: 0.88rem; color: #1e40af; font-weight: 500;">✏️ <strong>Editing Mode:</strong> Loaded existing ABC Assessment for <strong id="abc-editing-child-name">—</strong>. Saving will update this record.</span>
+                    <button type="button" id="btn-abc-new-version" class="btn-secondary btn-sm" style="background: #fff; border-color: #93c5fd; color: #1e40af; font-weight: 600;">+ Start Fresh Assessment</button>
+                </div>
+
+                <form class="assessment-form" id="form-abc">
+                    <div class="form-section">
+                        <h3>Patient Information / குழந்தை விவரங்கள்</h3>
+                        <div class="form-grid">
+                            <div class="input-group">
+                                <label for="abc-name">Child Name / பெயர் *</label>
+                                <input type="text" id="abc-name" name="child_name" required>
+                            </div>
+                            <div class="input-group">
+                                <label for="abc-admission-no">Admission No / எண்</label>
+                                <input type="text" id="abc-admission-no" name="admission_no" readonly style="background: #e8e8e8;">
+                            </div>
+                            <div class="input-group">
+                                <label for="abc-age">Age / வயது</label>
+                                <input type="text" id="abc-age" name="age" readonly style="background: #e8e8e8;" placeholder="Child age">
+                            </div>
+                            <div class="input-group">
+                                <label for="abc-dob">Date of Birth / பிறந்த தேதி</label>
+                                <input type="date" id="abc-dob" name="dob" readonly style="background: #e8e8e8;">
+                            </div>
+                            <div class="input-group">
+                                <label for="abc-sex">Sex / பாலினம்</label>
+                                <input type="text" id="abc-sex" name="sex" readonly style="background: #e8e8e8;">
+                            </div>
+                            <div class="input-group">
+                                <label for="abc-date">Date of Assessment / தேதி</label>
+                                <input type="date" id="abc-date" name="assessment_date">
+                            </div>
+                            <div class="input-group">
+                                <label for="abc-referred-by">Referred By / பரிந்துரைத்தவர்</label>
+                                <input type="text" id="abc-referred-by" name="referred_by" placeholder="மருத்துவர் / பணியாளர் / சுய பரிந்துரை">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="background: #faf5ff; border: 1px solid #d8b4fe; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px;">
+                        <strong style="color: #6b21a8; font-size: 0.92rem;">📌 குறிப்பு:</strong>
+                        <span style="color: #4c1d95; font-size: 0.88rem;"> உங்கள் குழந்தையின் செயல்பாடோடு மிக பொருந்துபவற்றின் தேர்வுப் பெட்டியை (Checkbox) தேர்ந்தெடுக்கவும். பொருத்தமான மதிப்பெண் தானாகவே கணக்கிடப்படும்.</span>
+                    </div>
+
+                    <div class="form-section" style="margin-bottom: 24px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; background: #f3e8ff; border: 1px solid #d8b4fe; border-radius: 6px; padding: 10px 14px; margin-bottom: 12px;">
+                            <strong style="color: #581c87; font-size: 0.98rem;">I. புலன்கள் சார்ந்த செயல்பாடுகள் (Sensory Behaviors)</strong>
+                            <span style="font-size: 0.85rem; font-weight: 700; color: #6b21a8; background: #ffffff; padding: 3px 10px; border-radius: 12px; border: 1px solid #c084fc;">பிரிவு கூட்டுத்தொகை: <span id="abc-subtotal-I">0</span> / 26</span>
+                        </div>
+                        <div style="overflow-x: auto;">
+                            <table class="autism-table" style="width: 100%; border-collapse: collapse;">
+                                <thead>
+                                    <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0; font-size: 0.85rem; color: #334155;">
+                                        <th style="padding: 10px 8px; width: 45px; text-align: center;">எண்</th>
+                                        <th style="padding: 10px 8px; text-align: left;">செயல்பாடு (Behavior / Function)</th>
+                                        <th style="padding: 10px 8px; width: 85px; text-align: center;">மதிப்பெண்</th>
+                                        <th style="padding: 10px 8px; width: 90px; text-align: center;">தேர்வு</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">1</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">கற்கும் போது கண்ணால் பார்பவற்றை வேறுபடுத்தி பார்ப்பது கிடையாது</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">2</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q1" value="2" class="abc-checkbox" data-section="I" data-weight="2" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">2</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">கேட்காதது போல் செயல்படுகிறார், எனவே காது கேட்கவில்லையோ என சந்தேகம்</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">3</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q2" value="3" class="abc-checkbox" data-section="I" data-weight="3" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">3</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">சில சமயங்களில் பெரிய சத்தத்திற்கு கூட திடுக்கிட்டு பதிலுரைப்பதில்லை</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">3</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q3" value="3" class="abc-checkbox" data-section="I" data-weight="3" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">4</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">சில சமயங்களில் வலி ஏற்படுத்தக் கூடிய வெட்டு, காயங்கள், ஊசி போடுதல் போன்றவற்றிற்கு கூட எந்த எதிர்வினையும் ஆற்றுவதில்லை</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">3</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q4" value="3" class="abc-checkbox" data-section="I" data-weight="3" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">5</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">பெரும்பாலும் கண்ணில் அடிக்கப்படும் வெளிச்சத்திற்கு கூட கண்களை சிமிட்டுவதில்லை</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">1</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q5" value="1" class="abc-checkbox" data-section="I" data-weight="1" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">6</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">பல சத்தங்களுக்கு காதுகளை மூடிக் கொள்வார்</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">4</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q6" value="4" class="abc-checkbox" data-section="I" data-weight="4" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">7</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">இயற்கையான வெளிச்சத்தில் இருக்கும் போது கூட ஓரக்கண்ணால் பார்த்தல், முகம் சுளித்தல் அல்லது கண்களை மூடுதல்</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">3</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q7" value="3" class="abc-checkbox" data-section="I" data-weight="3" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">8</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">அடிக்கடி புதிய நபர்களிடம் பார்வையால் எதிர்வினை ஆற்றுவதில்லை</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">3</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q8" value="3" class="abc-checkbox" data-section="I" data-weight="3" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">9</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">நீண்ட நேரம் வெற்றிடத்தை முறைத்து பார்த்துக் கொண்டிருத்தல்</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">4</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q9" value="4" class="abc-checkbox" data-section="I" data-weight="4" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="form-section" style="margin-bottom: 24px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; background: #f3e8ff; border: 1px solid #d8b4fe; border-radius: 6px; padding: 10px 14px; margin-bottom: 12px;">
+                            <strong style="color: #581c87; font-size: 0.98rem;">II. உறவுகள் சார்ந்த செயல்பாடுகள் (Relational Behaviors)</strong>
+                            <span style="font-size: 0.85rem; font-weight: 700; color: #6b21a8; background: #ffffff; padding: 3px 10px; border-radius: 12px; border: 1px solid #c084fc;">பிரிவு கூட்டுத்தொகை: <span id="abc-subtotal-II">0</span> / 38</span>
+                        </div>
+                        <div style="overflow-x: auto;">
+                            <table class="autism-table" style="width: 100%; border-collapse: collapse;">
+                                <thead>
+                                    <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0; font-size: 0.85rem; color: #334155;">
+                                        <th style="padding: 10px 8px; width: 45px; text-align: center;">எண்</th>
+                                        <th style="padding: 10px 8px; text-align: left;">செயல்பாடு (Behavior / Function)</th>
+                                        <th style="padding: 10px 8px; width: 85px; text-align: center;">மதிப்பெண்</th>
+                                        <th style="padding: 10px 8px; width: 90px; text-align: center;">தேர்வு</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">10</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">அடிக்கடி சமூக மற்றும் சுற்றுப்புற தூண்டுதல்களை கண்டுக்கொள்வதில்லை</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">4</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q10" value="4" class="abc-checkbox" data-section="II" data-weight="4" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">11</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">சமூக சிரிப்பு இல்லை</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">2</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q11" value="2" class="abc-checkbox" data-section="II" data-weight="2" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">12</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">அடுத்தவர்கள் அழைக்கும் போது செல்வதில்லை</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">2</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q12" value="2" class="abc-checkbox" data-section="II" data-weight="2" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">13</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">அடுத்தவர்களுடைய முகபாவனைகளுக்கும் உணர்வுகளுக்கும் பதிலுரைப்பதில்லை</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">3</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q13" value="3" class="abc-checkbox" data-section="II" data-weight="3" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">14</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">தீவிரமாக கண்ணை பார்ப்பதை தவிர்த்தல்</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">4</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q14" value="4" class="abc-checkbox" data-section="II" data-weight="4" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">15</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">தொடுவதையோ அல்லது எடுப்பதையோ தடுத்தல்</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">4</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q15" value="4" class="abc-checkbox" data-section="II" data-weight="4" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">16</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">குழந்தையை கைகளில் எடுக்கும் போது தளர்வுடன் தொங்குதல்</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">3</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q16" value="3" class="abc-checkbox" data-section="II" data-weight="3" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">17</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">குழந்தையை கையில் வைத்திருப்பது விரைப்பாகவும் நமக்கு கடினமாகவும் இருக்கும்</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">2</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q17" value="2" class="abc-checkbox" data-section="II" data-weight="2" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">18</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">விளையாடும் போது மற்றக் குழந்தைகளை பார்த்து பின்பற்றுவதில்லை</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">3</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q18" value="3" class="abc-checkbox" data-section="II" data-weight="3" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">19</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">இதுவரை நண்பர்களை வளர்த்துக் கொள்ளவில்லை</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">4</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q19" value="4" class="abc-checkbox" data-section="II" data-weight="4" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">20</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">அடிக்கடி பயத்துடன் அல்லது படபடப்புடன் காணப்படுவது</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">3</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q20" value="3" class="abc-checkbox" data-section="II" data-weight="3" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">21</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">பிற மனிதர்களை முறைத்துப் பார்த்தல்</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">4</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q21" value="4" class="abc-checkbox" data-section="II" data-weight="4" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="form-section" style="margin-bottom: 24px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; background: #f3e8ff; border: 1px solid #d8b4fe; border-radius: 6px; padding: 10px 14px; margin-bottom: 12px;">
+                            <strong style="color: #581c87; font-size: 0.98rem;">III. உடலையும் பொருட்களையும் பயன்படுத்தும் விதம் (Body and Object Use)</strong>
+                            <span style="font-size: 0.85rem; font-weight: 700; color: #6b21a8; background: #ffffff; padding: 3px 10px; border-radius: 12px; border: 1px solid #c084fc;">பிரிவு கூட்டுத்தொகை: <span id="abc-subtotal-III">0</span> / 38</span>
+                        </div>
+                        <div style="overflow-x: auto;">
+                            <table class="autism-table" style="width: 100%; border-collapse: collapse;">
+                                <thead>
+                                    <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0; font-size: 0.85rem; color: #334155;">
+                                        <th style="padding: 10px 8px; width: 45px; text-align: center;">எண்</th>
+                                        <th style="padding: 10px 8px; text-align: left;">செயல்பாடு (Behavior / Function)</th>
+                                        <th style="padding: 10px 8px; width: 85px; text-align: center;">மதிப்பெண்</th>
+                                        <th style="padding: 10px 8px; width: 90px; text-align: center;">தேர்வு</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">22</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">நீண்ட நேரம் தன்னை தானே சுற்றுதல்</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">4</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q22" value="4" class="abc-checkbox" data-section="III" data-weight="4" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">23</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">பொம்மைகளை பொருத்தமான விதத்தில் பயன்படுத்தாமை</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">2</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q23" value="2" class="abc-checkbox" data-section="III" data-weight="2" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">24</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">சில பொருட்களை தன்னோடு வைத்திருப்பதை வலியுறுத்தல்</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">3</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q24" value="3" class="abc-checkbox" data-section="III" data-weight="3" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">25</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">நீண்ட நேரம் தன்னை தானே தாலாட்டுதல்</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">4</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q25" value="4" class="abc-checkbox" data-section="III" data-weight="4" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">26</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">அதிகமாக சிரித்தல் மற்றும் திடீரென துள்ளிக் குதித்தல்</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">4</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q26" value="4" class="abc-checkbox" data-section="III" data-weight="4" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">27</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">அடிக்கடி கைகளை தட்டல் அல்லது சிறகடித்தல்</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">4</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q27" value="4" class="abc-checkbox" data-section="III" data-weight="4" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">28</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">கால் விரல் பகுதியால் நடத்தல்</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">2</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q28" value="2" class="abc-checkbox" data-section="III" data-weight="2" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">29</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">தலையால் மோதுதல், கையை கடித்தல் போன்றவற்றால் தன்னை காயப்படுத்துதல்</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">2</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q29" value="2" class="abc-checkbox" data-section="III" data-weight="2" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">30</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">பொருட்களை அதிகமாக உருட்டுதல், சுழற்றுதல், இடித்தல்</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">4</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q30" value="4" class="abc-checkbox" data-section="III" data-weight="4" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">31</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">சுற்றி உள்ள பொருட்களை தொட்டுணர்தல், நுகர்தல், சுவைத்து பார்த்தல்</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">3</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q31" value="3" class="abc-checkbox" data-section="III" data-weight="3" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">32</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">பொருட்களை வரிசையாக அடுக்குதல் போன்ற சிக்கலான சடங்குகளில் ஈடுபடுதல்</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">4</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q32" value="4" class="abc-checkbox" data-section="III" data-weight="4" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">33</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">அதிகமாக அழிக்கக் கூடிய அல்லது உடைக்கக் கூடிய செயல்களில் ஈடுபடுதல்</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">2</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q33" value="2" class="abc-checkbox" data-section="III" data-weight="2" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="form-section" style="margin-bottom: 24px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; background: #f3e8ff; border: 1px solid #d8b4fe; border-radius: 6px; padding: 10px 14px; margin-bottom: 12px;">
+                            <strong style="color: #581c87; font-size: 0.98rem;">IV. மொழி சார்ந்த செயல்பாடுகள் (Language Behaviors)</strong>
+                            <span style="font-size: 0.85rem; font-weight: 700; color: #6b21a8; background: #ffffff; padding: 3px 10px; border-radius: 12px; border: 1px solid #c084fc;">பிரிவு கூட்டுத்தொகை: <span id="abc-subtotal-IV">0</span> / 31</span>
+                        </div>
+                        <div style="overflow-x: auto;">
+                            <table class="autism-table" style="width: 100%; border-collapse: collapse;">
+                                <thead>
+                                    <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0; font-size: 0.85rem; color: #334155;">
+                                        <th style="padding: 10px 8px; width: 45px; text-align: center;">எண்</th>
+                                        <th style="padding: 10px 8px; text-align: left;">செயல்பாடு (Behavior / Function)</th>
+                                        <th style="padding: 10px 8px; width: 85px; text-align: center;">மதிப்பெண்</th>
+                                        <th style="padding: 10px 8px; width: 90px; text-align: center;">தேர்வு</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">34</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">சிறிய கட்டளைகளை கூட ஒருமுறை சொன்னால் கடைபிடிக்காதிருத்தல்</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">1</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q34" value="1" class="abc-checkbox" data-section="IV" data-weight="1" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">35</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">பெயர் சொற்களை (அவன் / அவள்) மாற்றிக் கூறல்</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">3</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q35" value="3" class="abc-checkbox" data-section="IV" data-weight="3" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">36</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">முறையற்ற இசை போல் பேசுதல்</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">4</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q36" value="4" class="abc-checkbox" data-section="IV" data-weight="4" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">37</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">மற்ற சொற்களோடு தனது பெயரையும் சொல்லி அழைக்கும் போது பதிலுரைக்காமல் இருத்தல்</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">2</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q37" value="2" class="abc-checkbox" data-section="IV" data-weight="2" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">38</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">'ஆம்' 'நான்' போன்ற சொற்களை எப்பொழுதாவது சொல்வது</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">2</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q38" value="2" class="abc-checkbox" data-section="IV" data-weight="2" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">39</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">முன்னிடைக்சொல் (Prepositions) உள்ள சிறிய கட்டளைகளை கூட பின்பற்றாமை</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">1</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q39" value="1" class="abc-checkbox" data-section="IV" data-weight="1" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">40</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">தேவையான பொருட்களை சைகை மூலம் காட்டி பெறுதல்</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">2</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q40" value="2" class="abc-checkbox" data-section="IV" data-weight="2" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">41</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">சில சொற்தொடர்களை திரும்ப திரும்ப சொல்லுதல்</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">3</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q41" value="3" class="abc-checkbox" data-section="IV" data-weight="3" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">42</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">ஐந்துக்கு மேற்பட்ட பொருட்களை சுட்டி காட்ட முடியாமை</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">1</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q42" value="1" class="abc-checkbox" data-section="IV" data-weight="1" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">43</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">தேவைகளையும் ஆசைகளையும் வெளிபடுத்த ஒரு நாளைக்கு ஐந்துக்கு குறைவான வார்த்தைகளை மட்டும் இயற்கையாக பயன்படுத்தல்</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">2</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q43" value="2" class="abc-checkbox" data-section="IV" data-weight="2" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">44</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">சில சப்தங்களை திரும்ப திரும்ப எழுப்புதல்</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">3</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q44" value="3" class="abc-checkbox" data-section="IV" data-weight="3" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">45</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">அடுத்தவர்கள் கேட்ட கேள்விகள் அல்லது வாக்கியங்களை திருப்பி சொல்லுதல்</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">4</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q45" value="4" class="abc-checkbox" data-section="IV" data-weight="4" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">46</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">ஒரு நாளைக்கு 30-க்கு குறைவான வார்த்தைகளை மட்டுமே இயற்கையாக பயன்படுத்தல்</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">3</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q46" value="3" class="abc-checkbox" data-section="IV" data-weight="3" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="form-section" style="margin-bottom: 24px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; background: #f3e8ff; border: 1px solid #d8b4fe; border-radius: 6px; padding: 10px 14px; margin-bottom: 12px;">
+                            <strong style="color: #581c87; font-size: 0.98rem;">V. சுய உதவி மற்றும் சமூக திறன்கள் (Social and Self-Help Skills)</strong>
+                            <span style="font-size: 0.85rem; font-weight: 700; color: #6b21a8; background: #ffffff; padding: 3px 10px; border-radius: 12px; border: 1px solid #c084fc;">பிரிவு கூட்டுத்தொகை: <span id="abc-subtotal-V">0</span> / 25</span>
+                        </div>
+                        <div style="overflow-x: auto;">
+                            <table class="autism-table" style="width: 100%; border-collapse: collapse;">
+                                <thead>
+                                    <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0; font-size: 0.85rem; color: #334155;">
+                                        <th style="padding: 10px 8px; width: 45px; text-align: center;">எண்</th>
+                                        <th style="padding: 10px 8px; text-align: left;">செயல்பாடு (Behavior / Function)</th>
+                                        <th style="padding: 10px 8px; width: 85px; text-align: center;">மதிப்பெண்</th>
+                                        <th style="padding: 10px 8px; width: 90px; text-align: center;">தேர்வு</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">47</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">சிறிய செயல்களை கற்றுக்கொண்டு விரைவில் மறந்து விடுதல்</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">2</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q47" value="2" class="abc-checkbox" data-section="V" data-weight="2" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">48</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">அன்றாட நடைமுறை மற்றும் சுற்று சூழலில் உள்ள மாற்றங்களுக்கு வலுவான எதிர்வினை ஆற்றல்</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">3</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q48" value="3" class="abc-checkbox" data-section="V" data-weight="3" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">49</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">ஒரு சில சிறப்பு திறமைகள் இருப்பதால் மூளை வளர்ச்சி குறைவு இல்லை எனலாம்</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">4</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q49" value="4" class="abc-checkbox" data-section="V" data-weight="4" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">50</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">கட்டுபடுத்த முடியாத அளவு கோபத்தை வெளிப்படுத்துதல் மற்றும் அடிக்கடி கோபப்படுதல்</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">3</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q50" value="3" class="abc-checkbox" data-section="V" data-weight="3" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">51</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">கடித்தல், தாக்குதல் மற்றும் உதைத்தல் மூலம் மற்றவர்களை காயப்படுத்துதல்</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">2</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q51" value="2" class="abc-checkbox" data-section="V" data-weight="2" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">52</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">தேவைகள் பூர்த்தியாக காத்திருப்பதில்லை</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">2</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q52" value="2" class="abc-checkbox" data-section="V" data-weight="2" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">53</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">கழிப்பறைகளை பயன்படுத்துவதில் சிரமம்</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">1</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q53" value="1" class="abc-checkbox" data-section="V" data-weight="1" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">54</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">உதவி இல்லாமல் சுயமாக ஆடை அணிவதில்லை</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">1</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q54" value="1" class="abc-checkbox" data-section="V" data-weight="1" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">55</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">அடிக்கடி தன்னை சுற்றி நடப்பவை தெரியாமல் மறதியாக ஆபத்தான சூழ்நிலைக்கு செல்லுதல்</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">2</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q55" value="2" class="abc-checkbox" data-section="V" data-weight="2" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">56</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">உயிரற்ற பொருட்களை கையாளுவதை அதிகம் விரும்புவது</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">4</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q56" value="4" class="abc-checkbox" data-section="V" data-weight="4" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 8px; text-align: center; color: #64748b; font-weight: 600;">57</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">30 மாதத்திற்குள் வளர்ச்சி படி நிலையில் பின்தங்கியது கண்டுபிடிக்கப்பட்டது</td>
+                                        <td style="padding: 10px 8px; text-align: center; font-weight: 700; color: #7c3aed;">1</td>
+                                        <td style="padding: 10px 8px; text-align: center;">
+                                            <input type="checkbox" name="abc_q57" value="1" class="abc-checkbox" data-section="V" data-weight="1" style="width: 20px; height: 20px; accent-color: #7c3aed; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <!-- ABC Score Summary Box -->
+                    <div class="form-section" style="background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%); border: 2px solid #c084fc; border-radius: 10px; padding: 20px; margin-bottom: 24px;">
+                        <h3 style="margin-top: 0; color: #581c87; border-bottom: 1px solid #d8b4fe; padding-bottom: 8px;">📊 மதிப்பீட்டு முடிவு (ABC Evaluation Summary)</h3>
+                        <div style="display: flex; gap: 24px; flex-wrap: wrap; align-items: center; margin-bottom: 16px;">
+                            <div style="background: white; border-radius: 8px; padding: 14px 20px; border: 1px solid #ddd6fe; box-shadow: 0 1px 3px rgba(0,0,0,0.05); text-align: center; min-width: 180px;">
+                                <span style="display: block; font-size: 0.8rem; font-weight: 600; color: #6b21a8; text-transform: uppercase;">ஒட்டு மொத்த மதிப்பெண்</span>
+                                <strong id="abc-total-display" style="font-size: 2.2rem; color: #7c3aed; font-weight: 800;">0</strong>
+                                <span style="font-size: 0.85rem; color: #64748b;"> / 158</span>
+                                <input type="hidden" id="abc-total-score" name="abc_total_score" value="0">
+                            </div>
+                            <div style="background: white; border-radius: 8px; padding: 14px 20px; border: 1px solid #ddd6fe; box-shadow: 0 1px 3px rgba(0,0,0,0.05); flex: 1; min-width: 250px;">
+                                <span style="display: block; font-size: 0.8rem; font-weight: 600; color: #6b21a8; text-transform: uppercase; margin-bottom: 6px;">வகைபடுத்தல் (Clinical Severity Classification)</span>
+                                <div id="abc-classification-badge" style="display: inline-block; font-size: 1.05rem; font-weight: 700; color: #1e293b; padding: 8px 16px; border-radius: 6px; background: #f1f5f9; border: 1px solid #e2e8f0;">
+                                    — (மதிப்பீட்டை பூர்த்தி செய்யவும்)
+                                </div>
+                                <input type="hidden" id="abc-classification" name="abc_classification" value="">
+                            </div>
+                        </div>
+
+                        <!-- Classification Guide Grid -->
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; font-size: 0.82rem;">
+                            <div id="abc-scale-normal" class="score-card" style="padding: 10px; border-radius: 6px; background: white; border: 1px solid #cbd5e1; text-align: center;">
+                                <strong style="font-size: 0.95rem;">&lt; 47</strong><br><span style="color: #059669; font-weight: 700; font-size: 0.9rem;">சராசரி</span><br><small style="color: #64748b;">Typical / Low Probability</small>
+                            </div>
+                            <div id="abc-scale-borderline" class="score-card" style="padding: 10px; border-radius: 6px; background: white; border: 1px solid #cbd5e1; text-align: center;">
+                                <strong style="font-size: 0.95rem;">47 – 53</strong><br><span style="color: #d97706; font-weight: 700; font-size: 0.9rem;">நிச்சயமில்லாதது</span><br><small style="color: #64748b;">Borderline / Questionable</small>
+                            </div>
+                            <div id="abc-scale-moderate" class="score-card" style="padding: 10px; border-radius: 6px; background: white; border: 1px solid #cbd5e1; text-align: center;">
+                                <strong style="font-size: 0.95rem;">54 – 67</strong><br><span style="color: #ea580c; font-weight: 700; font-size: 0.9rem;">மிதமான மதியிறுக்கம்</span><br><small style="color: #64748b;">Moderate Autism</small>
+                            </div>
+                            <div id="abc-scale-severe" class="score-card" style="padding: 10px; border-radius: 6px; background: white; border: 1px solid #cbd5e1; text-align: center;">
+                                <strong style="font-size: 0.95rem;">&gt; 67</strong><br><span style="color: #dc2626; font-weight: 700; font-size: 0.9rem;">மதியிறுக்கம்</span><br><small style="color: #64748b;">Autism (High Probability)</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>சான்றளிப்பு &amp; தொடர் திட்டம் (Certification &amp; Intervention Plan)</h3>
+                        <div class="form-grid">
+                            <div class="input-group full-width">
+                                <label for="abc-followup-plan">தொடர் திட்டம் / Follow-up Intervention Plan</label>
+                                <textarea id="abc-followup-plan" name="followup_plan" rows="3" placeholder="பரிந்துரைக்கப்பட்ட சிறப்பு சிகிச்சைகள், நடத்தை திருத்த திட்டம், பயிற்சி இலக்குகள்..."></textarea>
+                            </div>
+                            <div class="input-group">
+                                <label for="abc-completed-by">படிவம் பூர்த்தி செய்தவர் பெயர் / Completed By</label>
+                                <input type="text" id="abc-completed-by" name="completed_by_name" placeholder="பெற்றோர் / பாதுகாவலர் பெயர்">
+                            </div>
+                            <div class="input-group">
+                                <label for="abc-relationship">உறவு / Relationship</label>
+                                <input type="text" id="abc-relationship" name="relationship" placeholder="தாய் / தந்தை / பாதுகாவலர்">
+                            </div>
+                            <div class="input-group">
+                                <label for="abc-evaluator">பணியாளர் பெயர் / Evaluator Staff</label>
+                                <input type="text" id="abc-evaluator" name="evaluator_name" placeholder="பணியாளர் பெயர்">
+                            </div>
+                        </div>
+                        <div style="font-size: 0.8rem; color: #64748b; font-style: italic; margin-top: 12px; text-align: right;">
+                            Adapted from Autism Behavior Checklist (ABC)
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn-primary" style="background: #7c3aed; border-color: #6d28d9;">💾 Save ABC Assessment</button>
+                    </div>
+                </form>
+            </section>
+
+
+
+            <!-- Assessment: ISAA (Indian Scale for Assessment of Autism) Tamil Version -->
+            <section id="isaa-assessment" class="assessment-pane">
+                <div class="tab-header" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border: 1px solid #93c5fd; border-radius: 10px; padding: 16px 20px; margin-bottom: 20px;">
+                    <div>
+                        <div style="display: inline-block; font-size: 0.72rem; font-weight: 700; color: #1e40af; background: #bfdbfe; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">புரோ-விஷன் · குழந்தைகள் எலும்பு-தசை குறைநீக்கு மையம், மைலாடி</div>
+                        <h2 style="margin: 0; color: #1e3a8a; font-size: 1.35rem;">மதியிறுக்கம் நிலையை கணித்தல் (ISAA - தமிழ் வடிவம்)</h2>
+                        <p style="margin: 4px 0 0; color: #1e40af; font-size: 0.88rem;">Indian Scale for Assessment of Autism (ISAA) · 6 வயதுக்கு மேல் (Above 6 Years)</p>
+                    </div>
+                </div>
+
+                <div id="isaa-form-edit-banner" style="display: none; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 10px 14px; margin-bottom: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+                    <span style="font-size: 0.88rem; color: #1e40af; font-weight: 500;">✏️ <strong>Editing Mode:</strong> Loaded existing ISAA Assessment for <strong id="isaa-editing-child-name">—</strong>. Saving will update this record.</span>
+                    <button type="button" id="btn-isaa-new-version" class="btn-secondary btn-sm" style="background: #fff; border-color: #93c5fd; color: #1e40af; font-weight: 600;">+ Start Fresh Assessment</button>
+                </div>
+
+                <form class="assessment-form" id="form-isaa">
+                    <div class="form-section">
+                        <h3>Patient Information / குழந்தை விவரங்கள்</h3>
+                        <div class="form-grid">
+                            <div class="input-group">
+                                <label for="isaa-name">Child Name / பெயர் *</label>
+                                <input type="text" id="isaa-name" name="child_name" required>
+                            </div>
+                            <div class="input-group">
+                                <label for="isaa-admission-no">Admission No / எண்</label>
+                                <input type="text" id="isaa-admission-no" name="admission_no" readonly style="background: #e8e8e8;">
+                            </div>
+                            <div class="input-group">
+                                <label for="isaa-age">Age / வயது</label>
+                                <input type="text" id="isaa-age" name="age" readonly style="background: #e8e8e8;" placeholder="Child age">
+                            </div>
+                            <div class="input-group">
+                                <label for="isaa-dob">Date of Birth / பிறந்த தேதி</label>
+                                <input type="date" id="isaa-dob" name="dob" readonly style="background: #e8e8e8;">
+                            </div>
+                            <div class="input-group">
+                                <label for="isaa-sex">Sex / பாலினம்</label>
+                                <input type="text" id="isaa-sex" name="sex" readonly style="background: #e8e8e8;">
+                            </div>
+                            <div class="input-group">
+                                <label for="isaa-date">Date of Assessment / தேதி</label>
+                                <input type="date" id="isaa-date" name="assessment_date">
+                            </div>
+                            <div class="input-group">
+                                <label for="isaa-referred-by">Referred By / பரிந்துரைத்தவர்</label>
+                                <input type="text" id="isaa-referred-by" name="referred_by" placeholder="மருத்துவர் / பணியாளர் / சுய பரிந்துரை">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Rating Scale Guide -->
+                    <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px;">
+                        <strong style="color: #166534; font-size: 0.92rem;">📌 குறியீட்டு மதிப்பீடு வழிகாட்டி (Rating Scale 1 to 5):</strong>
+                        <div style="display: flex; gap: 16px; flex-wrap: wrap; margin-top: 6px; font-size: 0.85rem; color: #15803d;">
+                            <span><strong>1:</strong> ஒரு போதும் இல்லை (Rarely / &lt;10%)</span>
+                            <span><strong>2:</strong> எப்போதாவது (Sometimes / 10-40%)</span>
+                            <span><strong>3:</strong> சில நேரங்களில் (Frequently / 41-60%)</span>
+                            <span><strong>4:</strong> பெரும்பாலும் (Mostly / 61-89%)</span>
+                            <span><strong>5:</strong> எப்போதும் (Always / &gt;90%)</span>
+                        </div>
+                    </div>
+
+                    <div class="form-section" style="margin-bottom: 24px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; background: #e0f2fe; border: 1px solid #bae6fd; border-radius: 6px; padding: 10px 14px; margin-bottom: 12px;">
+                            <strong style="color: #0369a1; font-size: 0.98rem;">I. சமூக உறவு மற்றும் பரஸ்பர உறவு (Social Relationship and Reciprocity)</strong>
+                            <span style="font-size: 0.85rem; font-weight: 700; color: #0284c7; background: #ffffff; padding: 3px 10px; border-radius: 12px; border: 1px solid #7dd3fc;">பிரிவு கூட்டுத்தொகை: <span id="isaa-subtotal-I">0</span> / 45</span>
+                        </div>
+                        <div style="overflow-x: auto;">
+                            <table class="autism-table isaa-table" style="width: 100%; border-collapse: collapse;">
+                                <thead>
+                                    <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0; font-size: 0.82rem; color: #334155;">
+                                        <th style="padding: 10px 6px; width: 45px; text-align: center;">எண்</th>
+                                        <th style="padding: 10px 8px; text-align: left;">குறியீடு (Indicator / Behavior)</th>
+                                        <th style="padding: 10px 4px; width: 68px; text-align: center;" title="Rarely / <10%">ஒரு போதும் இல்லை<br><span style="font-weight:700; color:#2563eb;">(1)</span></th>
+                                        <th style="padding: 10px 4px; width: 68px; text-align: center;" title="Sometimes / 10-40%">எப்போதாவது<br><span style="font-weight:700; color:#2563eb;">(2)</span></th>
+                                        <th style="padding: 10px 4px; width: 68px; text-align: center;" title="Frequently / 41-60%">சில நேரங்களில்<br><span style="font-weight:700; color:#2563eb;">(3)</span></th>
+                                        <th style="padding: 10px 4px; width: 68px; text-align: center;" title="Mostly / 61-89%">பெரும்பாலும்<br><span style="font-weight:700; color:#2563eb;">(4)</span></th>
+                                        <th style="padding: 10px 4px; width: 68px; text-align: center;" title="Always / >90%">எப்போதும்<br><span style="font-weight:700; color:#2563eb;">(5)</span></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 6px; text-align: center; color: #64748b; font-weight: 600;">1</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">மோசமான கண் தொடர்பு</td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q1" value="1" class="isaa-radio" data-section="I" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q1" value="2" class="isaa-radio" data-section="I" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q1" value="3" class="isaa-radio" data-section="I" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q1" value="4" class="isaa-radio" data-section="I" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q1" value="5" class="isaa-radio" data-section="I" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 6px; text-align: center; color: #64748b; font-weight: 600;">2</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">சமூக புன்னகை இல்லை</td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q2" value="1" class="isaa-radio" data-section="I" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q2" value="2" class="isaa-radio" data-section="I" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q2" value="3" class="isaa-radio" data-section="I" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q2" value="4" class="isaa-radio" data-section="I" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q2" value="5" class="isaa-radio" data-section="I" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 6px; text-align: center; color: #64748b; font-weight: 600;">3</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">தனியாக ஒதுங்கி இருத்தல்</td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q3" value="1" class="isaa-radio" data-section="I" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q3" value="2" class="isaa-radio" data-section="I" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q3" value="3" class="isaa-radio" data-section="I" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q3" value="4" class="isaa-radio" data-section="I" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q3" value="5" class="isaa-radio" data-section="I" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 6px; text-align: center; color: #64748b; font-weight: 600;">4</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">மற்றவர்களோடு உறவு கொள்ள ஆர்வம் காட்டுவதில்லை</td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q4" value="1" class="isaa-radio" data-section="I" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q4" value="2" class="isaa-radio" data-section="I" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q4" value="3" class="isaa-radio" data-section="I" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q4" value="4" class="isaa-radio" data-section="I" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q4" value="5" class="isaa-radio" data-section="I" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 6px; text-align: center; color: #64748b; font-weight: 600;">5</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">மற்றவர்களோடு தொடர்பு கொள்ள முடியாமை</td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q5" value="1" class="isaa-radio" data-section="I" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q5" value="2" class="isaa-radio" data-section="I" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q5" value="3" class="isaa-radio" data-section="I" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q5" value="4" class="isaa-radio" data-section="I" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q5" value="5" class="isaa-radio" data-section="I" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 6px; text-align: center; color: #64748b; font-weight: 600;">6</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">சமூக மற்றும் சுற்று சூழல் அடையாளங்களுக்கு பதிலுரைக்க முடியாமை</td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q6" value="1" class="isaa-radio" data-section="I" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q6" value="2" class="isaa-radio" data-section="I" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q6" value="3" class="isaa-radio" data-section="I" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q6" value="4" class="isaa-radio" data-section="I" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q6" value="5" class="isaa-radio" data-section="I" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 6px; text-align: center; color: #64748b; font-weight: 600;">7</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">தனியாக மற்றும் மீண்டும் மீண்டும் செய்யும் விளையாட்டுகளில் ஈடுபடல்</td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q7" value="1" class="isaa-radio" data-section="I" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q7" value="2" class="isaa-radio" data-section="I" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q7" value="3" class="isaa-radio" data-section="I" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q7" value="4" class="isaa-radio" data-section="I" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q7" value="5" class="isaa-radio" data-section="I" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 6px; text-align: center; color: #64748b; font-weight: 600;">8</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">சமூக தொடர்புகளில் தனது பங்கை முன்னெடுக்க முடியாமை</td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q8" value="1" class="isaa-radio" data-section="I" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q8" value="2" class="isaa-radio" data-section="I" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q8" value="3" class="isaa-radio" data-section="I" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q8" value="4" class="isaa-radio" data-section="I" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q8" value="5" class="isaa-radio" data-section="I" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 6px; text-align: center; color: #64748b; font-weight: 600;">9</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">வயதொத்தவர்களோடு உறவை தொடராமை</td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q9" value="1" class="isaa-radio" data-section="I" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q9" value="2" class="isaa-radio" data-section="I" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q9" value="3" class="isaa-radio" data-section="I" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q9" value="4" class="isaa-radio" data-section="I" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q9" value="5" class="isaa-radio" data-section="I" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="form-section" style="margin-bottom: 24px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; background: #e0f2fe; border: 1px solid #bae6fd; border-radius: 6px; padding: 10px 14px; margin-bottom: 12px;">
+                            <strong style="color: #0369a1; font-size: 0.98rem;">II. உணர்ச்சி பூர்வமாக பதிலுரைத்தல் (Emotional Responsiveness)</strong>
+                            <span style="font-size: 0.85rem; font-weight: 700; color: #0284c7; background: #ffffff; padding: 3px 10px; border-radius: 12px; border: 1px solid #7dd3fc;">பிரிவு கூட்டுத்தொகை: <span id="isaa-subtotal-II">0</span> / 25</span>
+                        </div>
+                        <div style="overflow-x: auto;">
+                            <table class="autism-table isaa-table" style="width: 100%; border-collapse: collapse;">
+                                <thead>
+                                    <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0; font-size: 0.82rem; color: #334155;">
+                                        <th style="padding: 10px 6px; width: 45px; text-align: center;">எண்</th>
+                                        <th style="padding: 10px 8px; text-align: left;">குறியீடு (Indicator / Behavior)</th>
+                                        <th style="padding: 10px 4px; width: 68px; text-align: center;" title="Rarely / <10%">ஒரு போதும் இல்லை<br><span style="font-weight:700; color:#2563eb;">(1)</span></th>
+                                        <th style="padding: 10px 4px; width: 68px; text-align: center;" title="Sometimes / 10-40%">எப்போதாவது<br><span style="font-weight:700; color:#2563eb;">(2)</span></th>
+                                        <th style="padding: 10px 4px; width: 68px; text-align: center;" title="Frequently / 41-60%">சில நேரங்களில்<br><span style="font-weight:700; color:#2563eb;">(3)</span></th>
+                                        <th style="padding: 10px 4px; width: 68px; text-align: center;" title="Mostly / 61-89%">பெரும்பாலும்<br><span style="font-weight:700; color:#2563eb;">(4)</span></th>
+                                        <th style="padding: 10px 4px; width: 68px; text-align: center;" title="Always / >90%">எப்போதும்<br><span style="font-weight:700; color:#2563eb;">(5)</span></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 6px; text-align: center; color: #64748b; font-weight: 600;">10</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">பொருத்தமற்ற உணர்ச்சிகளை காட்டல்</td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q10" value="1" class="isaa-radio" data-section="II" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q10" value="2" class="isaa-radio" data-section="II" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q10" value="3" class="isaa-radio" data-section="II" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q10" value="4" class="isaa-radio" data-section="II" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q10" value="5" class="isaa-radio" data-section="II" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 6px; text-align: center; color: #64748b; font-weight: 600;">11</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">மிகைபடுத்தப்பட்ட உணர்ச்சிகளை காட்டல்</td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q11" value="1" class="isaa-radio" data-section="II" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q11" value="2" class="isaa-radio" data-section="II" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q11" value="3" class="isaa-radio" data-section="II" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q11" value="4" class="isaa-radio" data-section="II" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q11" value="5" class="isaa-radio" data-section="II" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 6px; text-align: center; color: #64748b; font-weight: 600;">12</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">சுய தூண்டல் உணர்ச்சிகளில் ஈடுபடுதல்</td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q12" value="1" class="isaa-radio" data-section="II" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q12" value="2" class="isaa-radio" data-section="II" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q12" value="3" class="isaa-radio" data-section="II" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q12" value="4" class="isaa-radio" data-section="II" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q12" value="5" class="isaa-radio" data-section="II" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 6px; text-align: center; color: #64748b; font-weight: 600;">13</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">ஆபத்து பய உணர்வு இன்மை</td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q13" value="1" class="isaa-radio" data-section="II" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q13" value="2" class="isaa-radio" data-section="II" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q13" value="3" class="isaa-radio" data-section="II" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q13" value="4" class="isaa-radio" data-section="II" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q13" value="5" class="isaa-radio" data-section="II" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 6px; text-align: center; color: #64748b; font-weight: 600;">14</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">வெளிப்படையான காரணமின்றி உற்சாகமும் கிளர்ச்சியும் அடைதல்</td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q14" value="1" class="isaa-radio" data-section="II" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q14" value="2" class="isaa-radio" data-section="II" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q14" value="3" class="isaa-radio" data-section="II" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q14" value="4" class="isaa-radio" data-section="II" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q14" value="5" class="isaa-radio" data-section="II" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="form-section" style="margin-bottom: 24px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; background: #e0f2fe; border: 1px solid #bae6fd; border-radius: 6px; padding: 10px 14px; margin-bottom: 12px;">
+                            <strong style="color: #0369a1; font-size: 0.98rem;">III. பேச்சு – மொழி மற்றும் தொடர்பு (Speech - Language and Communication)</strong>
+                            <span style="font-size: 0.85rem; font-weight: 700; color: #0284c7; background: #ffffff; padding: 3px 10px; border-radius: 12px; border: 1px solid #7dd3fc;">பிரிவு கூட்டுத்தொகை: <span id="isaa-subtotal-III">0</span> / 45</span>
+                        </div>
+                        <div style="overflow-x: auto;">
+                            <table class="autism-table isaa-table" style="width: 100%; border-collapse: collapse;">
+                                <thead>
+                                    <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0; font-size: 0.82rem; color: #334155;">
+                                        <th style="padding: 10px 6px; width: 45px; text-align: center;">எண்</th>
+                                        <th style="padding: 10px 8px; text-align: left;">குறியீடு (Indicator / Behavior)</th>
+                                        <th style="padding: 10px 4px; width: 68px; text-align: center;" title="Rarely / <10%">ஒரு போதும் இல்லை<br><span style="font-weight:700; color:#2563eb;">(1)</span></th>
+                                        <th style="padding: 10px 4px; width: 68px; text-align: center;" title="Sometimes / 10-40%">எப்போதாவது<br><span style="font-weight:700; color:#2563eb;">(2)</span></th>
+                                        <th style="padding: 10px 4px; width: 68px; text-align: center;" title="Frequently / 41-60%">சில நேரங்களில்<br><span style="font-weight:700; color:#2563eb;">(3)</span></th>
+                                        <th style="padding: 10px 4px; width: 68px; text-align: center;" title="Mostly / 61-89%">பெரும்பாலும்<br><span style="font-weight:700; color:#2563eb;">(4)</span></th>
+                                        <th style="padding: 10px 4px; width: 68px; text-align: center;" title="Always / >90%">எப்போதும்<br><span style="font-weight:700; color:#2563eb;">(5)</span></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 6px; text-align: center; color: #64748b; font-weight: 600;">15</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">பேச கற்று, பின் அதனை இழத்தல்</td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q15" value="1" class="isaa-radio" data-section="III" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q15" value="2" class="isaa-radio" data-section="III" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q15" value="3" class="isaa-radio" data-section="III" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q15" value="4" class="isaa-radio" data-section="III" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q15" value="5" class="isaa-radio" data-section="III" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 6px; text-align: center; color: #64748b; font-weight: 600;">16</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">வாய் மொழி இல்லாமல் மற்றும் சைகை மூலம் தொடர்பு கொள்வதில் சிரமம்</td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q16" value="1" class="isaa-radio" data-section="III" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q16" value="2" class="isaa-radio" data-section="III" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q16" value="3" class="isaa-radio" data-section="III" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q16" value="4" class="isaa-radio" data-section="III" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q16" value="5" class="isaa-radio" data-section="III" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 6px; text-align: center; color: #64748b; font-weight: 600;">17</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">ஒரே மாதிரி அல்லது மீண்டும் மீண்டும் ஒரே வார்த்தையை பயன்படுத்தல்</td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q17" value="1" class="isaa-radio" data-section="III" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q17" value="2" class="isaa-radio" data-section="III" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q17" value="3" class="isaa-radio" data-section="III" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q17" value="4" class="isaa-radio" data-section="III" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q17" value="5" class="isaa-radio" data-section="III" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 6px; text-align: center; color: #64748b; font-weight: 600;">18</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">பிறர் சொன்ன சொற்களை அப்படியே பின் பற்றி சொல்லுதல்</td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q18" value="1" class="isaa-radio" data-section="III" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q18" value="2" class="isaa-radio" data-section="III" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q18" value="3" class="isaa-radio" data-section="III" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q18" value="4" class="isaa-radio" data-section="III" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q18" value="5" class="isaa-radio" data-section="III" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 6px; text-align: center; color: #64748b; font-weight: 600;">19</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">குழந்தை தனமான அல்லது அசாதாரணமான சப்தங்களை எழுப்புதல்</td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q19" value="1" class="isaa-radio" data-section="III" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q19" value="2" class="isaa-radio" data-section="III" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q19" value="3" class="isaa-radio" data-section="III" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q19" value="4" class="isaa-radio" data-section="III" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q19" value="5" class="isaa-radio" data-section="III" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 6px; text-align: center; color: #64748b; font-weight: 600;">20</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">மற்றவர்களோடு பேச்சை தொடங்க முடியாமை அல்லது தொடர முடியாமை</td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q20" value="1" class="isaa-radio" data-section="III" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q20" value="2" class="isaa-radio" data-section="III" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q20" value="3" class="isaa-radio" data-section="III" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q20" value="4" class="isaa-radio" data-section="III" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q20" value="5" class="isaa-radio" data-section="III" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 6px; text-align: center; color: #64748b; font-weight: 600;">21</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">அடுக்கு மொழி போன்ற அல்லது பொருளற்ற சொற்களை பயன்படுத்தல்</td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q21" value="1" class="isaa-radio" data-section="III" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q21" value="2" class="isaa-radio" data-section="III" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q21" value="3" class="isaa-radio" data-section="III" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q21" value="4" class="isaa-radio" data-section="III" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q21" value="5" class="isaa-radio" data-section="III" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 6px; text-align: center; color: #64748b; font-weight: 600;">22</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">பிரதி பெயர்சொல் (அவன், அவள்) மாற்றி பயன்படுத்துதல்</td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q22" value="1" class="isaa-radio" data-section="III" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q22" value="2" class="isaa-radio" data-section="III" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q22" value="3" class="isaa-radio" data-section="III" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q22" value="4" class="isaa-radio" data-section="III" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q22" value="5" class="isaa-radio" data-section="III" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 6px; text-align: center; color: #64748b; font-weight: 600;">23</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">தொடர்பின் நடைமுறை தன்மைகளை உணராமை</td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q23" value="1" class="isaa-radio" data-section="III" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q23" value="2" class="isaa-radio" data-section="III" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q23" value="3" class="isaa-radio" data-section="III" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q23" value="4" class="isaa-radio" data-section="III" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q23" value="5" class="isaa-radio" data-section="III" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="form-section" style="margin-bottom: 24px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; background: #e0f2fe; border: 1px solid #bae6fd; border-radius: 6px; padding: 10px 14px; margin-bottom: 12px;">
+                            <strong style="color: #0369a1; font-size: 0.98rem;">IV. நடத்தை பாங்குகள் (Behavior Patterns)</strong>
+                            <span style="font-size: 0.85rem; font-weight: 700; color: #0284c7; background: #ffffff; padding: 3px 10px; border-radius: 12px; border: 1px solid #7dd3fc;">பிரிவு கூட்டுத்தொகை: <span id="isaa-subtotal-IV">0</span> / 35</span>
+                        </div>
+                        <div style="overflow-x: auto;">
+                            <table class="autism-table isaa-table" style="width: 100%; border-collapse: collapse;">
+                                <thead>
+                                    <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0; font-size: 0.82rem; color: #334155;">
+                                        <th style="padding: 10px 6px; width: 45px; text-align: center;">எண்</th>
+                                        <th style="padding: 10px 8px; text-align: left;">குறியீடு (Indicator / Behavior)</th>
+                                        <th style="padding: 10px 4px; width: 68px; text-align: center;" title="Rarely / <10%">ஒரு போதும் இல்லை<br><span style="font-weight:700; color:#2563eb;">(1)</span></th>
+                                        <th style="padding: 10px 4px; width: 68px; text-align: center;" title="Sometimes / 10-40%">எப்போதாவது<br><span style="font-weight:700; color:#2563eb;">(2)</span></th>
+                                        <th style="padding: 10px 4px; width: 68px; text-align: center;" title="Frequently / 41-60%">சில நேரங்களில்<br><span style="font-weight:700; color:#2563eb;">(3)</span></th>
+                                        <th style="padding: 10px 4px; width: 68px; text-align: center;" title="Mostly / 61-89%">பெரும்பாலும்<br><span style="font-weight:700; color:#2563eb;">(4)</span></th>
+                                        <th style="padding: 10px 4px; width: 68px; text-align: center;" title="Always / >90%">எப்போதும்<br><span style="font-weight:700; color:#2563eb;">(5)</span></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 6px; text-align: center; color: #64748b; font-weight: 600;">24</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">மீண்டும் மீண்டும் ஒரே மாதிரியான உடல் இயக்க பழக்கவழக்கங்களை கடைப்பிடித்தல்</td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q24" value="1" class="isaa-radio" data-section="IV" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q24" value="2" class="isaa-radio" data-section="IV" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q24" value="3" class="isaa-radio" data-section="IV" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q24" value="4" class="isaa-radio" data-section="IV" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q24" value="5" class="isaa-radio" data-section="IV" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 6px; text-align: center; color: #64748b; font-weight: 600;">25</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">உயிரற்ற பொருட்களோடு அதிக இணைப்பு காட்டல்</td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q25" value="1" class="isaa-radio" data-section="IV" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q25" value="2" class="isaa-radio" data-section="IV" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q25" value="3" class="isaa-radio" data-section="IV" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q25" value="4" class="isaa-radio" data-section="IV" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q25" value="5" class="isaa-radio" data-section="IV" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 6px; text-align: center; color: #64748b; font-weight: 600;">26</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">அதீத செயல்பாடு மற்றும் அமைதியற்ற நிலையை வெளிப்படுத்தல்</td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q26" value="1" class="isaa-radio" data-section="IV" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q26" value="2" class="isaa-radio" data-section="IV" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q26" value="3" class="isaa-radio" data-section="IV" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q26" value="4" class="isaa-radio" data-section="IV" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q26" value="5" class="isaa-radio" data-section="IV" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 6px; text-align: center; color: #64748b; font-weight: 600;">27</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">முரட்டுத்தனமான நடத்தைகளை வெளிப்படுத்துதல்</td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q27" value="1" class="isaa-radio" data-section="IV" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q27" value="2" class="isaa-radio" data-section="IV" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q27" value="3" class="isaa-radio" data-section="IV" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q27" value="4" class="isaa-radio" data-section="IV" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q27" value="5" class="isaa-radio" data-section="IV" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 6px; text-align: center; color: #64748b; font-weight: 600;">28</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">கட்டுப்படுத்த முடியாத கோபத்தை கொட்டுதல்</td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q28" value="1" class="isaa-radio" data-section="IV" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q28" value="2" class="isaa-radio" data-section="IV" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q28" value="3" class="isaa-radio" data-section="IV" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q28" value="4" class="isaa-radio" data-section="IV" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q28" value="5" class="isaa-radio" data-section="IV" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 6px; text-align: center; color: #64748b; font-weight: 600;">29</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">தன்னை காயப்படுத்தும் செயல்களில் ஈடுபடுதல்</td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q29" value="1" class="isaa-radio" data-section="IV" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q29" value="2" class="isaa-radio" data-section="IV" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q29" value="3" class="isaa-radio" data-section="IV" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q29" value="4" class="isaa-radio" data-section="IV" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q29" value="5" class="isaa-radio" data-section="IV" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 6px; text-align: center; color: #64748b; font-weight: 600;">30</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">ஒரே வகையானவற்றை வலியுறுத்தல்</td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q30" value="1" class="isaa-radio" data-section="IV" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q30" value="2" class="isaa-radio" data-section="IV" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q30" value="3" class="isaa-radio" data-section="IV" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q30" value="4" class="isaa-radio" data-section="IV" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q30" value="5" class="isaa-radio" data-section="IV" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="form-section" style="margin-bottom: 24px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; background: #e0f2fe; border: 1px solid #bae6fd; border-radius: 6px; padding: 10px 14px; margin-bottom: 12px;">
+                            <strong style="color: #0369a1; font-size: 0.98rem;">V. புலன்கள் சார்ந்தவை (Sensory Aspects)</strong>
+                            <span style="font-size: 0.85rem; font-weight: 700; color: #0284c7; background: #ffffff; padding: 3px 10px; border-radius: 12px; border: 1px solid #7dd3fc;">பிரிவு கூட்டுத்தொகை: <span id="isaa-subtotal-V">0</span> / 30</span>
+                        </div>
+                        <div style="overflow-x: auto;">
+                            <table class="autism-table isaa-table" style="width: 100%; border-collapse: collapse;">
+                                <thead>
+                                    <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0; font-size: 0.82rem; color: #334155;">
+                                        <th style="padding: 10px 6px; width: 45px; text-align: center;">எண்</th>
+                                        <th style="padding: 10px 8px; text-align: left;">குறியீடு (Indicator / Behavior)</th>
+                                        <th style="padding: 10px 4px; width: 68px; text-align: center;" title="Rarely / <10%">ஒரு போதும் இல்லை<br><span style="font-weight:700; color:#2563eb;">(1)</span></th>
+                                        <th style="padding: 10px 4px; width: 68px; text-align: center;" title="Sometimes / 10-40%">எப்போதாவது<br><span style="font-weight:700; color:#2563eb;">(2)</span></th>
+                                        <th style="padding: 10px 4px; width: 68px; text-align: center;" title="Frequently / 41-60%">சில நேரங்களில்<br><span style="font-weight:700; color:#2563eb;">(3)</span></th>
+                                        <th style="padding: 10px 4px; width: 68px; text-align: center;" title="Mostly / 61-89%">பெரும்பாலும்<br><span style="font-weight:700; color:#2563eb;">(4)</span></th>
+                                        <th style="padding: 10px 4px; width: 68px; text-align: center;" title="Always / >90%">எப்போதும்<br><span style="font-weight:700; color:#2563eb;">(5)</span></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 6px; text-align: center; color: #64748b; font-weight: 600;">31</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">புலன் சார்ந்த தூண்டுதல்களுக்கு அசாதாரணமான முறையில் உணர்ச்சி வசபடுதல்</td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q31" value="1" class="isaa-radio" data-section="V" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q31" value="2" class="isaa-radio" data-section="V" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q31" value="3" class="isaa-radio" data-section="V" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q31" value="4" class="isaa-radio" data-section="V" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q31" value="5" class="isaa-radio" data-section="V" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 6px; text-align: center; color: #64748b; font-weight: 600;">32</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">நீண்ட நேரமாக வெற்றிடத்தை முறைத்து பார்த்துக்கொண்டிருத்தல்</td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q32" value="1" class="isaa-radio" data-section="V" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q32" value="2" class="isaa-radio" data-section="V" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q32" value="3" class="isaa-radio" data-section="V" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q32" value="4" class="isaa-radio" data-section="V" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q32" value="5" class="isaa-radio" data-section="V" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 6px; text-align: center; color: #64748b; font-weight: 600;">33</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">பொருட்களை பின்தொடர்வதில் சிரமம்</td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q33" value="1" class="isaa-radio" data-section="V" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q33" value="2" class="isaa-radio" data-section="V" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q33" value="3" class="isaa-radio" data-section="V" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q33" value="4" class="isaa-radio" data-section="V" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q33" value="5" class="isaa-radio" data-section="V" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 6px; text-align: center; color: #64748b; font-weight: 600;">34</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">அசாதாரண பார்வை இருத்தல்</td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q34" value="1" class="isaa-radio" data-section="V" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q34" value="2" class="isaa-radio" data-section="V" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q34" value="3" class="isaa-radio" data-section="V" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q34" value="4" class="isaa-radio" data-section="V" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q34" value="5" class="isaa-radio" data-section="V" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 6px; text-align: center; color: #64748b; font-weight: 600;">35</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">வலிக்கு உணர்வற்ற நிலையை வெளிப்படுத்தல்</td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q35" value="1" class="isaa-radio" data-section="V" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q35" value="2" class="isaa-radio" data-section="V" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q35" value="3" class="isaa-radio" data-section="V" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q35" value="4" class="isaa-radio" data-section="V" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q35" value="5" class="isaa-radio" data-section="V" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 6px; text-align: center; color: #64748b; font-weight: 600;">36</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">மனிதர்களிடமோ பொருட்களிடமோ அசாதாரணமான முறையில் நுகர்ந்து, தொட்டு அல்லது ருசித்து பதில் கொடுத்தல்</td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q36" value="1" class="isaa-radio" data-section="V" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q36" value="2" class="isaa-radio" data-section="V" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q36" value="3" class="isaa-radio" data-section="V" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q36" value="4" class="isaa-radio" data-section="V" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q36" value="5" class="isaa-radio" data-section="V" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="form-section" style="margin-bottom: 24px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; background: #e0f2fe; border: 1px solid #bae6fd; border-radius: 6px; padding: 10px 14px; margin-bottom: 12px;">
+                            <strong style="color: #0369a1; font-size: 0.98rem;">VI. அறிவாற்றல் கூறு (Cognitive Component)</strong>
+                            <span style="font-size: 0.85rem; font-weight: 700; color: #0284c7; background: #ffffff; padding: 3px 10px; border-radius: 12px; border: 1px solid #7dd3fc;">பிரிவு கூட்டுத்தொகை: <span id="isaa-subtotal-VI">0</span> / 20</span>
+                        </div>
+                        <div style="overflow-x: auto;">
+                            <table class="autism-table isaa-table" style="width: 100%; border-collapse: collapse;">
+                                <thead>
+                                    <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0; font-size: 0.82rem; color: #334155;">
+                                        <th style="padding: 10px 6px; width: 45px; text-align: center;">எண்</th>
+                                        <th style="padding: 10px 8px; text-align: left;">குறியீடு (Indicator / Behavior)</th>
+                                        <th style="padding: 10px 4px; width: 68px; text-align: center;" title="Rarely / <10%">ஒரு போதும் இல்லை<br><span style="font-weight:700; color:#2563eb;">(1)</span></th>
+                                        <th style="padding: 10px 4px; width: 68px; text-align: center;" title="Sometimes / 10-40%">எப்போதாவது<br><span style="font-weight:700; color:#2563eb;">(2)</span></th>
+                                        <th style="padding: 10px 4px; width: 68px; text-align: center;" title="Frequently / 41-60%">சில நேரங்களில்<br><span style="font-weight:700; color:#2563eb;">(3)</span></th>
+                                        <th style="padding: 10px 4px; width: 68px; text-align: center;" title="Mostly / 61-89%">பெரும்பாலும்<br><span style="font-weight:700; color:#2563eb;">(4)</span></th>
+                                        <th style="padding: 10px 4px; width: 68px; text-align: center;" title="Always / >90%">எப்போதும்<br><span style="font-weight:700; color:#2563eb;">(5)</span></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 6px; text-align: center; color: #64748b; font-weight: 600;">37</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">சீரற்ற கவனம் மற்றும் ஒருமுகப்படுத்தல்</td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q37" value="1" class="isaa-radio" data-section="VI" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q37" value="2" class="isaa-radio" data-section="VI" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q37" value="3" class="isaa-radio" data-section="VI" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q37" value="4" class="isaa-radio" data-section="VI" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q37" value="5" class="isaa-radio" data-section="VI" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 6px; text-align: center; color: #64748b; font-weight: 600;">38</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">தாமதமாக பதிலுரைத்தல்</td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q38" value="1" class="isaa-radio" data-section="VI" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q38" value="2" class="isaa-radio" data-section="VI" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q38" value="3" class="isaa-radio" data-section="VI" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q38" value="4" class="isaa-radio" data-section="VI" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q38" value="5" class="isaa-radio" data-section="VI" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 6px; text-align: center; color: #64748b; font-weight: 600;">39</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">ஒருசிலவற்றில் அதீத ஞாபகத்திறன்</td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q39" value="1" class="isaa-radio" data-section="VI" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q39" value="2" class="isaa-radio" data-section="VI" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q39" value="3" class="isaa-radio" data-section="VI" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q39" value="4" class="isaa-radio" data-section="VI" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q39" value="5" class="isaa-radio" data-section="VI" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                        <td style="padding: 10px 6px; text-align: center; color: #64748b; font-weight: 600;">40</td>
+                                        <td style="padding: 10px 8px; color: #1e293b; font-size: 0.92rem; line-height: 1.4;">சிலவற்றில் கற்றறிந்த சான்றோர் போலிருத்தல்</td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q40" value="1" class="isaa-radio" data-section="VI" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q40" value="2" class="isaa-radio" data-section="VI" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q40" value="3" class="isaa-radio" data-section="VI" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q40" value="4" class="isaa-radio" data-section="VI" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                        <td style="padding: 10px 4px; text-align: center;">
+                                            <input type="radio" name="isaa_q40" value="5" class="isaa-radio" data-section="VI" style="width: 18px; height: 18px; accent-color: #2563eb; cursor: pointer;">
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <!-- ISAA Score Summary Box -->
+                    <div class="form-section" style="background: linear-gradient(135deg, #eff6ff 0%, #e0f2fe 100%); border: 2px solid #7dd3fc; border-radius: 10px; padding: 20px; margin-bottom: 24px;">
+                        <h3 style="margin-top: 0; color: #0369a1; border-bottom: 1px solid #bae6fd; padding-bottom: 8px;">📊 மதிப்பீட்டு முடிவு (ISAA Evaluation Summary)</h3>
+                        <div style="display: flex; gap: 24px; flex-wrap: wrap; align-items: center; margin-bottom: 16px;">
+                            <div style="background: white; border-radius: 8px; padding: 14px 20px; border: 1px solid #bfdbfe; box-shadow: 0 1px 3px rgba(0,0,0,0.05); text-align: center; min-width: 180px;">
+                                <span style="display: block; font-size: 0.8rem; font-weight: 600; color: #0369a1; text-transform: uppercase;">மொத்தம் (Total Score)</span>
+                                <strong id="isaa-total-display" style="font-size: 2.2rem; color: #0284c7; font-weight: 800;">0</strong>
+                                <span style="font-size: 0.85rem; color: #64748b;"> / 200</span>
+                                <input type="hidden" id="isaa-total-score" name="isaa_total_score" value="0">
+                            </div>
+                            <div style="background: white; border-radius: 8px; padding: 14px 20px; border: 1px solid #bfdbfe; box-shadow: 0 1px 3px rgba(0,0,0,0.05); flex: 1; min-width: 250px;">
+                                <span style="display: block; font-size: 0.8rem; font-weight: 600; color: #0369a1; text-transform: uppercase; margin-bottom: 6px;">வகைபடுத்தல் (Clinical Severity Classification)</span>
+                                <div id="isaa-classification-badge" style="display: inline-block; font-size: 1.05rem; font-weight: 700; color: #1e293b; padding: 8px 16px; border-radius: 6px; background: #f1f5f9; border: 1px solid #e2e8f0;">
+                                    — (அனைத்து வினாக்களுக்கும் மதிப்பெண் அளிக்கவும்)
+                                </div>
+                                <input type="hidden" id="isaa-classification" name="isaa_classification" value="">
+                            </div>
+                        </div>
+
+                        <!-- Classification Guide Grid -->
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; font-size: 0.82rem;">
+                            <div id="isaa-scale-noautism" class="score-card" style="padding: 10px; border-radius: 6px; background: white; border: 1px solid #cbd5e1; text-align: center;">
+                                <strong style="font-size: 0.95rem;">&lt; 70</strong><br><span style="color: #059669; font-weight: 700; font-size: 0.9rem;">மதியிறுக்கம் இல்லை</span><br><small style="color: #64748b;">No Autism</small>
+                            </div>
+                            <div id="isaa-scale-mild" class="score-card" style="padding: 10px; border-radius: 6px; background: white; border: 1px solid #cbd5e1; text-align: center;">
+                                <strong style="font-size: 0.95rem;">70 – 107</strong><br><span style="color: #d97706; font-weight: 700; font-size: 0.9rem;">ஓரளவு மதியிறுக்கம்</span><br><small style="color: #64748b;">Mild Autism</small>
+                            </div>
+                            <div id="isaa-scale-moderate" class="score-card" style="padding: 10px; border-radius: 6px; background: white; border: 1px solid #cbd5e1; text-align: center;">
+                                <strong style="font-size: 0.95rem;">108 – 153</strong><br><span style="color: #ea580c; font-weight: 700; font-size: 0.9rem;">மிதமான மதியிறுக்கம்</span><br><small style="color: #64748b;">Moderate Autism</small>
+                            </div>
+                            <div id="isaa-scale-severe" class="score-card" style="padding: 10px; border-radius: 6px; background: white; border: 1px solid #cbd5e1; text-align: center;">
+                                <strong style="font-size: 0.95rem;">&gt; 153</strong><br><span style="color: #dc2626; font-weight: 700; font-size: 0.9rem;">கடுமையான மதியிறுக்கம்</span><br><small style="color: #64748b;">Severe Autism</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3>சான்றளிப்பு (Certification)</h3>
+                        <div class="form-grid">
+                            <div class="input-group">
+                                <label for="isaa-completed-by">படிவம் பூர்த்தி செய்தவர் பெயர் / Completed By</label>
+                                <input type="text" id="isaa-completed-by" name="completed_by_name" placeholder="பெற்றோர் / பாதுகாவலர் பெயர்">
+                            </div>
+                            <div class="input-group">
+                                <label for="isaa-relationship">உறவு / Relationship</label>
+                                <input type="text" id="isaa-relationship" name="relationship" placeholder="தாய் / தந்தை / பாதுகாவலர்">
+                            </div>
+                            <div class="input-group">
+                                <label for="isaa-evaluator">பணியாளர் பெயர் / Evaluator Staff</label>
+                                <input type="text" id="isaa-evaluator" name="evaluator_name" placeholder="பணியாளர் பெயர்">
+                            </div>
+                        </div>
+                        <div style="font-size: 0.8rem; color: #64748b; font-style: italic; margin-top: 12px; text-align: right;">
+                            Adapted from Indian Scale for Assessment of Autism (ISAA)
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn-primary" style="background: #0284c7; border-color: #0369a1;">💾 Save ISAA Assessment</button>
+                    </div>
+                </form>
+            </section>
+
+
             <!-- Main: Records (always active) -->
             <section id="records" class="tab-content active">
                 <div class="tab-header">
@@ -2178,13 +3889,15 @@
                         <option value="Physiotherapy">Physiotherapy</option>
                         <option value="Speech Assessment">Speech Assessment</option>
                         <option value="Quarterly Progress Review">Progress Review</option>
+                        <option value="ABC Assessment">ABC Assessment (Tamil - 30m to 6y)</option>
+                        <option value="ISAA Assessment">ISAA Assessment (Tamil - 6y+)</option>
                     </select>
                     <select id="records-age-filter" class="admin-only-filter"
                         style="display: none; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0; background: white; font-size: 0.9rem;">
                         <option value="all">All Children</option>
                         <option value="under8">Less than 8 (EIC)</option>
                         <option value="8plus">8 &amp; Above (TH)</option>
-                        <option value="autism">Autism (ASD)</option>
+                        <option value="autism">Autism (ASD - All Ages)</option>
                     </select>
                     <button id="search-btn" class="btn-primary">Search</button>
                     <button id="btn-all-assessments-summary" class="btn-secondary"
@@ -2306,7 +4019,7 @@
                             <option value="all">All Children</option>
                             <option value="under8">Less than 8 (EIC)</option>
                             <option value="8plus">8 &amp; Above (TH)</option>
-                            <option value="autism">Autism (ASD)</option>
+                            <option value="autism">Autism (ASD - All Ages)</option>
                         </select>
                     </div>
 
@@ -2559,7 +4272,7 @@
                             <option value="all">All Children</option>
                             <option value="under8">Less than 8 (EIC)</option>
                             <option value="8plus">8 &amp; Above (TH)</option>
-                            <option value="autism">Autism (ASD)</option>
+                            <option value="autism">Autism (ASD - All Ages)</option>
                         </select>
                     </div>
                     <div class="input-group" style="margin-bottom: 0; min-width: 150px;">
@@ -2758,7 +4471,7 @@
                                 <select id="new-user-role" required>
                                     <option value="staff">Staff (Under 8 Years - EIC)</option>
                                     <option value="staff8">Staff (8 &amp; Above Years - TH)</option>
-                                    <option value="autism">Staff (Autism / ASD)</option>
+                                    <option value="autism">Staff (Autism / ASD - All Ages)</option>
                                     <option value="admin">Administrator (Full Access)</option>
                                 </select>
                             </div>
@@ -3083,6 +4796,16 @@
                             <span class="ap-type-icon">📈</span>
                             <strong>Progress Review</strong>
                             <p>Quarterly goal tracking &amp; achievement</p>
+                        </div>
+                        <div class="ap-type-card" data-form-id="abc-assessment" data-form-name="ABC Assessment">
+                            <span class="ap-type-icon">🧩</span>
+                            <strong>ABC Assessment (Tamil)</strong>
+                            <p>மதியிறுக்கம் நிலையை கணித்தல் (30 மாதம் - 6 வயது வரை)</p>
+                        </div>
+                        <div class="ap-type-card" data-form-id="isaa-assessment" data-form-name="ISAA Assessment">
+                            <span class="ap-type-icon">📊</span>
+                            <strong>ISAA Assessment (Tamil)</strong>
+                            <p>மதியிறுக்கம் நிலையை கணித்தல் (6 வயதுக்கு மேல்)</p>
                         </div>
                     </div>
                 </div>

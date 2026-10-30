@@ -323,18 +323,22 @@ function requireAdmin(req, res, next) {
 }
 
 function getUserRoleFromReq(req) {
-    if (req.user && req.user.role) return req.user.role;
-    if (req.query && req.query.role) return req.query.role;
-    if (req.query && req.query.autism === 'true') return 'autism';
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-    if (token) {
-        try {
-            const decoded = jwt.verify(token, JWT_SECRET);
-            return decoded?.role;
-        } catch (e) {}
+    let role = null;
+    if (req.user && req.user.role) role = req.user.role;
+    else if (req.query && req.query.role) role = req.query.role;
+    else if (req.query && (req.query.autism === 'true' || req.query.autism === true || req.query.asd === 'true')) role = 'autism';
+    else {
+        const authHeader = req.headers['authorization'];
+        const token = authHeader && authHeader.split(' ')[1];
+        if (token) {
+            try {
+                const decoded = jwt.verify(token, JWT_SECRET);
+                role = decoded?.role;
+            } catch (e) {}
+        }
     }
-    return null;
+    if (role === 'asd') return 'autism';
+    return role;
 }
 
 // ─── DB Init API ─────────────────────────────────────────────────────────────
@@ -731,7 +735,7 @@ app.get('/api/children', async (req, res) => {
     const { search, autism } = req.query;
     try {
         const reqRole = getUserRoleFromReq(req);
-        const isAutismReq = autism === 'true' || reqRole === 'autism';
+        const isAutismReq = autism === 'true' || reqRole === 'autism' || reqRole === 'asd';
 
         let sql = `SELECT * FROM children`;
         let params = [];
@@ -862,7 +866,7 @@ app.post('/api/assessments', async (req, res) => {
         }
 
         if (child_id && parsedData) {
-            const isAutism = parsedData.is_autism === true || parsedData.is_autism === 'true' || parsedData.category_type === 'autism' || (parsedData.diagnosis && /\b(autism|asd)\b/i.test(String(parsedData.diagnosis))) || (parsedData.dev_diagnosis && /\b(autism|asd)\b/i.test(String(parsedData.dev_diagnosis)));
+            const isAutism = form_type === 'ABC Assessment' || form_type === 'ISAA Assessment' || parsedData.is_autism === true || parsedData.is_autism === 'true' || parsedData.category_type === 'autism' || (parsedData.diagnosis && /\b(autism|asd)\b/i.test(String(parsedData.diagnosis))) || (parsedData.dev_diagnosis && /\b(autism|asd)\b/i.test(String(parsedData.dev_diagnosis)));
             if (isAutism) {
                 await pool.query(`UPDATE children SET is_autism = true WHERE id = $1`, [child_id]);
             }
@@ -889,7 +893,7 @@ app.get('/api/assessments', async (req, res) => {
     const { search, child_id, autism } = req.query;
     try {
         const reqRole = getUserRoleFromReq(req);
-        const isAutismReq = autism === 'true' || reqRole === 'autism';
+        const isAutismReq = autism === 'true' || reqRole === 'autism' || reqRole === 'asd';
 
         let sql = `SELECT id, child_id, child_name, form_type, created_at, data, age_at_creation FROM assessments`;
         let params = [];
@@ -981,7 +985,7 @@ app.put('/api/assessments/:id', async (req, res) => {
                 await pool.query(`UPDATE assessments SET child_name = $1 WHERE id = $2`, [childName, req.params.id]);
             }
         } else if (child_id && parsedData) {
-            const isAutism = parsedData.is_autism === true || parsedData.is_autism === 'true' || parsedData.category_type === 'autism' || (parsedData.diagnosis && /\b(autism|asd)\b/i.test(String(parsedData.diagnosis))) || (parsedData.dev_diagnosis && /\b(autism|asd)\b/i.test(String(parsedData.dev_diagnosis)));
+            const isAutism = curAss.form_type === 'ABC Assessment' || curAss.form_type === 'ISAA Assessment' || parsedData.is_autism === true || parsedData.is_autism === 'true' || parsedData.category_type === 'autism' || (parsedData.diagnosis && /\b(autism|asd)\b/i.test(String(parsedData.diagnosis))) || (parsedData.dev_diagnosis && /\b(autism|asd)\b/i.test(String(parsedData.dev_diagnosis)));
             if (isAutism) {
                 await pool.query(`UPDATE children SET is_autism = true WHERE id = $1`, [child_id]);
             }
@@ -1043,7 +1047,7 @@ app.get('/api/reports/attendance', async (req, res) => {
     const { start_date, end_date, child_id, autism } = req.query;
     try {
         const reqRole = getUserRoleFromReq(req);
-        const isAutismReq = autism === 'true' || reqRole === 'autism';
+        const isAutismReq = autism === 'true' || reqRole === 'autism' || reqRole === 'asd';
 
         let sql = `
             SELECT t.*, c.name as child_name, c.dob as child_dob, c.age as child_age, c.age_at_creation as child_age_at_creation, c.admission_no as child_admission_no, c.is_autism as child_is_autism,
@@ -1235,7 +1239,7 @@ app.get('/api/schedules', async (req, res) => {
 
     try {
         const reqRole = getUserRoleFromReq(req);
-        const isAutismReq = autism === 'true' || reqRole === 'autism';
+        const isAutismReq = autism === 'true' || reqRole === 'autism' || reqRole === 'asd';
 
         let sql = `
             SELECT s.*, c.name as child_name, c.dob as child_dob, c.age as child_age, c.admission_no as child_admission_no, c.is_autism as child_is_autism 

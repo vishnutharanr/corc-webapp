@@ -65,7 +65,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 admin: 'Administrator',
                 staff: 'Staff (< 8 yrs - EIC)',
                 staff8: 'Staff (≥ 8 yrs - TH)',
-                autism: 'Staff (Autism / ASD)'
+                autism: 'Staff (Autism / ASD - All Ages)',
+                asd: 'Staff (Autism / ASD - All Ages)'
             };
             const displayName = u.fullName || u.username || 'User';
             const displayRole = roleLabels[userRole] || userRole;
@@ -89,8 +90,31 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function filterAssessmentCardsForRole() {
+        const isAsd = (userRole === 'autism' || userRole === 'asd');
+        const isGeneralStaff = (userRole === 'staff' || userRole === 'staff8');
+
+        document.querySelectorAll('.ap-type-card').forEach(card => {
+            const formId = card.getAttribute('data-form-id');
+            const isAutism = (formId === 'abc-assessment' || formId === 'isaa-assessment');
+
+            if (isAsd) {
+                // In ASD login: ONLY ABC and ISAA assessments are available in the assessment menu!
+                card.style.display = isAutism ? 'flex' : 'none';
+            } else if (isGeneralStaff) {
+                // In other staff logins: other assessment forms are available, ASD assessments hidden
+                card.style.display = !isAutism ? 'flex' : 'none';
+            } else {
+                // Admin: all forms available
+                card.style.display = 'flex';
+            }
+        });
+    }
+
     function applyRoleRestrictions() {
-        const isStaff = userRole === 'staff' || userRole === 'staff8' || userRole === 'autism';
+        const isStaff = userRole === 'staff' || userRole === 'staff8' || userRole === 'autism' || userRole === 'asd';
+        const isAsd = userRole === 'autism' || userRole === 'asd';
+        const isGeneralStaff = userRole === 'staff' || userRole === 'staff8';
         
         document.querySelectorAll('.admin-only-filter').forEach(el => {
             if (userRole === 'admin') {
@@ -99,6 +123,40 @@ document.addEventListener('DOMContentLoaded', () => {
                 el.style.display = 'none';
             }
         });
+
+        // Filter Sidebar Navigation for Autism assessments
+        const navAbc = document.getElementById('nav-abc-assessment') || document.querySelector('li[data-target="abc-assessment"]');
+        const navIsaa = document.getElementById('nav-isaa-assessment') || document.querySelector('li[data-target="isaa-assessment"]');
+        if (navAbc) navAbc.style.display = (isGeneralStaff) ? 'none' : 'flex';
+        if (navIsaa) navIsaa.style.display = (isGeneralStaff) ? 'none' : 'flex';
+
+        // Filter "+ New Assessment" cards
+        filterAssessmentCardsForRole();
+
+        // Filter #records-therapy-filter options
+        const therapyFilter = document.getElementById('records-therapy-filter');
+        if (therapyFilter) {
+            Array.from(therapyFilter.options).forEach(opt => {
+                const val = opt.value;
+                if (val === 'all') {
+                    opt.style.display = '';
+                    return;
+                }
+                const isAutism = (val === 'ABC Assessment' || val === 'ISAA Assessment');
+                if (isAsd) {
+                    opt.style.display = isAutism ? '' : 'none';
+                } else if (isGeneralStaff) {
+                    opt.style.display = !isAutism ? '' : 'none';
+                } else {
+                    opt.style.display = '';
+                }
+            });
+            if (isAsd && therapyFilter.value !== 'all' && therapyFilter.value !== 'ABC Assessment' && therapyFilter.value !== 'ISAA Assessment') {
+                therapyFilter.value = 'all';
+            } else if (isGeneralStaff && (therapyFilter.value === 'ABC Assessment' || therapyFilter.value === 'ISAA Assessment')) {
+                therapyFilter.value = 'all';
+            }
+        }
 
         let styleEl = document.getElementById('role-styles');
         if (!styleEl) {
@@ -130,6 +188,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     display: none !important;
                 }
             `;
+            if (isAsd) {
+                // In ASD login, hide conduct buttons for non-ASD forms in summaries
+                styleEl.textContent += `
+                    .btn-conduct-form {
+                        display: none !important;
+                    }
+                `;
+            }
         } else {
             styleEl.textContent = '';
         }
@@ -205,21 +271,8 @@ document.addEventListener('DOMContentLoaded', () => {
     navItems.forEach(item => {
         item.addEventListener('click', () => {
             if (item.id === 'nav-logout') return; // Handled by logout listener
-
-            navItems.forEach(n => { if (n.id !== 'nav-logout') n.classList.remove('active'); });
-            tabContents.forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.assessment-pane').forEach(p => p.classList.remove('active'));
-            item.classList.add('active');
             const tid = item.getAttribute('data-target');
-            if (tid) {
-                const tEl = document.getElementById(tid);
-                if (tEl) tEl.classList.add('active');
-            }
-            if (tid === 'records') fetchChildFolders();
-            if (tid === 'assessment-summaries') fetchAndRenderAssessmentSummaries();
-            if (tid === 'user-management') fetchUsers();
-            if (tid === 'therapies-settings') fetchTherapyFees();
-            if (tid === 'therapists-settings') fetchTherapists();
+            if (tid) switchTab(tid);
         });
     });
 
@@ -253,6 +306,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     updateDevFormState();
                 } else if (activeTab && (activeTab.id === 'consultation-form' || activeTab.id === 'rapid-assessment')) {
                     updateConsultationFormState();
+                } else if (activeTab && activeTab.id === 'abc-assessment') {
+                    updateAssessmentFormState('ABC Assessment', 'form-abc');
+                    calculateAbcScores();
+                } else if (activeTab && activeTab.id === 'isaa-assessment') {
+                    updateAssessmentFormState('ISAA Assessment', 'form-isaa');
+                    calculateIsaaScores();
                 }
             }
         } catch (e) {
@@ -288,9 +347,48 @@ document.addEventListener('DOMContentLoaded', () => {
                 devBanner.style.display = 'none';
             }
         }
+
+        // ABC Assessment Edit Banner
+        const abcBanner = document.getElementById('abc-form-edit-banner');
+        const abcChildName = document.getElementById('abc-editing-child-name');
+        if (abcBanner && abcChildName) {
+            if (activeChild && currentEditingAssessments['ABC Assessment']) {
+                abcBanner.style.display = 'flex';
+                abcChildName.textContent = activeChild.name;
+            } else {
+                abcBanner.style.display = 'none';
+            }
+        }
+
+        // ISAA Assessment Edit Banner
+        const isaaBanner = document.getElementById('isaa-form-edit-banner');
+        const isaaChildName = document.getElementById('isaa-editing-child-name');
+        if (isaaBanner && isaaChildName) {
+            if (activeChild && currentEditingAssessments['ISAA Assessment']) {
+                isaaBanner.style.display = 'flex';
+                isaaChildName.textContent = activeChild.name;
+            } else {
+                isaaBanner.style.display = 'none';
+            }
+        }
     }
 
     function switchTab(targetId) {
+        const isAsd = (userRole === 'autism' || userRole === 'asd');
+        const isGeneralStaff = (userRole === 'staff' || userRole === 'staff8');
+
+        // ASD login: assessment forms from other logins are NOT available!
+        if (isAsd && ['consultation-form', 'rapid-assessment', 'child-development', 'physiotherapy', 'speech', 'progress-review'].includes(targetId)) {
+            showToast('This assessment form is not available in the ASD login.', true);
+            targetId = 'records';
+        }
+
+        // Other logins (staff, staff8): ASD assessment forms are NOT available!
+        if (isGeneralStaff && (targetId === 'abc-assessment' || targetId === 'isaa-assessment')) {
+            showToast('Autism assessments are restricted to the ASD unit.', true);
+            targetId = 'records';
+        }
+
         navItems.forEach(n => {
             if (n.id !== 'nav-logout') {
                 const isMatch = n.getAttribute('data-target') === targetId ||
@@ -321,6 +419,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (targetId === 'progress-review') {
             updateAssessmentFormState('Quarterly Progress Review', 'form-progress');
+        }
+        if (targetId === 'abc-assessment') {
+            updateAssessmentFormState('ABC Assessment', 'form-abc');
+            calculateAbcScores();
+        }
+        if (targetId === 'isaa-assessment') {
+            updateAssessmentFormState('ISAA Assessment', 'form-isaa');
+            calculateIsaaScores();
         }
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -639,7 +745,9 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('speech-name'),
             document.getElementById('prog-name'),
             document.querySelector('#form-development input[name="child_name"]'),
-            document.getElementById('consultation-name')
+            document.getElementById('consultation-name'),
+            document.getElementById('abc-name'),
+            document.getElementById('isaa-name')
         ];
         nameFields.forEach(f => {
             if (!f) return;
@@ -662,7 +770,9 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('speech-admission-no'),
             document.getElementById('prog-admission-no'),
             document.querySelector('#form-development input[name="admission_no"]'),
-            document.getElementById('consultation-admission-no')
+            document.getElementById('consultation-admission-no'),
+            document.getElementById('abc-admission-no'),
+            document.getElementById('isaa-admission-no')
         ];
         admFields.forEach(f => {
             if (!f) return;
@@ -679,7 +789,9 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('speech-dob'),
             document.getElementById('prog-dob'),
             document.querySelector('#form-development input[name="dob"]'),
-            document.getElementById('consultation-dob')
+            document.getElementById('consultation-dob'),
+            document.getElementById('abc-dob'),
+            document.getElementById('isaa-dob')
         ];
         dobFields.forEach(f => {
             if (!f) return;
@@ -697,7 +809,9 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('speech-age'),
             document.getElementById('prog-age'),
             document.querySelector('#form-development input[name="age"]'),
-            document.getElementById('consultation-age')
+            document.getElementById('consultation-age'),
+            document.getElementById('abc-age'),
+            document.getElementById('isaa-age')
         ];
         ageFields.forEach(f => {
             if (!f) return;
@@ -714,7 +828,9 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('speech-sex'),
             document.getElementById('prog-sex'),
             document.querySelector('#form-development select[name="sex"]'),
-            document.getElementById('consultation-sex')
+            document.getElementById('consultation-sex'),
+            document.getElementById('abc-sex'),
+            document.getElementById('isaa-sex')
         ];
         sexFields.forEach(f => {
             if (!f) return;
@@ -731,7 +847,9 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('speech-date'),
             document.getElementById('prog-date'),
             document.querySelector('#form-development input[name="assessment_date"]'),
-            document.getElementById('consultation-date')
+            document.getElementById('consultation-date'),
+            document.getElementById('abc-date'),
+            document.getElementById('isaa-date')
         ];
         dateFields.forEach(f => {
             if (f && !f.value) {
@@ -846,7 +964,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         const autismCheck = document.getElementById('consultation-is-autism');
         if (autismCheck) {
-            if (userRole === 'autism') {
+            if (userRole === 'autism' || userRole === 'asd') {
                 autismCheck.checked = true;
             } else if (activeChild) {
                 autismCheck.checked = isAutismChild(activeChild);
@@ -916,7 +1034,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const admInp = document.getElementById('consultation-admission-no') || document.getElementById('rapid-admission-no');
         if (admInp && nextAdm) admInp.value = nextAdm;
         const autismCheck = document.getElementById('consultation-is-autism');
-        if (autismCheck && userRole === 'autism') autismCheck.checked = true;
+        if (autismCheck && (userRole === 'autism' || userRole === 'asd')) autismCheck.checked = true;
         const dateInp = cf && cf.querySelector('input[name="assessment_date"]');
         if (dateInp) dateInp.value = new Date().toISOString().split('T')[0];
         showToast('New Child registration started' + (nextAdm ? ` · Auto Admission No: ${nextAdm}` : ''));
@@ -970,7 +1088,246 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // ── BMI Auto-calculate (with age/sex percentiles) ────────
+    // ── Autism Assessments Scoring & Live Evaluation ────────────
+    function calculateAbcScores(container) {
+        const root = container || document.getElementById('form-abc') || document;
+        const checkboxes = root.querySelectorAll('.abc-checkbox');
+        if (!checkboxes.length) return;
+
+        const sectionTotals = { 'I': 0, 'II': 0, 'III': 0, 'IV': 0, 'V': 0 };
+        let totalScore = 0;
+
+        checkboxes.forEach(cb => {
+            if (cb.checked) {
+                const sec = cb.getAttribute('data-section');
+                const weight = parseInt(cb.getAttribute('data-weight'), 10) || 0;
+                if (sectionTotals[sec] !== undefined) {
+                    sectionTotals[sec] += weight;
+                }
+                totalScore += weight;
+            }
+        });
+
+        // Update section subtotals
+        ['I', 'II', 'III', 'IV', 'V'].forEach(sec => {
+            const subDisplay = root.querySelector('#abc-subtotal-' + sec) || root.querySelector('[data-orig-id="abc-subtotal-' + sec + '"]');
+            if (subDisplay) subDisplay.textContent = sectionTotals[sec];
+        });
+
+        // Update total score display & input
+        const totDisplay = root.querySelector('#abc-total-display') || root.querySelector('[data-orig-id="abc-total-display"]');
+        if (totDisplay) totDisplay.textContent = totalScore;
+        
+        const totInput = root.querySelector('input[name="abc_total_score"]');
+        if (totInput) totInput.value = totalScore;
+
+        // Clinical Severity Classification
+        // < 47: Low Probability (< 47)
+        // 47 - 53: Borderline (47 - 53)
+        // 54 - 67: Moderate Autism (54 - 67)
+        // > 67: Autism - High Probability (> 67)
+        let classification = '';
+        let badgeClass = '';
+        let scaleKey = '';
+
+        if (totalScore > 67) {
+            classification = 'மதியிறுக்கம் / Autism - High Probability (> 67)';
+            scaleKey = 'severe';
+            badgeClass = 'background: #fee2e2; color: #991b1b; border: 1px solid #f87171;';
+        } else if (totalScore >= 54) {
+            classification = 'மிதமான மதியிறுக்கம் / Moderate Autism (54 - 67)';
+            scaleKey = 'moderate';
+            badgeClass = 'background: #fef3c7; color: #92400e; border: 1px solid #fcd34d;';
+        } else if (totalScore >= 47) {
+            classification = 'நிச்சயமில்லாத நிலை / Borderline (47 - 53)';
+            scaleKey = 'borderline';
+            badgeClass = 'background: #e0f2fe; color: #075985; border: 1px solid #7dd3fc;';
+        } else {
+            classification = 'சராசரி (குறைந்த மதியிறுக்க சாத்தியக்கூறு) / Low Probability of ASD (< 47)';
+            scaleKey = 'normal';
+            badgeClass = 'background: #dcfce7; color: #166534; border: 1px solid #86efac;';
+        }
+
+        const badge = root.querySelector('#abc-classification-badge') || root.querySelector('[data-orig-id="abc-classification-badge"]');
+        if (badge) {
+            badge.innerHTML = '<strong>' + classification + '</strong> (மதிப்பெண்: ' + totalScore + ' / 158)';
+            badge.setAttribute('style', 'display: inline-block; font-size: 1.05rem; font-weight: 700; padding: 8px 16px; border-radius: 6px; ' + badgeClass);
+        }
+
+        const classInput = root.querySelector('input[name="abc_classification"]');
+        if (classInput) classInput.value = classification;
+
+        // Highlight active scale card
+        const scaleCards = {
+            normal: root.querySelector('#abc-scale-normal') || root.querySelector('[data-orig-id="abc-scale-normal"]'),
+            borderline: root.querySelector('#abc-scale-borderline') || root.querySelector('[data-orig-id="abc-scale-borderline"]'),
+            moderate: root.querySelector('#abc-scale-moderate') || root.querySelector('[data-orig-id="abc-scale-moderate"]'),
+            severe: root.querySelector('#abc-scale-severe') || root.querySelector('[data-orig-id="abc-scale-severe"]')
+        };
+
+        Object.entries(scaleCards).forEach(([k, card]) => {
+            if (!card) return;
+            if (k === scaleKey) {
+                card.classList.add('active-scale');
+                card.style.transform = 'scale(1.04)';
+                card.style.boxShadow = '0 4px 12px rgba(124, 58, 237, 0.25)';
+                card.style.borderColor = '#7c3aed';
+                card.style.borderWidth = '2px';
+                card.style.background = '#f5f3ff';
+            } else {
+                card.classList.remove('active-scale');
+                card.style.transform = '';
+                card.style.boxShadow = '';
+                card.style.borderColor = '#cbd5e1';
+                card.style.borderWidth = '1px';
+                card.style.background = 'white';
+            }
+        });
+    }
+
+    function calculateIsaaScores(container) {
+        const root = container || document.getElementById('form-isaa') || document;
+        const radios = root.querySelectorAll('.isaa-radio');
+        if (!radios.length) return;
+
+        const sectionTotals = { 'I': 0, 'II': 0, 'III': 0, 'IV': 0, 'V': 0, 'VI': 0 };
+        let totalScore = 0;
+        const answeredQuestions = new Set();
+
+        radios.forEach(r => {
+            if (r.checked) {
+                const sec = r.getAttribute('data-section');
+                const val = parseInt(r.value, 10) || 0;
+                if (sectionTotals[sec] !== undefined) {
+                    sectionTotals[sec] += val;
+                }
+                totalScore += val;
+                answeredQuestions.add(r.name);
+            }
+        });
+        const answeredCount = answeredQuestions.size;
+
+        // Update section subtotals
+        ['I', 'II', 'III', 'IV', 'V', 'VI'].forEach(sec => {
+            const subDisplay = root.querySelector('#isaa-subtotal-' + sec) || root.querySelector('[data-orig-id="isaa-subtotal-' + sec + '"]');
+            if (subDisplay) subDisplay.textContent = sectionTotals[sec];
+        });
+
+        // Update total score display & input
+        const totDisplay = root.querySelector('#isaa-total-display') || root.querySelector('[data-orig-id="isaa-total-display"]');
+        if (totDisplay) totDisplay.textContent = totalScore;
+        
+        const totInput = root.querySelector('input[name="isaa_total_score"]');
+        if (totInput) totInput.value = totalScore;
+
+        // Clinical Severity Classification
+        // < 70: No Autism (< 70)
+        // 70 - 107: Mild Autism (70 - 107)
+        // 108 - 153: Moderate Autism (108 - 153)
+        // > 153: Severe Autism (> 153)
+        let classification = '';
+        let badgeClass = '';
+        let scaleKey = '';
+
+        if (answeredCount === 0) {
+            classification = '— (அனைத்து வினாக்களுக்கும் மதிப்பெண் அளிக்கவும்)';
+            badgeClass = 'background: #f1f5f9; color: #1e293b; border: 1px solid #e2e8f0;';
+        } else if (totalScore > 153) {
+            classification = 'கடுமையான மதியிறுக்கம் / Severe Autism (> 153)';
+            scaleKey = 'severe';
+            badgeClass = 'background: #fee2e2; color: #991b1b; border: 1px solid #f87171;';
+        } else if (totalScore >= 108) {
+            classification = 'மிதமான மதியிறுக்கம் / Moderate Autism (108 - 153)';
+            scaleKey = 'moderate';
+            badgeClass = 'background: #ffedd5; color: #9a3412; border: 1px solid #fdba74;';
+        } else if (totalScore >= 70) {
+            classification = 'ஓரளவு மதியிறுக்கம் / Mild Autism (70 - 107)';
+            scaleKey = 'mild';
+            badgeClass = 'background: #fef9c3; color: #854d0e; border: 1px solid #fde047;';
+        } else {
+            classification = 'மதியிறுக்கம் இல்லை / No Autism (< 70)';
+            scaleKey = 'noautism';
+            badgeClass = 'background: #dcfce7; color: #166534; border: 1px solid #86efac;';
+        }
+
+        const badge = root.querySelector('#isaa-classification-badge') || root.querySelector('[data-orig-id="isaa-classification-badge"]');
+        if (badge) {
+            badge.innerHTML = '<strong>' + classification + '</strong> (மதிப்பெண்: ' + totalScore + ' / 200 · வினாக்கள்: ' + answeredCount + ' / 40)';
+            badge.setAttribute('style', 'display: inline-block; font-size: 1.05rem; font-weight: 700; padding: 8px 16px; border-radius: 6px; ' + badgeClass);
+        }
+
+        const classInput = root.querySelector('input[name="isaa_classification"]');
+        if (classInput) classInput.value = classification;
+
+        // Highlight active scale card
+        const scaleCards = {
+            noautism: root.querySelector('#isaa-scale-noautism') || root.querySelector('[data-orig-id="isaa-scale-noautism"]'),
+            mild: root.querySelector('#isaa-scale-mild') || root.querySelector('[data-orig-id="isaa-scale-mild"]'),
+            moderate: root.querySelector('#isaa-scale-moderate') || root.querySelector('[data-orig-id="isaa-scale-moderate"]'),
+            severe: root.querySelector('#isaa-scale-severe') || root.querySelector('[data-orig-id="isaa-scale-severe"]')
+        };
+
+        Object.entries(scaleCards).forEach(([k, card]) => {
+            if (!card) return;
+            if (k === scaleKey) {
+                card.classList.add('active-scale');
+                card.style.transform = 'scale(1.04)';
+                card.style.boxShadow = '0 4px 12px rgba(2, 132, 199, 0.25)';
+                card.style.borderColor = '#0284c7';
+                card.style.borderWidth = '2px';
+                card.style.background = '#f0f9ff';
+            } else {
+                card.classList.remove('active-scale');
+                card.style.transform = '';
+                card.style.boxShadow = '';
+                card.style.borderColor = '#cbd5e1';
+                card.style.borderWidth = '1px';
+                card.style.background = 'white';
+            }
+        });
+    }
+
+    // Live Change Event Delegation for Autism Assessments
+    document.addEventListener('change', e => {
+        if (!e.target) return;
+        if (e.target.classList && e.target.classList.contains('abc-checkbox')) {
+            const form = e.target.closest('form') || document.getElementById('form-abc');
+            calculateAbcScores(form);
+        }
+        if (e.target.classList && e.target.classList.contains('isaa-radio')) {
+            const form = e.target.closest('form') || document.getElementById('form-isaa');
+            calculateIsaaScores(form);
+        }
+    });
+
+    // Start fresh assessment button listeners
+    const btnAbcNew = document.getElementById('btn-abc-new-version');
+    if (btnAbcNew) {
+        btnAbcNew.addEventListener('click', () => {
+            delete currentEditingAssessments['ABC Assessment'];
+            const f = document.getElementById('form-abc');
+            if (f) f.reset();
+            prefillFromActive();
+            calculateAbcScores();
+            updateFormEditBanners();
+            showToast('Started fresh ABC Assessment for ' + (activeChild ? activeChild.name : 'child'));
+        });
+    }
+
+    const btnIsaaNew = document.getElementById('btn-isaa-new-version');
+    if (btnIsaaNew) {
+        btnIsaaNew.addEventListener('click', () => {
+            delete currentEditingAssessments['ISAA Assessment'];
+            const f = document.getElementById('form-isaa');
+            if (f) f.reset();
+            prefillFromActive();
+            calculateIsaaScores();
+            updateFormEditBanners();
+            showToast('Started fresh ISAA Assessment for ' + (activeChild ? activeChild.name : 'child'));
+        });
+    }
+
+    // ── Setup BMI Auto-Calculation ──────────────────────────────
     window.setupBmiAutoCalc = function(formEl) {
         if (!formEl) return;
         const hi = formEl.querySelector('input[name="height"]');
@@ -1218,7 +1575,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const ageNum = extractChildAge(childOrRow);
         const isAutism = isAutismChild(childOrRow);
 
-        if (userRole === 'autism') return isAutism;
+        // ASD / Autism login has NO age limit: all ages permitted
+        if (userRole === 'autism' || userRole === 'asd') return isAutism;
         if (userRole === 'staff') return ageNum < 8;
         if (userRole === 'staff8') return ageNum >= 8;
         if (userRole === 'admin') {
@@ -1354,7 +1712,9 @@ document.addEventListener('DOMContentLoaded', () => {
         { id: 'form-development',  type: 'Child Development',         isConsultation: false, isRapid: false },
         { id: 'form-physio',       type: 'Physiotherapy',             isConsultation: false, isRapid: false },
         { id: 'form-speech',       type: 'Speech Assessment',         isConsultation: false, isRapid: false },
-        { id: 'form-progress',     type: 'Quarterly Progress Review', isConsultation: false, isRapid: false }
+        { id: 'form-progress',     type: 'Quarterly Progress Review', isConsultation: false, isRapid: false },
+        { id: 'form-abc',          type: 'ABC Assessment',            isConsultation: false, isRapid: false },
+        { id: 'form-isaa',         type: 'ISAA Assessment',           isConsultation: false, isRapid: false }
     ];
 
     FORMS.forEach(fi => {
@@ -1393,7 +1753,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const name = data.child_name;
         if (!name) { showToast('Child name is required.', true); return; }
         const ageNum = extractChildAge({ dob: data.dob, _consultationData: data, _rapidData: data });
-        const isAutism = (userRole === 'autism') || 
+        const isAutism = (userRole === 'autism' || userRole === 'asd') || 
                          (document.getElementById('consultation-is-autism')?.checked === true) || 
                          (data.is_autism === true || data.is_autism === 'true');
         data.is_autism = isAutism;
@@ -1419,7 +1779,8 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        if (userRole === 'autism' && !isAutism) {
+        // ASD login has NO age limit
+        if ((userRole === 'autism' || userRole === 'asd') && !isAutism) {
             showToast('Please confirm child has Autism (ASD) to register under Autism unit.', true);
             return;
         }
@@ -1521,7 +1882,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const handleRapid = handleConsultation;
 
     async function saveAssessment(childId, childName, formType, data, el) {
-        if ((userRole === 'staff8' || userRole === 'staff' || userRole === 'autism') && activeChild) {
+        const isAsd = (userRole === 'autism' || userRole === 'asd');
+        if (isAsd && (formType !== 'ABC Assessment' && formType !== 'ISAA Assessment')) {
+            showToast('Only ABC and ISAA assessments can be conducted in the ASD login.', true);
+            return;
+        }
+        const isGeneralStaff = (userRole === 'staff' || userRole === 'staff8');
+        if (isGeneralStaff && (formType === 'ABC Assessment' || formType === 'ISAA Assessment')) {
+            showToast('Autism assessments can only be submitted from the ASD unit.', true);
+            return;
+        }
+
+        if ((userRole === 'staff8' || userRole === 'staff' || isAsd) && activeChild) {
             const ageNum = extractChildAge(activeChild);
             
             if (userRole === 'staff8' && ageNum < 8) {
@@ -1532,7 +1904,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 alert("More than 8 years");
                 return;
             }
-            if (userRole === 'autism' && !isAutismChild(activeChild)) {
+            // ASD login has NO age limit: all ages accepted for autism care
+            if ((userRole === 'autism' || userRole === 'asd') && !isAutismChild(activeChild)) {
                 showToast('Autism staff can only manage children registered for Autism/ASD care.', true);
                 return;
             }
@@ -1614,6 +1987,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (apTypePicker) apTypePicker.style.display = '';
             if (apFormContainer) { apFormContainer.classList.add('hidden'); apFormContainer.innerHTML = ''; }
             if (apTitle) apTitle.textContent = 'New Assessment';
+            filterAssessmentCardsForRole();
         }
     }
 
@@ -1666,7 +2040,9 @@ document.addEventListener('DOMContentLoaded', () => {
         'Child Development':        '\ud83d\udc76',
         'Physiotherapy':            '\ud83d\udcaa',
         'Speech Assessment':        '\ud83d\udde3\ufe0f',
-        'Quarterly Progress Review':'\ud83d\udcc8'
+        'Quarterly Progress Review':'\ud83d\udcc8',
+        'ABC Assessment':           '\ud83e\udde9',
+        'ISAA Assessment':          '\ud83d\udcca'
     };
 
     async function fetchChildFolders(q) {
@@ -1675,7 +2051,7 @@ document.addEventListener('DOMContentLoaded', () => {
             let url = '/api/children';
             const params = [];
             if (q) params.push('search=' + encodeURIComponent(q));
-            if (userRole === 'autism') params.push('autism=true');
+            if (userRole === 'autism' || userRole === 'asd') params.push('autism=true');
             if (params.length) url += '?' + params.join('&');
             const res = await fetch(url);
             if (!res.ok) {
@@ -1694,7 +2070,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const therapyFilter = document.getElementById('records-therapy-filter')?.value || 'all';
             let filteredChildren = children;
             
-            if (userRole === 'autism') {
+            if (userRole === 'autism' || userRole === 'asd') {
                 filteredChildren = children.filter(child => isAutismChild(child));
             } else if (userRole === 'staff' || userRole === 'staff8' || (userRole === 'admin' && ageFilter !== 'all')) {
                 filteredChildren = children.filter(child => matchesAgeFilter(child, ageFilter));
@@ -1707,7 +2083,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (!filteredChildren.length) {
-                const emptyMsg = userRole === 'autism' 
+                const emptyMsg = (userRole === 'autism' || userRole === 'asd') 
                     ? 'No child profiles found for Autism (ASD) unit.' 
                     : 'No child profiles found.';
                 foldersEl.innerHTML = '<div class="empty-folders"><span style="font-size:3rem">📂</span><p>' + emptyMsg + '</p></div>';
@@ -1754,13 +2130,35 @@ document.addEventListener('DOMContentLoaded', () => {
                     : '<button class="btn-open-folder" data-child-json="' + safeChildJson + '">Open</button>';
 
                 // Assessment form shortcut buttons shown inside the folder
-                const formBtns = [
-                    { id:'child-development', icon:'\ud83d\udc76', label:'Child Dev.'    },
-                    { id:'physiotherapy',     icon:'\ud83d\udcaa', label:'Physio'        },
-                    { id:'speech',            icon:'\ud83d\udde3\ufe0f', label:'Speech'  },
-                    { id:'progress-review',   icon:'\ud83d\udcc8', label:'Progress'      },
-                ].map(f =>
-                    '<button class="btn-form-link" data-form-id="' + f.id + '" data-child-json="' + safeChildJson + '">' +
+                let baseBtns = [];
+                const isAsd = (userRole === 'autism' || userRole === 'asd');
+                if (isAsd) {
+                    // In ASD login: ONLY ABC and ISAA assessments are available to assess!
+                    baseBtns = [
+                        { id:'abc-assessment',  icon:'\ud83e\udde9', label:'ABC (Tamil)'  },
+                        { id:'isaa-assessment', icon:'\ud83d\udcca', label:'ISAA (Tamil)' }
+                    ];
+                } else if (userRole === 'staff' || userRole === 'staff8') {
+                    // In other logins: only general assessment forms
+                    baseBtns = [
+                        { id:'child-development', icon:'\ud83d\udc76', label:'Child Dev.' },
+                        { id:'physiotherapy',     icon:'\ud83d\udcaa', label:'Physio'     },
+                        { id:'speech',            icon:'\ud83d\udde3\ufe0f', label:'Speech' },
+                        { id:'progress-review',   icon:'\ud83d\udcc8', label:'Progress'   }
+                    ];
+                } else {
+                    // Admin: show all
+                    baseBtns = [
+                        { id:'child-development', icon:'\ud83d\udc76', label:'Child Dev.' },
+                        { id:'physiotherapy',     icon:'\ud83d\udcaa', label:'Physio'     },
+                        { id:'speech',            icon:'\ud83d\udde3\ufe0f', label:'Speech' },
+                        { id:'progress-review',   icon:'\ud83d\udcc8', label:'Progress'   },
+                        { id:'abc-assessment',    icon:'\ud83e\udde9', label:'ABC (Tamil)' },
+                        { id:'isaa-assessment',   icon:'\ud83d\udcca', label:'ISAA (Tamil)'}
+                    ];
+                }
+                const formBtns = baseBtns.map(f =>
+                    '<button class="btn-form-link' + (f.id.includes('abc') || f.id.includes('isaa') ? ' btn-autism-form' : '') + '" data-form-id="' + f.id + '" data-child-json="' + safeChildJson + '">' +
                         f.icon + '\u00a0' + f.label +
                     '</button>'
                 ).join('');
@@ -2043,6 +2441,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 'Physiotherapy':             'form-physio',
                 'Speech Assessment':         'form-speech',
                 'Quarterly Progress Review': 'form-progress',
+                'ABC Assessment':            'form-abc',
+                'ISAA Assessment':           'form-isaa',
             };
 
             const targetFormId = FORM_MAP[rec.form_type] || (rec.form_type === 'Consultation Form' || rec.form_type === 'Rapid Assessment' ? 'form-consultation' : null);
@@ -2145,8 +2545,11 @@ document.addEventListener('DOMContentLoaded', () => {
             clone.querySelectorAll('input[type="file"]').forEach(el => el.style.display = 'none');
         }
 
-        // Remove IDs to avoid DOM conflicts
-        clone.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
+        // Remove IDs to avoid DOM conflicts but preserve original ID for subtotal lookups
+        clone.querySelectorAll('[id]').forEach(el => {
+            el.setAttribute('data-orig-id', el.id);
+            el.removeAttribute('id');
+        });
 
         // Populate fields
         clone.querySelectorAll('input, select, textarea').forEach(el => {
@@ -2224,6 +2627,24 @@ document.addEventListener('DOMContentLoaded', () => {
         if (window.setupBmiAutoCalc) {
             window.setupBmiAutoCalc(clone);
         }
+
+        // Live calculation for Autism Assessment Forms (ABC & ISAA) in clone
+        if (clone.querySelector('.abc-checkbox')) {
+            calculateAbcScores(clone);
+            if (!readOnly) {
+                clone.querySelectorAll('.abc-checkbox').forEach(cb => {
+                    cb.addEventListener('change', () => calculateAbcScores(clone));
+                });
+            }
+        }
+        if (clone.querySelector('.isaa-radio')) {
+            calculateIsaaScores(clone);
+            if (!readOnly) {
+                clone.querySelectorAll('.isaa-radio').forEach(r => {
+                    r.addEventListener('change', () => calculateIsaaScores(clone));
+                });
+            }
+        }
         
         return clone;
     }
@@ -2237,6 +2658,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!r.ok) { showToast('Failed to fetch assessment record', true); return; }
                 rec = await r.json();
                 currentViewingRecord = rec;
+            }
+            const isAsdUser = (userRole === 'autism' || userRole === 'asd');
+            if (isAsdUser && rec.form_type !== 'ABC Assessment' && rec.form_type !== 'ISAA Assessment') {
+                showToast('ASD login cannot edit other department assessment records.', true);
+                return;
+            }
+            const isGeneralStaffUser = (userRole === 'staff' || userRole === 'staff8');
+            if (isGeneralStaffUser && (rec.form_type === 'ABC Assessment' || rec.form_type === 'ISAA Assessment')) {
+                showToast('General staff cannot edit ASD assessment records.', true);
+                return;
             }
             const data = rec.data || {};
 
@@ -2259,6 +2690,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 'Physiotherapy':             'form-physio',
                 'Speech Assessment':         'form-speech',
                 'Quarterly Progress Review': 'form-progress',
+                'ABC Assessment':            'form-abc',
+                'ISAA Assessment':           'form-isaa',
             };
 
             const targetFormId = FORM_MAP[rec.form_type] || (rec.form_type === 'Consultation Form' || rec.form_type === 'Rapid Assessment' ? 'form-consultation' : null);
@@ -2554,10 +2987,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const currentActive = select.value;
 
         try {
-            let children = await (await fetch('/api/children' + (userRole === 'autism' ? '?autism=true' : ''))).json();
+            let children = await (await fetch('/api/children' + ((userRole === 'autism' || userRole === 'asd') ? '?autism=true' : ''))).json();
             const ageFilter = document.getElementById('report-age-filter')?.value || 'all';
 
-            if (userRole === 'staff' || userRole === 'staff8' || userRole === 'autism' || (userRole === 'admin' && ageFilter !== 'all')) {
+            if (userRole === 'staff' || userRole === 'staff8' || userRole === 'autism' || userRole === 'asd' || userRole === 'asd' || (userRole === 'admin' && ageFilter !== 'all')) {
                 children = children.filter(child => matchesAgeFilter(child, ageFilter));
             }
             
@@ -2750,7 +3183,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (startDate) query.push('start_date=' + encodeURIComponent(startDate));
         if (endDate) query.push('end_date=' + encodeURIComponent(endDate));
         if (childId) query.push('child_id=' + encodeURIComponent(childId));
-        if (userRole === 'autism') query.push('autism=true');
+        if (userRole === 'autism' || userRole === 'asd') query.push('autism=true');
         
         const url = '/api/reports/attendance' + (query.length ? '?' + query.join('&') : '');
 
@@ -2775,7 +3208,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (therapistFilter && row.therapist_name !== therapistFilter) match = false;
                 if (pendingBalanceOnly && (parseFloat(row.balance) || 0) <= 0) match = false;
                 
-                if (userRole === 'staff' || userRole === 'staff8' || userRole === 'autism' || (userRole === 'admin' && ageFilter !== 'all')) {
+                if (userRole === 'staff' || userRole === 'staff8' || userRole === 'autism' || userRole === 'asd' || userRole === 'asd' || (userRole === 'admin' && ageFilter !== 'all')) {
                     if (!matchesAgeFilter(row, ageFilter)) match = false;
                 }
                 
@@ -3479,7 +3912,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function getPermittedScheduleChildren() {
         let list = scheduleChildrenList;
-        if (userRole === 'staff' || userRole === 'staff8' || userRole === 'autism') {
+        if (userRole === 'staff' || userRole === 'staff8' || userRole === 'autism' || userRole === 'asd') {
             list = scheduleChildrenList.filter(child => matchesAgeFilter(child));
         }
         return list;
@@ -3871,13 +4304,13 @@ document.addEventListener('DOMContentLoaded', () => {
         tbody.innerHTML = '<tr><td colspan="14" style="text-align: center;">Loading...</td></tr>';
         try {
             // Fresh children list
-            const respChild = await fetch('/api/children' + (userRole === 'autism' ? '?autism=true' : ''));
+            const respChild = await fetch('/api/children' + ((userRole === 'autism' || userRole === 'asd') ? '?autism=true' : ''));
             scheduleChildrenList = await respChild.json();
 
             const permittedChildren = getPermittedScheduleChildren();
 
             // Fetch schedules for the date
-            const schedUrl = `/api/schedules?date=${encodeURIComponent(date)}` + (userRole === 'autism' ? '&autism=true' : '');
+            const schedUrl = `/api/schedules?date=${encodeURIComponent(date)}` + ((userRole === 'autism' || userRole === 'asd') ? '&autism=true' : '');
             const respSched = await fetch(schedUrl);
             currentScheduleData = await respSched.json();
 
@@ -4030,7 +4463,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const formattedDate = dateValue ? formatDisplayDate(dateValue) : '';
 
         let permittedChildren = scheduleChildrenList;
-        if (userRole === 'staff' || userRole === 'staff8' || userRole === 'autism') {
+        if (userRole === 'staff' || userRole === 'staff8' || userRole === 'autism' || userRole === 'asd') {
             permittedChildren = scheduleChildrenList.filter(child => matchesAgeFilter(child));
         }
 
@@ -4243,7 +4676,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const formattedDate = formatDisplayDate(dateValue);
 
         let permittedChildren = scheduleChildrenList;
-        if (userRole === 'staff' || userRole === 'staff8' || userRole === 'autism') {
+        if (userRole === 'staff' || userRole === 'staff8' || userRole === 'autism' || userRole === 'asd') {
             permittedChildren = scheduleChildrenList.filter(child => matchesAgeFilter(child));
         }
 
@@ -4525,7 +4958,7 @@ document.addEventListener('DOMContentLoaded', () => {
         TIME_SLOTS.forEach((slot, index) => timeOrder[slot] = index);
 
         let permittedChildren = scheduleChildrenList;
-        if (userRole === 'staff' || userRole === 'staff8' || userRole === 'autism') {
+        if (userRole === 'staff' || userRole === 'staff8' || userRole === 'autism' || userRole === 'asd') {
             permittedChildren = scheduleChildrenList.filter(child => matchesAgeFilter(child));
         }
 
@@ -4592,7 +5025,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         let permittedChildren = scheduleChildrenList;
-        if (userRole === 'staff' || userRole === 'staff8' || userRole === 'autism') {
+        if (userRole === 'staff' || userRole === 'staff8' || userRole === 'autism' || userRole === 'asd') {
             permittedChildren = scheduleChildrenList.filter(child => matchesAgeFilter(child));
         }
 
@@ -4634,7 +5067,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!checklistEl) return;
 
         let permittedChildren = scheduleChildrenList;
-        if (userRole === 'staff' || userRole === 'staff8' || userRole === 'autism') {
+        if (userRole === 'staff' || userRole === 'staff8' || userRole === 'autism' || userRole === 'asd') {
             permittedChildren = scheduleChildrenList.filter(child => matchesAgeFilter(child));
         }
 
@@ -4690,7 +5123,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Modal Selection Buttons
     document.getElementById('btn-share-modal-select-all')?.addEventListener('click', () => {
         let permittedChildren = scheduleChildrenList;
-        if (userRole === 'staff' || userRole === 'staff8' || userRole === 'autism') {
+        if (userRole === 'staff' || userRole === 'staff8' || userRole === 'autism' || userRole === 'asd') {
             permittedChildren = scheduleChildrenList.filter(child => matchesAgeFilter(child));
         }
         permittedChildren.forEach(c => selectedScheduleChildIds.add(String(c.id)));
@@ -4702,7 +5135,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-share-modal-select-scheduled')?.addEventListener('click', () => {
         selectedScheduleChildIds.clear();
         let permittedChildren = scheduleChildrenList;
-        if (userRole === 'staff' || userRole === 'staff8' || userRole === 'autism') {
+        if (userRole === 'staff' || userRole === 'staff8' || userRole === 'autism' || userRole === 'asd') {
             permittedChildren = scheduleChildrenList.filter(child => matchesAgeFilter(child));
         }
         permittedChildren.forEach(c => {
@@ -6993,7 +7426,7 @@ function printChildSummarySheet(child, assessments = []) {
         matrixTbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 30px; color: var(--text-light);">Loading assessment matrix...</td></tr>';
 
         try {
-            const res = await fetch('/api/children' + (userRole === 'autism' ? '?autism=true' : ''));
+            const res = await fetch('/api/children' + ((userRole === 'autism' || userRole === 'asd') ? '?autism=true' : ''));
             if (!res.ok) {
                 cardsContainer.innerHTML = '<div style="color: var(--danger); text-align: center; padding: 30px;">Failed to load children assessment records.</div>';
                 return;
@@ -7510,7 +7943,7 @@ function printChildSummarySheet(child, assessments = []) {
         modal.classList.remove('hidden');
 
         try {
-            const res = await fetch('/api/children' + (userRole === 'autism' ? '?autism=true' : ''));
+            const res = await fetch('/api/children' + ((userRole === 'autism' || userRole === 'asd') ? '?autism=true' : ''));
             if (!res.ok) {
                 if (tbody) tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: var(--danger); padding: 20px;">Failed to load child records</td></tr>';
                 return;
@@ -8895,10 +9328,11 @@ function printChildSummarySheet(child, assessments = []) {
                     admin: '<span style="background:#fee2e2;color:#991b1b;padding:3px 8px;border-radius:12px;font-weight:600;font-size:0.75rem;">Admin</span>',
                     staff: '<span style="background:#dbeafe;color:#1e40af;padding:3px 8px;border-radius:12px;font-weight:600;font-size:0.75rem;">Staff (&lt;8 EIC)</span>',
                     staff8: '<span style="background:#fef3c7;color:#92400e;padding:3px 8px;border-radius:12px;font-weight:600;font-size:0.75rem;">Staff (≥8 TH)</span>',
-                    autism: '<span style="background:#ede9fe;color:#6d28d9;padding:3px 8px;border-radius:12px;font-weight:600;font-size:0.75rem;">Staff (ASD)</span>'
+                    autism: '<span style="background:#ede9fe;color:#6d28d9;padding:3px 8px;border-radius:12px;font-weight:600;font-size:0.75rem;">Staff (ASD - All Ages)</span>',
+                    asd: '<span style="background:#ede9fe;color:#6d28d9;padding:3px 8px;border-radius:12px;font-weight:600;font-size:0.75rem;">Staff (ASD - All Ages)</span>'
                 };
                 const createdStr = u.created_at ? new Date(u.created_at).toLocaleDateString('en-IN') : '-';
-                const deleteBtn = ['admin', 'staff', 'staff8', 'autism'].includes(u.username) 
+                const deleteBtn = ['admin', 'staff', 'staff8', 'autism', 'asd'].includes(u.username) 
                     ? '<span style="color:#94a3b8;font-size:0.8rem;">System Default</span>'
                     : `<button class="btn-delete-user btn-danger btn-sm" data-id="${u.id}" data-name="${u.username}" style="padding:3px 8px;font-size:0.8rem;background:var(--danger);color:white;border:none;border-radius:4px;cursor:pointer;">🗑️ Delete</button>`;
                 
