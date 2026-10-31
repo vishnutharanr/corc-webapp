@@ -150,6 +150,7 @@ const INIT_SQL = `
     CREATE INDEX IF NOT EXISTS idx_children_admission_no ON children(admission_no);
     CREATE INDEX IF NOT EXISTS idx_schedules_date ON schedules(date);
     CREATE INDEX IF NOT EXISTS idx_schedules_child_id ON schedules(child_id);
+    CREATE INDEX IF NOT EXISTS idx_therapy_attendance_lookup ON therapy_attendance(child_id, date, time_slot);
 
     UPDATE schedules SET time_slot = '4.00 - 4.30' WHERE time_slot = '4.00 - 5.00';
     UPDATE therapy_attendance SET time_slot = '4.00 - 4.30' WHERE time_slot = '4.00 - 5.00';
@@ -1047,6 +1048,7 @@ app.post('/api/attendance', async (req, res) => {
 app.get('/api/reports/attendance', async (req, res) => {
     const { start_date, end_date, child_id, autism } = req.query;
     try {
+        await autoMarkAbsentPastCutoff();
         const reqRole = getUserRoleFromReq(req);
         const isAutismReq = autism === 'true' || reqRole === 'autism' || reqRole === 'asd';
 
@@ -1231,7 +1233,77 @@ app.delete('/api/therapists/:id', async (req, res) => {
     }
 });
 
-// ─── Schedules API ─────────────────────────────────────────────────────────────
+// ─── Schedules & Unified Attendance API ───────────────────────────────────────
+
+function getISTInfo() {
+    const now = new Date();
+    const istStr = now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" });
+    const istDate = new Date(istStr);
+    const y = istDate.getFullYear();
+    const m = String(istDate.getMonth() + 1).padStart(2, '0');
+    const d = String(istDate.getDate()).padStart(2, '0');
+    const todayStr = `${y}-${m}-${d}`;
+    const hour = istDate.getHours();
+    const minute = istDate.getMinutes();
+    return { todayStr, hour, minute, isPast6PM: hour >= 18 };
+}
+
+async function getDefaultFeeForTherapy(therapyType) {
+    if (!therapyType) return 0;
+    try {
+        const feeRes = await pool.query(`SELECT fee FROM therapy_fees WHERE therapy_type = $1`, [therapyType]);
+        if (feeRes.rows.length > 0 && feeRes.rows[0].fee !== null && feeRes.rows[0].fee !== undefined) {
+            return parseFloat(feeRes.rows[0].fee) || 0;
+        }
+    } catch (e) {
+        console.error('Fee lookup error:', e);
+    }
+    const match = DEFAULT_THERAPY_FEES.find(d => d.type === therapyType);
+    return match ? match.fee : 0;
+}
+
+// Auto-absent rule: sessions not marked present by 6:00 PM IST on their scheduled date are automatically marked Absent
+async function autoMarkAbsentPastCutoff(targetDate) {
+    const ist = getISTInfo();
+    try {
+        if (targetDate) {
+            const isPastCutoff = (targetDate < ist.todayStr) || (targetDate === ist.todayStr && ist.isPast6PM);
+            if (!isPastCutoff) return;
+
+            await pool.query(`
+                INSERT INTO therapy_attendance (
+                    child_id, therapy_type, date, time_slot, therapist_name,
+                    fee, concession, to_be_paid, paid, balance, notes, status
+                )
+                SELECT s.child_id, s.therapy_type, s.date, s.time_slot, s.therapist_name,
+                       0, 0, 0, 0, 0, 'Auto-marked absent (6:00 PM cutoff)', 'Absent'
+                FROM schedules s
+                WHERE s.date = $1
+                  AND NOT EXISTS (
+                      SELECT 1 FROM therapy_attendance t 
+                      WHERE t.child_id = s.child_id AND t.date = s.date AND t.time_slot = s.time_slot
+                  )
+            `, [targetDate]);
+        } else {
+            await pool.query(`
+                INSERT INTO therapy_attendance (
+                    child_id, therapy_type, date, time_slot, therapist_name,
+                    fee, concession, to_be_paid, paid, balance, notes, status
+                )
+                SELECT s.child_id, s.therapy_type, s.date, s.time_slot, s.therapist_name,
+                       0, 0, 0, 0, 0, 'Auto-marked absent (6:00 PM cutoff)', 'Absent'
+                FROM schedules s
+                WHERE (s.date < $1 OR (s.date = $1 AND $2 = true))
+                  AND NOT EXISTS (
+                      SELECT 1 FROM therapy_attendance t 
+                      WHERE t.child_id = s.child_id AND t.date = s.date AND t.time_slot = s.time_slot
+                  )
+            `, [ist.todayStr, ist.isPast6PM]);
+        }
+    } catch (e) {
+        console.error('Error in autoMarkAbsentPastCutoff:', e);
+    }
+}
 
 app.get('/api/schedules', async (req, res) => {
     const date = req.query.date;
@@ -1239,18 +1311,35 @@ app.get('/api/schedules', async (req, res) => {
     if (!date) return res.status(400).json({ error: 'Date is required' });
 
     try {
+        await autoMarkAbsentPastCutoff(date);
+
         const reqRole = getUserRoleFromReq(req);
         const isAutismReq = autism === 'true' || reqRole === 'autism' || reqRole === 'asd';
 
         let sql = `
-            SELECT s.*, c.name as child_name, c.dob as child_dob, c.age as child_age, c.admission_no as child_admission_no, c.is_autism as child_is_autism 
+            SELECT s.*, 
+                   c.name as child_name, c.dob as child_dob, c.age as child_age, c.admission_no as child_admission_no, c.is_autism as child_is_autism,
+                   t.id as attendance_id,
+                   t.status as attendance_status,
+                   t.fee as attendance_fee,
+                   t.paid as attendance_paid,
+                   t.balance as attendance_balance,
+                   t.notes as attendance_notes
             FROM schedules s 
             JOIN children c ON s.child_id = c.id 
+            LEFT JOIN LATERAL (
+                SELECT id, status, fee, paid, balance, notes
+                FROM therapy_attendance t
+                WHERE t.child_id = s.child_id AND t.date = s.date AND t.time_slot = s.time_slot
+                ORDER BY t.id DESC
+                LIMIT 1
+            ) t ON true
             WHERE s.date = $1
         `;
         if (isAutismReq) {
             sql += ` AND c.is_autism = TRUE`;
         }
+        sql += ` ORDER BY s.id ASC`;
 
         const result = await pool.query(sql, [date]);
         res.json(result.rows);
@@ -1296,11 +1385,20 @@ app.post('/api/schedules/batch', async (req, res) => {
     try {
         const savedResults = [];
 
-        // Handle deletions
+        // Handle deletions (and clean up matching attendance)
         for (const item of deletes) {
             if (item.id && !String(item.id).startsWith('temp_')) {
+                const sched = await pool.query(`SELECT child_id, date, time_slot FROM schedules WHERE id = $1`, [item.id]);
+                if (sched.rows.length > 0) {
+                    const { child_id, date, time_slot } = sched.rows[0];
+                    await pool.query(`DELETE FROM therapy_attendance WHERE child_id = $1 AND date = $2 AND time_slot = $3`, [child_id, date, time_slot]);
+                }
                 await pool.query(`DELETE FROM schedules WHERE id = $1`, [item.id]);
             } else if (item.date && item.child_id && item.time_slot) {
+                await pool.query(
+                    `DELETE FROM therapy_attendance WHERE date = $1 AND child_id = $2 AND time_slot = $3`,
+                    [item.date, parseInt(item.child_id, 10), item.time_slot]
+                );
                 await pool.query(
                     `DELETE FROM schedules WHERE date = $1 AND child_id = $2 AND time_slot = $3`,
                     [item.date, parseInt(item.child_id, 10), item.time_slot]
@@ -1340,8 +1438,159 @@ app.post('/api/schedules/batch', async (req, res) => {
     }
 });
 
+// 1-Tap Attendance Toggle for a single scheduled session
+app.post('/api/schedules/mark-attendance', async (req, res) => {
+    const { child_id, date, time_slot, therapy_type, therapist_name, status } = req.body;
+    if (!child_id || !date || !time_slot) {
+        return res.status(400).json({ error: 'child_id, date, and time_slot are required' });
+    }
+
+    try {
+        const cid = parseInt(child_id, 10);
+
+        if (status === 'Reset') {
+            await pool.query(
+                `DELETE FROM therapy_attendance WHERE child_id = $1 AND date = $2 AND time_slot = $3`,
+                [cid, date, time_slot]
+            );
+            return res.json({ success: true, status: 'Pending', child_id: cid, date, time_slot });
+        }
+
+        const fee = (status === 'Present') ? await getDefaultFeeForTherapy(therapy_type) : 0;
+        const notes = (status === 'Absent') ? 'Marked absent by staff' : null;
+
+        const existing = await pool.query(
+            `SELECT id, fee, paid, concession FROM therapy_attendance WHERE child_id = $1 AND date = $2 AND time_slot = $3`,
+            [cid, date, time_slot]
+        );
+
+        if (existing.rows.length > 0) {
+            const ex = existing.rows[0];
+            if (status === 'Present') {
+                const finalFee = (ex.fee && ex.fee > 0) ? ex.fee : fee;
+                const finalConcession = ex.concession || 0;
+                const toBePaid = Math.max(0, finalFee - finalConcession);
+                const paid = ex.paid || 0;
+                const balance = toBePaid - paid;
+                await pool.query(
+                    `UPDATE therapy_attendance 
+                     SET status = 'Present', 
+                         fee = $1, 
+                         to_be_paid = $2, 
+                         balance = $3, 
+                         therapy_type = COALESCE($4, therapy_type), 
+                         therapist_name = COALESCE($5, therapist_name),
+                         notes = NULL 
+                     WHERE id = $6`,
+                    [finalFee, toBePaid, balance, therapy_type, therapist_name || null, ex.id]
+                );
+            } else {
+                await pool.query(
+                    `UPDATE therapy_attendance 
+                     SET status = 'Absent', 
+                         fee = 0, 
+                         concession = 0, 
+                         to_be_paid = 0, 
+                         paid = 0, 
+                         balance = 0, 
+                         notes = $1 
+                     WHERE id = $2`,
+                    [notes, ex.id]
+                );
+            }
+            return res.json({ success: true, status, child_id: cid, date, time_slot, attendance_id: ex.id });
+        } else {
+            const ins = await pool.query(
+                `INSERT INTO therapy_attendance (
+                    child_id, therapy_type, date, time_slot, therapist_name, 
+                    fee, concession, to_be_paid, paid, balance, status, notes
+                ) VALUES ($1, $2, $3, $4, $5, $6, 0, $6, 0, $6, $7, $8) RETURNING id`,
+                [cid, therapy_type || 'Therapy', date, time_slot, therapist_name || null, fee, status, notes]
+            );
+            return res.status(201).json({ success: true, status, child_id: cid, date, time_slot, attendance_id: ins.rows[0].id });
+        }
+    } catch (err) {
+        console.error('Error marking attendance:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Bulk Attendance: Mark all scheduled sessions on a given date as Present (or Absent)
+app.post('/api/schedules/mark-all-attendance', async (req, res) => {
+    const { date, status = 'Present', child_ids } = req.body;
+    if (!date) return res.status(400).json({ error: 'Date is required' });
+
+    try {
+        let sql = `SELECT s.* FROM schedules s WHERE s.date = $1`;
+        const params = [date];
+        if (Array.isArray(child_ids) && child_ids.length > 0) {
+            sql += ` AND s.child_id = ANY($2::int[])`;
+            params.push(child_ids.map(id => parseInt(id, 10)));
+        }
+        const schedRows = await pool.query(sql, params);
+
+        const feesRes = await pool.query(`SELECT therapy_type, fee FROM therapy_fees`);
+        const feeMap = new Map();
+        feesRes.rows.forEach(r => feeMap.set(r.therapy_type, parseFloat(r.fee) || 0));
+        DEFAULT_THERAPY_FEES.forEach(d => {
+            if (!feeMap.has(d.type)) feeMap.set(d.type, d.fee);
+        });
+
+        for (const row of schedRows.rows) {
+            const defaultFee = feeMap.get(row.therapy_type) || 0;
+            const targetFee = status === 'Present' ? defaultFee : 0;
+            const targetNotes = status === 'Absent' ? 'Marked absent by staff' : null;
+
+            const existing = await pool.query(
+                `SELECT id, fee, paid, concession FROM therapy_attendance WHERE child_id = $1 AND date = $2 AND time_slot = $3`,
+                [row.child_id, row.date, row.time_slot]
+            );
+            if (existing.rows.length > 0) {
+                const ex = existing.rows[0];
+                if (status === 'Present') {
+                    const finalFee = (ex.fee && ex.fee > 0) ? ex.fee : targetFee;
+                    const finalConcession = ex.concession || 0;
+                    const toBePaid = Math.max(0, finalFee - finalConcession);
+                    const paid = ex.paid || 0;
+                    const balance = toBePaid - paid;
+                    await pool.query(
+                        `UPDATE therapy_attendance 
+                         SET status = 'Present', fee = $1, to_be_paid = $2, balance = $3, therapy_type = $4, notes = NULL 
+                         WHERE id = $5`,
+                        [finalFee, toBePaid, balance, row.therapy_type, ex.id]
+                    );
+                } else {
+                    await pool.query(
+                        `UPDATE therapy_attendance 
+                         SET status = 'Absent', fee = 0, concession = 0, to_be_paid = 0, paid = 0, balance = 0, notes = $1 
+                         WHERE id = $2`,
+                        [targetNotes, ex.id]
+                    );
+                }
+            } else {
+                await pool.query(
+                    `INSERT INTO therapy_attendance (
+                        child_id, therapy_type, date, time_slot, therapist_name, fee, concession, to_be_paid, paid, balance, status, notes
+                    ) VALUES ($1, $2, $3, $4, $5, $6, 0, $6, 0, $6, $7, $8)`,
+                    [row.child_id, row.therapy_type, row.date, row.time_slot, row.therapist_name, targetFee, status, targetNotes]
+                );
+            }
+        }
+
+        res.json({ success: true, count: schedRows.rows.length, status });
+    } catch (err) {
+        console.error('Error in mark-all-attendance:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 app.delete('/api/schedules/:id', async (req, res) => {
     try {
+        const sched = await pool.query(`SELECT child_id, date, time_slot FROM schedules WHERE id = $1`, [req.params.id]);
+        if (sched.rows.length > 0) {
+            const { child_id, date, time_slot } = sched.rows[0];
+            await pool.query(`DELETE FROM therapy_attendance WHERE child_id = $1 AND date = $2 AND time_slot = $3`, [child_id, date, time_slot]);
+        }
         await pool.query(`DELETE FROM schedules WHERE id = $1`, [req.params.id]);
         res.json({ message: 'Schedule deleted' });
     } catch (err) {
@@ -1356,6 +1605,8 @@ module.exports = app;
 // Optionally start server if run directly (useful for local testing)
 if (require.main === module) {
     app.listen(PORT, () => {
+        autoMarkAbsentPastCutoff();
+        setInterval(() => { autoMarkAbsentPastCutoff(); }, 10 * 60 * 1000);
         console.log(`Server is running on http://localhost:${PORT}`);
     });
 }

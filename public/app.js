@@ -4936,9 +4936,32 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    
+    function isScheduleCutoffPassed(schedDate) {
+        if (!schedDate) return false;
+        const now = new Date();
+        const istStr = now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" });
+        const istDate = new Date(istStr);
+        const y = istDate.getFullYear();
+        const m = String(istDate.getMonth() + 1).padStart(2, '0');
+        const d = String(istDate.getDate()).padStart(2, '0');
+        const todayStr = `${y}-${m}-${d}`;
+        const hours = istDate.getHours();
+
+        if (schedDate < todayStr) return true;
+        if (schedDate === todayStr && hours >= 18) return true;
+        return false;
+    }
+
     function renderDailyScheduleTable() {
         const tbody = document.getElementById('schedule-table-body');
         if (!tbody) return;
+
+        const schedDateVal = scheduleDateInput ? scheduleDateInput.value : '';
+        const cutoffPill = document.getElementById('schedule-cutoff-pill');
+        if (cutoffPill) {
+            cutoffPill.style.display = isScheduleCutoffPassed(schedDateVal) ? 'inline-block' : 'none';
+        }
 
         const permittedChildren = getPermittedScheduleChildren();
         if (permittedChildren.length === 0) {
@@ -5022,10 +5045,40 @@ document.addEventListener('DOMContentLoaded', () => {
                     const draftClass = isDraft ? ' pending-save' : '';
                     const draftTitle = isDraft ? ' title="Unsaved schedule change"' : '';
 
-                    html += `<td data-child="${child.id}" data-childadm="${child.admission_no || ''}" data-childname="${child.name}" data-slot="${slot}" data-id="${block.id}" data-type="${block.therapy_type}" data-therapist="${block.therapist_name || ''}">
-                                <div class="schedule-cell ${colorClass}${draftClass}"${draftTitle}>
-                                    <span>${shortTherapy}</span>
+                    // Attendance state
+                    const cutoffPassed = isScheduleCutoffPassed(schedDateVal);
+                    let attStatus = block.attendance_status || (cutoffPassed ? 'Absent' : 'Pending');
+                    const isAutoAbsent = (attStatus === 'Absent') && (!block.attendance_status || (block.attendance_notes && block.attendance_notes.includes('Auto-marked')));
+
+                    let statusClass = '';
+                    let statusPill = '';
+
+                    if (attStatus === 'Present') {
+                        statusClass = ' sched-is-present';
+                        const feeLabel = (block.attendance_fee && block.attendance_fee > 0) ? ` (₹${block.attendance_fee})` : '';
+                        statusPill = `<span class="sched-att-pill pill-present" title="Status: Present / Attended${feeLabel}">✓ Present</span>`;
+                    } else if (attStatus === 'Absent') {
+                        statusClass = ' sched-is-absent';
+                        statusPill = `<span class="sched-att-pill pill-absent" title="${isAutoAbsent ? 'Auto-marked Absent after 6:00 PM cutoff' : 'Marked Absent'}">✕ Absent${isAutoAbsent ? ' <small style="font-size:0.62rem; font-weight:800;">(6PM)</small>' : ''}</span>`;
+                    } else {
+                        statusClass = ' sched-is-pending';
+                        statusPill = `
+                            <div class="sched-quick-att-btns">
+                                <button type="button" class="btn-cell-att btn-quick-present" data-quick-action="present" title="1-Tap: Mark Present">✓</button>
+                                <button type="button" class="btn-cell-att btn-quick-absent" data-quick-action="absent" title="1-Tap: Mark Absent">✕</button>
+                            </div>
+                        `;
+                    }
+
+                    const safeName = (child.name || '').replace(/"/g, '&quot;');
+                    const safeType = (block.therapy_type || '').replace(/"/g, '&quot;');
+                    const safeTherapist = (block.therapist_name || '').replace(/"/g, '&quot;');
+
+                    html += `<td data-child="${child.id}" data-childadm="${child.admission_no || ''}" data-childname="${safeName}" data-slot="${slot}" data-id="${block.id}" data-type="${safeType}" data-therapist="${safeTherapist}" data-att-status="${attStatus}" data-att-id="${block.attendance_id || ''}" data-att-auto="${isAutoAbsent ? 'true' : 'false'}" data-att-fee="${block.attendance_fee || ''}">
+                                <div class="schedule-cell ${colorClass}${draftClass}${statusClass}"${draftTitle}>
+                                    <span class="sched-therapy-name">${shortTherapy}</span>
                                     <span class="therapist-name">(${block.therapist_name || 'TBD'})</span>
+                                    ${statusPill}
                                 </div>
                              </td>`;
                 } else {
@@ -5094,7 +5147,289 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Quick 1-Tap Attendance & Attendance Popover Handling
+    let currentActiveAttTd = null;
+
+    async function handleQuickScheduleAttendance(td, status) {
+        const childId = td.dataset.child;
+        const childName = td.dataset.childname || 'Child';
+        const timeSlot = td.dataset.slot;
+        const therapyType = td.dataset.type;
+        const therapistName = td.dataset.therapist || '';
+        const date = scheduleDateInput ? scheduleDateInput.value : '';
+
+        if (!childId || !timeSlot || !date) return;
+
+        // Optimistically update block in currentScheduleData
+        const block = currentScheduleData.find(s => String(s.child_id) === String(childId) && s.time_slot === timeSlot);
+        if (block) {
+            block.attendance_status = (status === 'Reset') ? null : status;
+            if (status === 'Present') {
+                const feeMatch = (typeof dynamicTherapyFees !== 'undefined') ? dynamicTherapyFees.find(tf => tf.therapy_type === therapyType) : null;
+                block.attendance_fee = feeMatch ? feeMatch.fee : (THERAPY_DEFAULT_FEES[therapyType] || 0);
+                block.attendance_notes = null;
+            } else if (status === 'Absent') {
+                block.attendance_fee = 0;
+                block.attendance_notes = 'Marked absent by staff';
+            } else {
+                block.attendance_fee = 0;
+                block.attendance_notes = null;
+            }
+        }
+
+        renderDailyScheduleTable();
+
+        try {
+            const resp = await fetch('/api/schedules/mark-attendance', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    child_id: childId,
+                    date: date,
+                    time_slot: timeSlot,
+                    therapy_type: therapyType,
+                    therapist_name: therapistName,
+                    status: status
+                })
+            });
+            const resData = await resp.json();
+            if (resp.ok) {
+                if (status === 'Present') {
+                    showToast(`✓ ${childName} (${timeSlot}) marked Present!`);
+                } else if (status === 'Absent') {
+                    showToast(`✕ ${childName} (${timeSlot}) marked Absent`);
+                } else {
+                    showToast(`↺ Attendance reset to Pending for ${childName}`);
+                }
+            } else {
+                showToast(resData.error || 'Failed to update attendance', true);
+                loadDailySchedule();
+            }
+        } catch (err) {
+            console.error('Error marking attendance:', err);
+            showToast('Network error while updating attendance', true);
+            loadDailySchedule();
+        }
+    }
+
+    function openScheduleAttendancePopover(td) {
+        currentActiveAttTd = td;
+        const popover = document.getElementById('schedule-attendance-popover');
+        if (!popover) return;
+
+        const childId = td.dataset.child;
+        const childName = td.dataset.childname;
+        const childAdm = td.dataset.childadm ? `[${td.dataset.childadm}] ` : '';
+        const timeSlot = td.dataset.slot;
+        const therapyType = td.dataset.type || '';
+        const therapistName = td.dataset.therapist || 'TBD';
+        const attStatus = td.dataset.attStatus || 'Pending';
+        const isAuto = td.dataset.attAuto === 'true';
+        const attFee = td.dataset.attFee;
+
+        const subtitleEl = document.getElementById('sched-att-modal-subtitle');
+        if (subtitleEl) {
+            subtitleEl.innerHTML = `<strong>${childAdm}${childName}</strong> • ${timeSlot}<br><span style="color:#0284c7; font-weight:600;">${therapyType}</span> <span style="color:#64748b;">(${therapistName})</span>`;
+        }
+
+        const iconEl = document.getElementById('sched-att-status-icon');
+        const textEl = document.getElementById('sched-att-status-text');
+        const boxEl = document.getElementById('sched-att-status-box');
+        const feeBadge = document.getElementById('sched-att-fee-badge');
+
+        if (attStatus === 'Present') {
+            if (iconEl) iconEl.textContent = '🟢';
+            if (textEl) textEl.textContent = 'Present / Attended';
+            if (boxEl) {
+                boxEl.style.background = '#ecfdf5';
+                boxEl.style.borderColor = '#a7f3d0';
+            }
+            if (feeBadge) {
+                const feeMatch = (typeof dynamicTherapyFees !== 'undefined') ? dynamicTherapyFees.find(tf => tf.therapy_type === therapyType) : null;
+                const finalFee = attFee || (feeMatch ? feeMatch.fee : (THERAPY_DEFAULT_FEES[therapyType] || 0));
+                feeBadge.textContent = finalFee ? `Fee: ₹${finalFee}` : 'Attended';
+                feeBadge.style.display = 'block';
+            }
+        } else if (attStatus === 'Absent') {
+            if (iconEl) iconEl.textContent = '🔴';
+            if (textEl) textEl.textContent = isAuto ? 'Absent (Auto-marked at 6:00 PM)' : 'Absent (Did Not Attend)';
+            if (boxEl) {
+                boxEl.style.background = '#fef2f2';
+                boxEl.style.borderColor = '#fecaca';
+            }
+            if (feeBadge) feeBadge.style.display = 'none';
+        } else {
+            if (iconEl) iconEl.textContent = '⏳';
+            if (textEl) textEl.textContent = 'Pending (Scheduled)';
+            if (boxEl) {
+                boxEl.style.background = '#f8fafc';
+                boxEl.style.borderColor = '#e2e8f0';
+            }
+            if (feeBadge) feeBadge.style.display = 'none';
+        }
+
+        popover.classList.add('show');
+    }
+
+    const schedAttPopover = document.getElementById('schedule-attendance-popover');
+    schedAttPopover?.querySelector('.close-modal')?.addEventListener('click', () => {
+        schedAttPopover.classList.remove('show');
+    });
+    window.addEventListener('click', e => {
+        if (e.target === schedAttPopover) schedAttPopover.classList.remove('show');
+    });
+
+    document.getElementById('btn-modal-mark-present')?.addEventListener('click', () => {
+        if (currentActiveAttTd) {
+            handleQuickScheduleAttendance(currentActiveAttTd, 'Present');
+            schedAttPopover.classList.remove('show');
+        }
+    });
+
+    document.getElementById('btn-modal-mark-absent')?.addEventListener('click', () => {
+        if (currentActiveAttTd) {
+            handleQuickScheduleAttendance(currentActiveAttTd, 'Absent');
+            schedAttPopover.classList.remove('show');
+        }
+    });
+
+    document.getElementById('btn-modal-reset-attendance')?.addEventListener('click', () => {
+        if (currentActiveAttTd) {
+            handleQuickScheduleAttendance(currentActiveAttTd, 'Reset');
+            schedAttPopover.classList.remove('show');
+        }
+    });
+
+    document.getElementById('btn-modal-edit-slot')?.addEventListener('click', () => {
+        if (currentActiveAttTd) {
+            const td = currentActiveAttTd;
+            schedAttPopover.classList.remove('show');
+            
+            const childId = td.dataset.child;
+            const childName = td.dataset.childname;
+            const childAdm = td.dataset.childadm ? `[${td.dataset.childadm}] ` : '';
+            const timeSlot = td.dataset.slot;
+            const blockId = td.dataset.id;
+
+            document.getElementById('schedule-child-id').value = childId;
+            document.getElementById('schedule-time-slot').value = timeSlot;
+            document.getElementById('schedule-modal-subtitle').textContent = `For ${childAdm}${childName} at ${timeSlot}`;
+            currentScheduleBlockId = blockId || null;
+            document.getElementById('schedule-therapy-type').value = td.dataset.type || '';
+            document.getElementById('schedule-therapist').value = td.dataset.therapist || '';
+            const deleteBtn = document.getElementById('btn-delete-schedule');
+            if (deleteBtn) deleteBtn.style.display = 'block';
+            scheduleModal.classList.add('show');
+        }
+    });
+
+    document.getElementById('btn-modal-log-payment')?.addEventListener('click', () => {
+        if (currentActiveAttTd) {
+            const td = currentActiveAttTd;
+            schedAttPopover.classList.remove('show');
+            const childId = td.dataset.child;
+            const child = scheduleChildrenList.find(c => String(c.id) === String(childId));
+            if (child && window.openLogTherapyModal) {
+                window.openLogTherapyModal(child);
+                const dateVal = scheduleDateInput ? scheduleDateInput.value : '';
+                if (dateVal) document.getElementById('log-therapy-date').value = dateVal;
+                if (td.dataset.type) {
+                    const typeSel = document.getElementById('log-therapy-type');
+                    if (typeSel) {
+                        typeSel.value = td.dataset.type;
+                        typeSel.dispatchEvent(new Event('change'));
+                    }
+                }
+                if (td.dataset.slot) {
+                    document.getElementById('log-therapy-time-slot').value = td.dataset.slot;
+                }
+                if (td.dataset.therapist) {
+                    document.getElementById('log-therapy-therapist').value = td.dataset.therapist;
+                }
+            }
+        }
+    });
+
+    // Mark All Scheduled as Present Toolbar Action
+    document.getElementById('btn-mark-all-present')?.addEventListener('click', async () => {
+        const date = scheduleDateInput ? scheduleDateInput.value : '';
+        if (!date) return showToast('Please select a date first', true);
+
+        const permittedChildren = getPermittedScheduleChildren();
+        let targetChildren = permittedChildren;
+        if (selectedFilterChildIds.size > 0) {
+            targetChildren = permittedChildren.filter(c => selectedFilterChildIds.has(String(c.id)));
+        }
+        const targetChildIds = targetChildren.map(c => c.id);
+        const schedCount = currentScheduleData.filter(s => targetChildIds.includes(s.child_id)).length;
+
+        if (schedCount === 0) {
+            return showToast('No scheduled sessions found for this date', true);
+        }
+
+        const formattedDate = formatDisplayDate(date);
+        const confirmMsg = `Mark all ${schedCount} scheduled session(s) on ${formattedDate} as Present (Attended)?`;
+        if (!confirm(confirmMsg)) return;
+
+        try {
+            const resp = await fetch('/api/schedules/mark-all-attendance', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    date: date,
+                    status: 'Present',
+                    child_ids: (selectedFilterChildIds.size > 0) ? targetChildIds : undefined
+                })
+            });
+            const result = await resp.json();
+            if (resp.ok) {
+                showToast(`✓ Successfully marked ${result.count || schedCount} sessions as Present!`);
+                await loadDailySchedule();
+            } else {
+                showToast(result.error || 'Failed to mark all sessions', true);
+            }
+        } catch (err) {
+            showToast('Network error while marking all sessions', true);
+        }
+    });
+
+    // 60-Second Auto-check for 6:00 PM cutoff
+    setInterval(() => {
+        const scheduleTab = document.getElementById('schedule');
+        if (!scheduleTab || !scheduleTab.classList.contains('active')) return;
+        const dateInput = document.getElementById('schedule-date');
+        if (!dateInput || !dateInput.value) return;
+
+        const now = new Date();
+        const istStr = now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" });
+        const istDate = new Date(istStr);
+        const y = istDate.getFullYear();
+        const m = String(istDate.getMonth() + 1).padStart(2, '0');
+        const d = String(istDate.getDate()).padStart(2, '0');
+        const todayStr = `${y}-${m}-${d}`;
+
+        if (dateInput.value === todayStr && istDate.getHours() >= 18) {
+            const hasPending = currentScheduleData.some(s => !s.attendance_status);
+            if (hasPending) {
+                loadDailySchedule();
+            }
+        }
+    }, 60 * 1000);
+
     document.getElementById('schedule-table-body')?.addEventListener('click', (e) => {
+        // 1-Tap Quick Action button on cell
+        const quickAttBtn = e.target.closest('.btn-cell-att');
+        if (quickAttBtn) {
+            e.stopPropagation();
+            const td = quickAttBtn.closest('td');
+            if (td) {
+                const action = quickAttBtn.dataset.quickAction; // 'present' or 'absent'
+                const targetStatus = action === 'present' ? 'Present' : 'Absent';
+                handleQuickScheduleAttendance(td, targetStatus);
+            }
+            return;
+        }
+
         const cb = e.target.closest('.schedule-child-cb');
         if (cb) {
             const childId = String(cb.dataset.childId);
@@ -5131,27 +5466,23 @@ document.addEventListener('DOMContentLoaded', () => {
         const childAdm = td.dataset.childadm ? `[${td.dataset.childadm}] ` : '';
         const timeSlot = td.dataset.slot;
         const blockId = td.dataset.id;
-        
+        const hasExisting = Boolean(blockId || td.dataset.type);
+
+        if (hasExisting) {
+            openScheduleAttendancePopover(td);
+            return;
+        }
+
+        // Empty slot clicked: open scheduleModal to add therapy
+        currentScheduleBlockId = null;
+        scheduleForm.reset();
         document.getElementById('schedule-child-id').value = childId;
         document.getElementById('schedule-time-slot').value = timeSlot;
         document.getElementById('schedule-modal-subtitle').textContent = `For ${childAdm}${childName} at ${timeSlot}`;
-        
-        currentScheduleBlockId = blockId || null;
-        
+        document.getElementById('schedule-therapy-type').value = '';
+        document.getElementById('schedule-therapist').value = '';
         const deleteBtn = document.getElementById('btn-delete-schedule');
-        const hasExisting = Boolean(blockId || td.dataset.type);
-        if (hasExisting) {
-            document.getElementById('schedule-therapy-type').value = td.dataset.type || '';
-            document.getElementById('schedule-therapist').value = td.dataset.therapist || '';
-            deleteBtn.style.display = 'block';
-        } else {
-            scheduleForm.reset();
-            document.getElementById('schedule-child-id').value = childId;
-            document.getElementById('schedule-time-slot').value = timeSlot;
-            document.getElementById('schedule-therapy-type').value = '';
-            document.getElementById('schedule-therapist').value = '';
-            deleteBtn.style.display = 'none';
-        }
+        if (deleteBtn) deleteBtn.style.display = 'none';
         
         scheduleModal.classList.add('show');
     });
