@@ -16,7 +16,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="styles.css?v=34">
+    <link rel="stylesheet" href="styles.css?v=35">
 </head>
 
 <body>
@@ -4142,6 +4142,10 @@
                             <label>Schedule Date</label>
                             <input type="date" id="schedule-date" required>
                         </div>
+                        <button type="button" id="btn-save-schedule" class="btn-primary" style="display: flex; align-items: center; gap: 6px; font-weight: 700; background: #16a34a; border-color: #16a34a; box-shadow: 0 2px 6px rgba(22, 163, 74, 0.25);">
+                            <span>💾</span> <span id="btn-save-schedule-text">Save Schedule</span>
+                            <span id="schedule-unsaved-badge" style="display: none; background: #ef4444; color: white; border-radius: 10px; padding: 1px 7px; font-size: 0.75rem; font-weight: 800; margin-left: 2px;">0</span>
+                        </button>
                         <button id="btn-share-schedule" class="btn-secondary" style="display: flex; align-items: center; gap: 6px; font-weight: 600;"><span>📤</span> Share</button>
                         <button id="btn-print-schedule" class="btn-secondary" style="display: flex; align-items: center; gap: 6px; font-weight: 600;"><span>🖨</span> Print</button>
                         <button id="btn-export-schedule-pdf" class="btn-secondary" style="display: flex; align-items: center; gap: 6px; font-weight: 600;"><span>📄</span> Export PDF</button>
@@ -4168,6 +4172,22 @@
                         </button>
                         <button type="button" id="btn-share-selected" class="btn-primary btn-sm" style="font-size: 0.82rem; padding: 6px 14px; background: #2563eb; color: #fff; font-weight: 700; display: flex; align-items: center; gap: 5px; box-shadow: 0 1px 3px rgba(37,99,235,0.3);">
                             <span>📤</span> Share Selected
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Unsaved Changes Floating Banner -->
+                <div id="schedule-unsaved-bar" style="display: none; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; background: #fefce8; border: 1.5px solid #facc15; border-radius: 8px; padding: 10px 16px; margin-bottom: 14px; box-shadow: 0 2px 4px rgba(234, 179, 8, 0.1);">
+                    <div style="display: flex; align-items: center; gap: 10px; color: #854d0e; font-weight: 600; font-size: 0.92rem;">
+                        <span style="font-size: 1.25rem;">⚠️</span>
+                        <span>You have <strong id="schedule-unsaved-count-text" style="color: #b45309; font-size: 1.05rem;">0</strong> unsaved schedule change(s). Click <strong>"Save Schedule"</strong> to save your work.</span>
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <button type="button" id="btn-discard-schedule" class="btn-secondary btn-sm" style="background: #fff; font-size: 0.82rem; padding: 5px 12px; font-weight: 600; color: #dc2626; border-color: #fca5a5;">
+                            Discard Changes
+                        </button>
+                        <button type="button" id="btn-bar-save-schedule" class="btn-primary btn-sm" style="font-size: 0.85rem; padding: 6px 16px; background: #16a34a; border-color: #16a34a; font-weight: 700; box-shadow: 0 2px 4px rgba(22,163,74,0.3);">
+                            💾 Save Schedule Now
                         </button>
                     </div>
                 </div>
@@ -5125,7 +5145,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="app.js?v=34"></script>
+    <script src="app.js?v=35"></script>
 </body>
 
 </html>

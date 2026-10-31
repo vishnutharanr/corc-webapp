@@ -4170,8 +4170,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const scheduleDateInput = document.getElementById('schedule-date');
+    let previousScheduleDate = scheduleDateInput ? scheduleDateInput.value : '';
     if (scheduleDateInput) {
-        scheduleDateInput.addEventListener('change', loadDailySchedule);
+        scheduleDateInput.addEventListener('change', () => {
+            if (pendingScheduleChanges && pendingScheduleChanges.size > 0) {
+                if (!confirm(`You have ${pendingScheduleChanges.size} unsaved schedule change(s). Discard them and switch date?`)) {
+                    scheduleDateInput.value = previousScheduleDate;
+                    return;
+                }
+                pendingScheduleChanges.clear();
+                updateScheduleSaveButtonUI();
+            }
+            previousScheduleDate = scheduleDateInput.value;
+            loadDailySchedule();
+        });
     }
 
     const scheduleFilterInput = document.getElementById('schedule-child-filter');
@@ -4514,6 +4526,16 @@ document.addEventListener('DOMContentLoaded', () => {
                      </td>`;
             
             TIME_SLOTS.forEach(slot => {
+                const slotKey = `${child.id}_${slot}`;
+                const pending = (typeof pendingScheduleChanges !== 'undefined') ? pendingScheduleChanges.get(slotKey) : null;
+                
+                if (pending && pending.action === 'delete') {
+                    html += `<td data-child="${child.id}" data-childadm="${child.admission_no || ''}" data-childname="${child.name}" data-slot="${slot}">
+                                <div class="pending-delete-cell" title="Marked for deletion (Unsaved)"></div>
+                             </td>`;
+                    return;
+                }
+
                 const block = currentScheduleData.find(s => s.child_id === child.id && s.time_slot === slot);
                 
                 if (block) {
@@ -4529,8 +4551,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     let shortTherapy = block.therapy_type.split(' ')[0];
                     if (block.therapy_type === 'Occupational Therapy') shortTherapy = 'OT';
 
+                    const isDraft = pending && pending.action === 'set';
+                    const draftClass = isDraft ? ' pending-save' : '';
+                    const draftTitle = isDraft ? ' title="Unsaved schedule change"' : '';
+
                     html += `<td data-child="${child.id}" data-childadm="${child.admission_no || ''}" data-childname="${child.name}" data-slot="${slot}" data-id="${block.id}" data-type="${block.therapy_type}" data-therapist="${block.therapist_name || ''}">
-                                <div class="schedule-cell ${colorClass}">
+                                <div class="schedule-cell ${colorClass}${draftClass}"${draftTitle}>
                                     <span>${shortTherapy}</span>
                                     <span class="therapist-name">(${block.therapist_name || 'TBD'})</span>
                                 </div>
@@ -4571,6 +4597,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!validIds.has(id)) selectedFilterChildIds.delete(id);
             }
 
+            if (typeof pendingScheduleChanges !== 'undefined') {
+                pendingScheduleChanges.clear();
+                updateScheduleSaveButtonUI();
+            }
             renderScheduleFilterOptions(permittedChildren);
             updateScheduleFilterUI();
             renderDailyScheduleTable();
@@ -4642,7 +4672,8 @@ document.addEventListener('DOMContentLoaded', () => {
         currentScheduleBlockId = blockId || null;
         
         const deleteBtn = document.getElementById('btn-delete-schedule');
-        if (blockId) {
+        const hasExisting = Boolean(blockId || td.dataset.type);
+        if (hasExisting) {
             document.getElementById('schedule-therapy-type').value = td.dataset.type || '';
             document.getElementById('schedule-therapist').value = td.dataset.therapist || '';
             deleteBtn.style.display = 'block';
@@ -4665,45 +4696,261 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target === scheduleModal) scheduleModal.classList.remove('show');
     });
 
-    if (scheduleForm) {
-        scheduleForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const payload = {
-                date: scheduleDateInput.value,
-                child_id: document.getElementById('schedule-child-id').value,
-                time_slot: document.getElementById('schedule-time-slot').value,
-                therapy_type: document.getElementById('schedule-therapy-type').value,
-                therapist_name: document.getElementById('schedule-therapist').value
-            };
-            try {
-                const resp = await fetch('/api/schedules', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                if (resp.ok) {
-                    scheduleModal.classList.remove('show');
-                    loadDailySchedule();
-                } else {
-                    showToast('Failed to save schedule block', true);
-                }
-            } catch (err) {
-                showToast('Failed to save schedule block', true);
+    // ── Schedule Draft & Batch Save Logic (No page refresh on cell edit) ──
+    const pendingScheduleChanges = new Map(); // key: `${child_id}_${time_slot}`
+
+    function updateScheduleSaveButtonUI() {
+        const count = pendingScheduleChanges.size;
+        const btnSave = document.getElementById('btn-save-schedule');
+        const btnText = document.getElementById('btn-save-schedule-text');
+        const badge = document.getElementById('schedule-unsaved-badge');
+        const unsavedBar = document.getElementById('schedule-unsaved-bar');
+        const countText = document.getElementById('schedule-unsaved-count-text');
+
+        if (count > 0) {
+            if (btnSave) {
+                btnSave.classList.add('has-unsaved');
             }
+            if (btnText) btnText.textContent = `Save Schedule (${count})`;
+            if (badge) {
+                badge.textContent = count;
+                badge.style.display = 'inline-block';
+            }
+            if (unsavedBar) {
+                unsavedBar.style.display = 'flex';
+                if (countText) countText.textContent = count;
+            }
+        } else {
+            if (btnSave) {
+                btnSave.classList.remove('has-unsaved');
+            }
+            if (btnText) btnText.textContent = 'Save Schedule';
+            if (badge) badge.style.display = 'none';
+            if (unsavedBar) unsavedBar.style.display = 'none';
+        }
+    }
+
+    function stageScheduleChange(change) {
+        const key = `${change.child_id}_${change.time_slot}`;
+        pendingScheduleChanges.set(key, change);
+
+        const cid = parseInt(change.child_id, 10);
+        if (change.action === 'set') {
+            const existingIdx = currentScheduleData.findIndex(s => s.child_id === cid && s.time_slot === change.time_slot);
+            if (existingIdx >= 0) {
+                currentScheduleData[existingIdx].therapy_type = change.therapy_type;
+                currentScheduleData[existingIdx].therapist_name = change.therapist_name;
+            } else {
+                currentScheduleData.push({
+                    id: change.block_id || `temp_${Date.now()}`,
+                    child_id: cid,
+                    date: change.date,
+                    time_slot: change.time_slot,
+                    therapy_type: change.therapy_type,
+                    therapist_name: change.therapist_name
+                });
+            }
+
+            // In-place DOM update without refresh
+            const td = document.querySelector(`td[data-child="${change.child_id}"][data-slot="${change.time_slot}"]`);
+            if (td) {
+                td.dataset.type = change.therapy_type;
+                td.dataset.therapist = change.therapist_name || '';
+                let colorClass = 'sched-other';
+                const t = change.therapy_type.toLowerCase();
+                if (t.includes('physio')) colorClass = 'sched-physio';
+                else if (t.includes('occupational') || t.includes('ot')) colorClass = 'sched-ot';
+                else if (t.includes('hydro')) colorClass = 'sched-hydro';
+                else if (t.includes('music')) colorClass = 'sched-music';
+                else if (t.includes('speech')) colorClass = 'sched-speech';
+                else if (t.includes('assessment')) colorClass = 'sched-assessment';
+
+                let shortTherapy = change.therapy_type.split(' ')[0];
+                if (change.therapy_type === 'Occupational Therapy') shortTherapy = 'OT';
+
+                td.innerHTML = `
+                    <div class="schedule-cell ${colorClass} pending-save" title="Unsaved schedule change">
+                        <span>${shortTherapy}</span>
+                        <span class="therapist-name">(${change.therapist_name || 'TBD'})</span>
+                    </div>
+                `;
+            }
+        } else if (change.action === 'delete') {
+            currentScheduleData = currentScheduleData.filter(s => !(s.child_id === cid && s.time_slot === change.time_slot));
+
+            // In-place DOM update without refresh
+            const td = document.querySelector(`td[data-child="${change.child_id}"][data-slot="${change.time_slot}"]`);
+            if (td) {
+                delete td.dataset.type;
+                delete td.dataset.therapist;
+                delete td.dataset.id;
+                td.innerHTML = `<div class="pending-delete-cell" title="Marked for deletion (Unsaved)"></div>`;
+            }
+        }
+
+        updateScheduleSaveButtonUI();
+    }
+
+    if (scheduleForm) {
+        scheduleForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const childId = document.getElementById('schedule-child-id').value;
+            const timeSlot = document.getElementById('schedule-time-slot').value;
+            const therapyType = document.getElementById('schedule-therapy-type').value;
+            const therapistName = document.getElementById('schedule-therapist').value;
+            const date = scheduleDateInput ? scheduleDateInput.value : '';
+
+            if (!therapyType) {
+                showToast('Please select a therapy type', true);
+                return;
+            }
+
+            stageScheduleChange({
+                action: 'set',
+                date: date,
+                child_id: childId,
+                time_slot: timeSlot,
+                therapy_type: therapyType,
+                therapist_name: therapistName,
+                block_id: currentScheduleBlockId
+            });
+
+            scheduleModal.classList.remove('show');
         });
     }
 
-    document.getElementById('btn-delete-schedule')?.addEventListener('click', async () => {
-        if (!currentScheduleBlockId) return;
-        if (!confirm('Remove this therapy block?')) return;
-        try {
-            const resp = await fetch('/api/schedules/' + currentScheduleBlockId, { method: 'DELETE' });
-            if (resp.ok) {
-                scheduleModal.classList.remove('show');
-                loadDailySchedule();
+    document.getElementById('btn-delete-schedule')?.addEventListener('click', () => {
+        const childId = document.getElementById('schedule-child-id').value;
+        const timeSlot = document.getElementById('schedule-time-slot').value;
+        const date = scheduleDateInput ? scheduleDateInput.value : '';
+
+        stageScheduleChange({
+            action: 'delete',
+            date: date,
+            child_id: childId,
+            time_slot: timeSlot,
+            block_id: currentScheduleBlockId
+        });
+
+        scheduleModal.classList.remove('show');
+    });
+
+    async function saveAllPendingScheduleChanges() {
+        if (pendingScheduleChanges.size === 0) {
+            showToast('No unsaved changes in schedule');
+            return;
+        }
+
+        const btnSave = document.getElementById('btn-save-schedule');
+        const btnText = document.getElementById('btn-save-schedule-text');
+        const barBtn = document.getElementById('btn-bar-save-schedule');
+        const originalText = btnText ? btnText.textContent : 'Save Schedule';
+
+        if (btnSave) {
+            btnSave.disabled = true;
+            if (btnText) btnText.textContent = 'Saving...';
+        }
+        if (barBtn) barBtn.disabled = true;
+
+        const saves = [];
+        const deletes = [];
+
+        for (const [k, change] of pendingScheduleChanges.entries()) {
+            if (change.action === 'set') {
+                saves.push({
+                    date: change.date,
+                    child_id: change.child_id,
+                    time_slot: change.time_slot,
+                    therapy_type: change.therapy_type,
+                    therapist_name: change.therapist_name
+                });
+            } else if (change.action === 'delete') {
+                deletes.push({
+                    id: change.block_id,
+                    date: change.date,
+                    child_id: change.child_id,
+                    time_slot: change.time_slot
+                });
             }
+        }
+
+        try {
+            // First try batch API
+            const resp = await fetch('/api/schedules/batch', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ saves, deletes })
+            });
+
+            if (!resp.ok) {
+                // Fallback to sequential/concurrent requests if batch endpoint failed
+                for (const del of deletes) {
+                    if (del.id && !String(del.id).startsWith('temp_')) {
+                        await fetch('/api/schedules/' + del.id, { method: 'DELETE' });
+                    }
+                }
+                for (const s of saves) {
+                    await fetch('/api/schedules', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(s)
+                    });
+                }
+            } else {
+                const resData = await resp.json();
+                if (resData.saved && Array.isArray(resData.saved)) {
+                    resData.saved.forEach(item => {
+                        const td = document.querySelector(`td[data-child="${item.child_id}"][data-slot="${item.time_slot}"]`);
+                        if (td) td.dataset.id = item.id;
+                    });
+                }
+            }
+
+            const totalSaved = saves.length + deletes.length;
+            pendingScheduleChanges.clear();
+
+            // Clear draft styling from DOM
+            document.querySelectorAll('.schedule-cell.pending-save').forEach(el => {
+                el.classList.remove('pending-save');
+                el.removeAttribute('title');
+            });
+            document.querySelectorAll('.pending-delete-cell').forEach(el => el.remove());
+
+            updateScheduleSaveButtonUI();
+
+            if (btnText) btnText.textContent = 'Saved ✓';
+            setTimeout(() => {
+                if (btnText) btnText.textContent = 'Save Schedule';
+                if (btnSave) btnSave.disabled = false;
+                if (barBtn) barBtn.disabled = false;
+            }, 1800);
+
+            showToast(`Schedule saved successfully! (${totalSaved} changes saved)`);
         } catch (err) {
-            showToast('Failed to remove block', true);
+            console.error('Error saving schedule:', err);
+            showToast('Failed to save schedule changes: ' + err.message, true);
+            if (btnSave) btnSave.disabled = false;
+            if (barBtn) barBtn.disabled = false;
+            if (btnText) btnText.textContent = originalText;
+        }
+    }
+
+    function discardAllPendingScheduleChanges() {
+        if (pendingScheduleChanges.size === 0) return;
+        if (!confirm(`Discard all ${pendingScheduleChanges.size} unsaved schedule change(s)?`)) return;
+        pendingScheduleChanges.clear();
+        updateScheduleSaveButtonUI();
+        loadDailySchedule();
+    }
+
+    document.getElementById('btn-save-schedule')?.addEventListener('click', saveAllPendingScheduleChanges);
+    document.getElementById('btn-bar-save-schedule')?.addEventListener('click', saveAllPendingScheduleChanges);
+    document.getElementById('btn-discard-schedule')?.addEventListener('click', discardAllPendingScheduleChanges);
+
+    window.addEventListener('beforeunload', (e) => {
+        if (typeof pendingScheduleChanges !== 'undefined' && pendingScheduleChanges.size > 0) {
+            e.preventDefault();
+            e.returnValue = '';
         }
     });
 

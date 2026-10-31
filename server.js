@@ -1290,6 +1290,55 @@ app.post('/api/schedules', async (req, res) => {
     }
 });
 
+app.post('/api/schedules/batch', async (req, res) => {
+    const { saves = [], deletes = [] } = req.body;
+    try {
+        const savedResults = [];
+
+        // Handle deletions
+        for (const item of deletes) {
+            if (item.id && !String(item.id).startsWith('temp_')) {
+                await pool.query(`DELETE FROM schedules WHERE id = $1`, [item.id]);
+            } else if (item.date && item.child_id && item.time_slot) {
+                await pool.query(
+                    `DELETE FROM schedules WHERE date = $1 AND child_id = $2 AND time_slot = $3`,
+                    [item.date, parseInt(item.child_id, 10), item.time_slot]
+                );
+            }
+        }
+
+        // Handle saves / upserts
+        for (const item of saves) {
+            const { date, child_id, time_slot, therapy_type, therapist_name } = item;
+            if (!date || !child_id || !time_slot || !therapy_type) continue;
+            const cid = parseInt(child_id, 10);
+            const check = await pool.query(
+                `SELECT id FROM schedules WHERE date = $1 AND child_id = $2 AND time_slot = $3`,
+                [date, cid, time_slot]
+            );
+            if (check.rows.length > 0) {
+                const rowId = check.rows[0].id;
+                await pool.query(
+                    `UPDATE schedules SET therapy_type = $1, therapist_name = $2 WHERE id = $3`,
+                    [therapy_type, therapist_name || null, rowId]
+                );
+                savedResults.push({ id: rowId, date, child_id: cid, time_slot, therapy_type, therapist_name });
+            } else {
+                const ins = await pool.query(
+                    `INSERT INTO schedules (date, child_id, time_slot, therapy_type, therapist_name) VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+                    [date, cid, time_slot, therapy_type, therapist_name || null]
+                );
+                savedResults.push({ id: ins.rows[0].id, date, child_id: cid, time_slot, therapy_type, therapist_name });
+            }
+        }
+
+        res.json({ success: true, saved: savedResults, deletedCount: deletes.length });
+    } catch (err) {
+        console.error('Batch schedule error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 app.delete('/api/schedules/:id', async (req, res) => {
     try {
         await pool.query(`DELETE FROM schedules WHERE id = $1`, [req.params.id]);
