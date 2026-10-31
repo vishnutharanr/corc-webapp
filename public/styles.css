@@ -2735,16 +2735,16 @@ button {
     font-weight: 700;
 }
 
-.score-card.active-scale {
-    box-shadow: 0 0 0 2px #7c3aed, 0 4px 6px -1px rgba(124, 58, 237, 0.2);
-    border-color: #7c3aed !important;
-    background-color: #faf5ff !important;
-    transform: translateY(-2px);
-    transition: all 0.2s ease;
+.score-card {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    user-select: none;
+    cursor: default;
 }
 
-.score-card {
-    transition: all 0.2s ease;
+.score-card.active-scale {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    font-weight: 700;
 }
 
 

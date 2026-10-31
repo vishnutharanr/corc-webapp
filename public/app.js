@@ -1238,7 +1238,45 @@ document.addEventListener('DOMContentLoaded', () => {
         const classInput = root.querySelector('input[name="abc_classification"]');
         if (classInput) classInput.value = classification;
 
-        // Highlight active scale card
+        // Sharp color & style definitions for ABC classification
+        const abcConfigs = {
+            normal: {
+                border: '#16a34a',
+                bg: '#f0fdf4',
+                color: '#15803d',
+                badgeText: '✓ CURRENT RESULT',
+                badgeBg: '#16a34a'
+            },
+            borderline: {
+                border: '#0284c7',
+                bg: '#f0f9ff',
+                color: '#0369a1',
+                badgeText: '✓ CURRENT RESULT',
+                badgeBg: '#0284c7'
+            },
+            moderate: {
+                border: '#ea580c',
+                bg: '#fff7ed',
+                color: '#c2410c',
+                badgeText: '✓ CURRENT RESULT',
+                badgeBg: '#ea580c'
+            },
+            severe: {
+                border: '#dc2626',
+                bg: '#fef2f2',
+                color: '#b91c1c',
+                badgeText: '✓ CURRENT RESULT',
+                badgeBg: '#dc2626'
+            }
+        };
+
+        const activeCfg = abcConfigs[scaleKey] || abcConfigs.normal;
+        if (badge) {
+            badge.innerHTML = `<span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: ${activeCfg.border}; margin-right: 8px; vertical-align: middle;"></span><strong>${classification}</strong> (மதிப்பெண்: ${totalScore} / 158)`;
+            badge.setAttribute('style', `display: inline-block; font-size: 1.08rem; font-weight: 800; padding: 10px 18px; border-radius: 6px; background: ${activeCfg.bg}; color: ${activeCfg.color}; border: 2.5px solid ${activeCfg.border}; box-shadow: 0 2px 8px rgba(0,0,0,0.08);`);
+        }
+
+        // Highlight active scale card with sharp high-contrast border and badge
         const scaleCards = {
             normal: root.querySelector('#abc-scale-normal') || root.querySelector('[data-orig-id="abc-scale-normal"]'),
             borderline: root.querySelector('#abc-scale-borderline') || root.querySelector('[data-orig-id="abc-scale-borderline"]'),
@@ -1248,20 +1286,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
         Object.entries(scaleCards).forEach(([k, card]) => {
             if (!card) return;
+            const cfg = abcConfigs[k] || abcConfigs.normal;
             if (k === scaleKey) {
                 card.classList.add('active-scale');
-                card.style.transform = 'scale(1.04)';
-                card.style.boxShadow = '0 4px 12px rgba(124, 58, 237, 0.25)';
-                card.style.borderColor = '#7c3aed';
-                card.style.borderWidth = '2px';
-                card.style.background = '#f5f3ff';
+                card.style.transform = 'translateY(-3px)';
+                card.style.border = `3px solid ${cfg.border}`;
+                card.style.background = cfg.bg;
+                card.style.boxShadow = `0 0 0 2px #ffffff, 0 0 0 5px ${cfg.border}, 0 8px 20px rgba(0, 0, 0, 0.14)`;
+                card.style.opacity = '1';
+                card.style.position = 'relative';
+                card.style.zIndex = '2';
+
+                // Sharp active badge tag inside the card
+                let pill = card.querySelector('.scale-active-badge');
+                if (!pill) {
+                    pill = document.createElement('div');
+                    pill.className = 'scale-active-badge';
+                    card.insertBefore(pill, card.firstChild);
+                }
+                pill.textContent = cfg.badgeText;
+                pill.setAttribute('style', `display: inline-block; font-size: 0.72rem; font-weight: 800; background: ${cfg.badgeBg}; color: #ffffff; padding: 2px 8px; border-radius: 4px; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 1px 3px rgba(0,0,0,0.12);`);
             } else {
                 card.classList.remove('active-scale');
                 card.style.transform = '';
-                card.style.boxShadow = '';
-                card.style.borderColor = '#cbd5e1';
-                card.style.borderWidth = '1px';
-                card.style.background = 'white';
+                card.style.border = '1.5px solid #cbd5e1';
+                card.style.background = '#ffffff';
+                card.style.boxShadow = 'none';
+                card.style.opacity = '0.55';
+                card.style.zIndex = '1';
+                const pill = card.querySelector('.scale-active-badge');
+                if (pill) pill.remove();
             }
         });
     }
@@ -1340,7 +1394,45 @@ document.addEventListener('DOMContentLoaded', () => {
         const classInput = root.querySelector('input[name="isaa_classification"]');
         if (classInput) classInput.value = classification;
 
-        // Highlight active scale card
+        // Sharp color & style definitions for ISAA classification
+        const isaaConfigs = {
+            noautism: {
+                border: '#16a34a',
+                bg: '#f0fdf4',
+                color: '#15803d',
+                badgeText: '✓ CURRENT RESULT',
+                badgeBg: '#16a34a'
+            },
+            mild: {
+                border: '#ca8a04',
+                bg: '#fefce8',
+                color: '#854d0e',
+                badgeText: '✓ CURRENT RESULT',
+                badgeBg: '#ca8a04'
+            },
+            moderate: {
+                border: '#ea580c',
+                bg: '#fff7ed',
+                color: '#c2410c',
+                badgeText: '✓ CURRENT RESULT',
+                badgeBg: '#ea580c'
+            },
+            severe: {
+                border: '#dc2626',
+                bg: '#fef2f2',
+                color: '#b91c1c',
+                badgeText: '✓ CURRENT RESULT',
+                badgeBg: '#dc2626'
+            }
+        };
+
+        const activeIsaaCfg = isaaConfigs[scaleKey] || isaaConfigs.noautism;
+        if (badge) {
+            badge.innerHTML = `<span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: ${activeIsaaCfg.border}; margin-right: 8px; vertical-align: middle;"></span><strong>${classification}</strong> (மதிப்பெண்: ${totalScore} / 200 · வினாக்கள்: ${answeredCount} / 40)`;
+            badge.setAttribute('style', `display: inline-block; font-size: 1.08rem; font-weight: 800; padding: 10px 18px; border-radius: 6px; background: ${activeIsaaCfg.bg}; color: ${activeIsaaCfg.color}; border: 2.5px solid ${activeIsaaCfg.border}; box-shadow: 0 2px 8px rgba(0,0,0,0.08);`);
+        }
+
+        // Highlight active scale card with sharp high-contrast border and badge
         const scaleCards = {
             noautism: root.querySelector('#isaa-scale-noautism') || root.querySelector('[data-orig-id="isaa-scale-noautism"]'),
             mild: root.querySelector('#isaa-scale-mild') || root.querySelector('[data-orig-id="isaa-scale-mild"]'),
@@ -1350,20 +1442,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
         Object.entries(scaleCards).forEach(([k, card]) => {
             if (!card) return;
+            const cfg = isaaConfigs[k] || isaaConfigs.noautism;
             if (k === scaleKey) {
                 card.classList.add('active-scale');
-                card.style.transform = 'scale(1.04)';
-                card.style.boxShadow = '0 4px 12px rgba(2, 132, 199, 0.25)';
-                card.style.borderColor = '#0284c7';
-                card.style.borderWidth = '2px';
-                card.style.background = '#f0f9ff';
+                card.style.transform = 'translateY(-3px)';
+                card.style.border = `3px solid ${cfg.border}`;
+                card.style.background = cfg.bg;
+                card.style.boxShadow = `0 0 0 2px #ffffff, 0 0 0 5px ${cfg.border}, 0 8px 20px rgba(0, 0, 0, 0.14)`;
+                card.style.opacity = '1';
+                card.style.position = 'relative';
+                card.style.zIndex = '2';
+
+                let pill = card.querySelector('.scale-active-badge');
+                if (!pill) {
+                    pill = document.createElement('div');
+                    pill.className = 'scale-active-badge';
+                    card.insertBefore(pill, card.firstChild);
+                }
+                pill.textContent = cfg.badgeText;
+                pill.setAttribute('style', `display: inline-block; font-size: 0.72rem; font-weight: 800; background: ${cfg.badgeBg}; color: #ffffff; padding: 2px 8px; border-radius: 4px; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; box-shadow: 0 1px 3px rgba(0,0,0,0.12);`);
             } else {
                 card.classList.remove('active-scale');
                 card.style.transform = '';
-                card.style.boxShadow = '';
-                card.style.borderColor = '#cbd5e1';
-                card.style.borderWidth = '1px';
-                card.style.background = 'white';
+                card.style.border = '1.5px solid #cbd5e1';
+                card.style.background = '#ffffff';
+                card.style.boxShadow = 'none';
+                card.style.opacity = '0.55';
+                card.style.zIndex = '1';
+                const pill = card.querySelector('.scale-active-badge');
+                if (pill) pill.remove();
             }
         });
     }
