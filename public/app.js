@@ -3828,15 +3828,94 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('.nav-item').forEach(item => {
         item.addEventListener('click', () => {
             if (item.getAttribute('data-target') === 'reports') {
+                initReportDatesDefault();
                 populateReportChildSelect();
                 populateReportTherapistSelect();
-                // Optionally auto-fetch recent reports
                 fetchReports();
             }
         });
     });
 
-    async function fetchReports() {
+    
+    function initReportDatesDefault() {
+        const today = getLocalTodayDateString();
+        const singleDate = document.getElementById('report-single-date');
+        const startDate = document.getElementById('report-start-date');
+        const endDate = document.getElementById('report-end-date');
+
+        if (singleDate && !singleDate.value) singleDate.value = today;
+        if (startDate && !startDate.value) startDate.value = today;
+        if (endDate && !endDate.value) endDate.value = today;
+    }
+
+    // Set defaults on startup
+    initReportDatesDefault();
+
+    // Preset button: Today
+    document.getElementById('btn-report-preset-today')?.addEventListener('click', () => {
+        const today = getLocalTodayDateString();
+        const singleDate = document.getElementById('report-single-date');
+        const startDate = document.getElementById('report-start-date');
+        const endDate = document.getElementById('report-end-date');
+        if (singleDate) singleDate.value = today;
+        if (startDate) startDate.value = today;
+        if (endDate) endDate.value = today;
+
+        document.getElementById('report-single-date-group').style.display = 'block';
+        document.getElementById('report-start-date-group').style.display = 'none';
+        document.getElementById('report-end-date-group').style.display = 'none';
+        fetchReports();
+    });
+
+    // Preset button: Yesterday
+    document.getElementById('btn-report-preset-yesterday')?.addEventListener('click', () => {
+        const d = new Date();
+        d.setDate(d.getDate() - 1);
+        const yest = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const singleDate = document.getElementById('report-single-date');
+        const startDate = document.getElementById('report-start-date');
+        const endDate = document.getElementById('report-end-date');
+        if (singleDate) singleDate.value = yest;
+        if (startDate) startDate.value = yest;
+        if (endDate) endDate.value = yest;
+
+        document.getElementById('report-single-date-group').style.display = 'block';
+        document.getElementById('report-start-date-group').style.display = 'none';
+        document.getElementById('report-end-date-group').style.display = 'none';
+        fetchReports();
+    });
+
+    // Toggle Custom Range
+    document.getElementById('btn-report-toggle-custom')?.addEventListener('click', () => {
+        const startGrp = document.getElementById('report-start-date-group');
+        const endGrp = document.getElementById('report-end-date-group');
+        const singleGrp = document.getElementById('report-single-date-group');
+        const isHidden = (startGrp.style.display === 'none');
+        if (isHidden) {
+            startGrp.style.display = 'block';
+            endGrp.style.display = 'block';
+            singleGrp.style.display = 'none';
+        } else {
+            startGrp.style.display = 'none';
+            endGrp.style.display = 'none';
+            singleGrp.style.display = 'block';
+        }
+    });
+
+    // Auto-reload on date change
+    document.getElementById('report-single-date')?.addEventListener('change', (e) => {
+        const val = e.target.value;
+        const startDate = document.getElementById('report-start-date');
+        const endDate = document.getElementById('report-end-date');
+        if (startDate) startDate.value = val;
+        if (endDate) endDate.value = val;
+        fetchReports();
+    });
+
+    document.getElementById('report-start-date')?.addEventListener('change', fetchReports);
+    document.getElementById('report-end-date')?.addEventListener('change', fetchReports);
+
+async function fetchReports() {
         const tbody = document.getElementById('reports-table-body');
         if (!tbody) return;
         

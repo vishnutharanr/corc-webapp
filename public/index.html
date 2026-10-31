@@ -16,7 +16,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="styles.css?v=40">
+    <link rel="stylesheet" href="styles.css?v=41">
 </head>
 
 <body>
@@ -4457,14 +4457,25 @@
                     </div>
                 </div>
 
+                <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; background: #f8fafc; border: 1px solid #e2e8f0; padding: 10px 14px; border-radius: 8px;">
+                    <span style="font-weight: 700; color: #334155; font-size: 0.88rem;">📅 View Therapy Date:</span>
+                    <button type="button" id="btn-report-preset-today" class="btn-sm btn-primary" style="padding: 5px 14px; font-weight: 700; border-radius: 6px; cursor: pointer;">Today</button>
+                    <button type="button" id="btn-report-preset-yesterday" class="btn-sm btn-secondary" style="padding: 5px 14px; font-weight: 600; border-radius: 6px; background: #fff; cursor: pointer;">Yesterday</button>
+                    <button type="button" id="btn-report-toggle-custom" class="btn-sm btn-secondary" style="padding: 5px 14px; font-weight: 600; border-radius: 6px; background: #fff; cursor: pointer;">Date Range ▾</button>
+                </div>
+
                 <div class="reports-toolbar"
                     style="display: flex; gap: 15px; margin-bottom: 20px; align-items: flex-end; flex-wrap: wrap;">
-                    <div class="input-group" style="margin-bottom: 0;">
-                        <label>Start Date</label>
+                    <div class="input-group" id="report-single-date-group" style="margin-bottom: 0;">
+                        <label for="report-single-date">Attendance Date</label>
+                        <input type="date" id="report-single-date" style="font-weight: 600;">
+                    </div>
+                    <div class="input-group" id="report-start-date-group" style="margin-bottom: 0; display: none;">
+                        <label for="report-start-date">Start Date</label>
                         <input type="date" id="report-start-date">
                     </div>
-                    <div class="input-group" style="margin-bottom: 0;">
-                        <label>End Date</label>
+                    <div class="input-group" id="report-end-date-group" style="margin-bottom: 0; display: none;">
+                        <label for="report-end-date">End Date</label>
                         <input type="date" id="report-end-date">
                     </div>
                     <div class="input-group" style="margin-bottom: 0; min-width: 150px;">
@@ -5393,7 +5404,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="app.js?v=40"></script>
+    <script src="app.js?v=41"></script>
 </body>
 
 </html>

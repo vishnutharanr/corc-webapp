@@ -1048,7 +1048,6 @@ app.post('/api/attendance', async (req, res) => {
 app.get('/api/reports/attendance', async (req, res) => {
     const { start_date, end_date, child_id, autism } = req.query;
     try {
-        await autoMarkAbsentPastCutoff();
         const reqRole = getUserRoleFromReq(req);
         const isAutismReq = autism === 'true' || reqRole === 'autism' || reqRole === 'asd';
 
@@ -1284,7 +1283,7 @@ async function autoMarkAbsentPastCutoff(targetDate) {
                       WHERE t.child_id = s.child_id AND t.date = s.date AND t.time_slot = s.time_slot
                   )
             `, [targetDate]);
-        } else {
+        } else if (ist.isPast6PM) {
             await pool.query(`
                 INSERT INTO therapy_attendance (
                     child_id, therapy_type, date, time_slot, therapist_name,
@@ -1293,12 +1292,12 @@ async function autoMarkAbsentPastCutoff(targetDate) {
                 SELECT s.child_id, s.therapy_type, s.date, s.time_slot, s.therapist_name,
                        0, 0, 0, 0, 0, 'Auto-marked absent (6:00 PM cutoff)', 'Absent'
                 FROM schedules s
-                WHERE (s.date < $1 OR (s.date = $1 AND $2 = true))
+                WHERE s.date = $1
                   AND NOT EXISTS (
                       SELECT 1 FROM therapy_attendance t 
                       WHERE t.child_id = s.child_id AND t.date = s.date AND t.time_slot = s.time_slot
                   )
-            `, [ist.todayStr, ist.isPast6PM]);
+            `, [ist.todayStr]);
         }
     } catch (e) {
         console.error('Error in autoMarkAbsentPastCutoff:', e);
