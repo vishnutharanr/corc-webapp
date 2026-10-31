@@ -941,21 +941,62 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // ── Fill Age in all assessment forms ────────────────────────
-        const currentAgeStr = activeChild ? (activeChild.age || (activeChild.dob ? calcAge(activeChild.dob) : '')) : '';
-        const ageFields = [
+        // ── Fill Initial Age & Current Age in all assessment forms ──
+        const initialAgeStr = activeChild ? getChildInitialAge(activeChild) : '';
+        const currentAgeStr = activeChild ? getChildCurrentAge(activeChild) : '';
+
+        // 1. Initial Age (Admission / Permanent - never changes)
+        const initialAgeFields = [
+            document.getElementById('consultation-age-at-creation'),
+            document.getElementById('dev-initial-age'),
+            document.getElementById('physio-initial-age'),
+            document.getElementById('speech-initial-age'),
+            document.getElementById('prog-initial-age'),
+            document.getElementById('abc-initial-age'),
+            document.getElementById('isaa-initial-age')
+        ];
+        initialAgeFields.forEach(f => {
+            if (!f) return;
+            if (activeChild && initialAgeStr && initialAgeStr !== '—') {
+                f.value = initialAgeStr;
+            } else if (!activeChild) {
+                f.value = '';
+            }
+        });
+
+        // 2. Current Age (Live Dynamic - updates periodically as dates advance)
+        const currentAgeFields = [
+            document.getElementById('consultation-live-age'),
+            document.getElementById('dev-current-age'),
+            document.getElementById('physio-current-age'),
+            document.getElementById('speech-current-age'),
+            document.getElementById('prog-current-age'),
+            document.getElementById('abc-current-age'),
+            document.getElementById('isaa-current-age')
+        ];
+        currentAgeFields.forEach(f => {
+            if (!f) return;
+            if (activeChild && currentAgeStr && currentAgeStr !== '—') {
+                f.value = currentAgeStr;
+            } else if (!activeChild) {
+                f.value = '';
+            }
+        });
+
+        // 3. Legacy / hidden age inputs (for compatibility)
+        const legacyAgeFields = [
+            document.getElementById('consultation-age'),
+            document.getElementById('dev-age') || document.querySelector('#form-development input[name="age"]'),
             document.getElementById('physio-age'),
             document.getElementById('speech-age'),
             document.getElementById('prog-age'),
-            document.querySelector('#form-development input[name="age"]'),
-            document.getElementById('consultation-age'),
             document.getElementById('abc-age'),
             document.getElementById('isaa-age')
         ];
-        ageFields.forEach(f => {
+        legacyAgeFields.forEach(f => {
             if (!f) return;
-            if (activeChild && currentAgeStr) {
-                f.value = currentAgeStr;
+            if (activeChild) {
+                f.value = (initialAgeStr && initialAgeStr !== '—') ? initialAgeStr : (currentAgeStr !== '—' ? currentAgeStr : '');
             } else if (!activeChild) {
                 f.value = '';
             }
@@ -1159,6 +1200,28 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('consultation-dob')?.addEventListener('change', updateConsultationDobAndAge);
     document.getElementById('consultation-dob')?.addEventListener('input', updateConsultationDobAndAge);
     document.querySelector('#form-consultation input[name="assessment_date"]')?.addEventListener('change', updateConsultationDobAndAge);
+
+    const updateDevDobAndAge = function() {
+        const val = document.getElementById('dev-dob')?.value || document.querySelector('#form-development input[name="dob"]')?.value;
+        if (!val) return;
+        const curAgeInp = document.getElementById('dev-current-age');
+        if (curAgeInp) {
+            const live = calcAge(val);
+            if (live) curAgeInp.value = live;
+        }
+        const initAgeInp = document.getElementById('dev-initial-age');
+        const legacyAgeInp = document.getElementById('dev-age') || document.querySelector('#form-development input[name="age"]');
+        if (initAgeInp && (!initAgeInp.value || initAgeInp.value === '—')) {
+            const calculated = calcAge(val);
+            if (calculated) initAgeInp.value = calculated;
+        }
+        if (legacyAgeInp && !legacyAgeInp.value) {
+            legacyAgeInp.value = initAgeInp?.value || curAgeInp?.value || '';
+        }
+    };
+    document.getElementById('dev-dob')?.addEventListener('change', updateDevDobAndAge);
+    document.getElementById('dev-dob')?.addEventListener('input', updateDevDobAndAge);
+    document.querySelector('#form-development input[name="dob"]')?.addEventListener('change', updateDevDobAndAge);
 
     btnNew && btnNew.addEventListener('click', async () => {
         setActiveChild(null);
@@ -2317,6 +2380,19 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        // Ensure initial age and current age are always captured in assessment data
+        if (activeChild) {
+            if (!data.age_at_creation || data.age_at_creation === '—') {
+                data.age_at_creation = getChildInitialAge(activeChild);
+            }
+            if (!data.current_live_age || data.current_live_age === '—') {
+                data.current_live_age = getChildCurrentAge(activeChild);
+            }
+            if (!data.age) {
+                data.age = data.age_at_creation || data.current_live_age || '';
+            }
+        }
+
         if ((userRole === 'staff8' || userRole === 'staff' || isAsd) && activeChild) {
             const ageNum = extractChildAge(activeChild);
             
@@ -2882,14 +2958,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!data.sex && child && child.sex) {
                 data.sex = child.sex;
             }
-            if (!data.age_at_creation) {
-                data.age_at_creation = rec.age_at_creation || (child && (child.age_at_creation || child.age)) || data.age || (data.dob ? calcAge(data.dob, data.assessment_date || null) : '');
+            if (!data.age_at_creation || data.age_at_creation === '—') {
+                data.age_at_creation = rec.age_at_creation || (child && getChildInitialAge(child)) || data.age || (data.dob ? calcAge(data.dob, data.assessment_date || null) : '');
+            }
+            if (!data.current_live_age || data.current_live_age === '—') {
+                data.current_live_age = (child && getChildCurrentAge(child)) || (data.dob ? calcAge(data.dob) : '');
             }
             if (!data.age) {
-                data.age = data.age_at_creation;
-            }
-            if (!data.current_live_age && data.dob) {
-                data.current_live_age = calcAge(data.dob);
+                data.age = data.age_at_creation || data.current_live_age;
             }
 
             const FORM_MAP = {
@@ -6062,7 +6138,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 head: [['PATIENT & ASSESSMENT RECORD INFORMATION', '']],
                 body: [
                     ['Child Name:', childName, 'Admission No:', (rec.admission_no || (activeChild?.name === childName ? activeChild?.admission_no : '') || '-')],
-                    ['Assessment Type:', formType, 'Assessment Date:', formattedDate]
+                    ['Assessment Type:', formType, 'Assessment Date:', formattedDate],
+                    ['Initial Age (Admission):', String(dataObj.age_at_creation || (activeChild ? getChildInitialAge(activeChild) : '—')), 'Current Age (Live Today):', String(dataObj.current_live_age || (activeChild ? getChildCurrentAge(activeChild) : '—'))]
                 ],
                 theme: 'plain',
                 styles: { fontSize: 8.5, cellPadding: 2, textColor: [30, 41, 59] },

@@ -16,7 +16,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="styles.css?v=37">
+    <link rel="stylesheet" href="styles.css?v=38">
 </head>
 
 <body>
@@ -183,13 +183,13 @@
                                 <input type="date" id="consultation-dob" name="dob">
                             </div>
                             <div class="input-group">
-                                <label for="consultation-age-at-creation">Age at Consultation <span style="font-size:0.75rem; color:#059669; font-weight:700; background:#ecfdf5; padding:2px 7px; border-radius:4px; border:1px solid #a7f3d0; margin-left:4px;">Static / Permanent</span></label>
-                                <input type="text" id="consultation-age-at-creation" name="age_at_creation" placeholder="e.g. 2 yrs 6 mo" readonly style="background:#f1f5f9; font-weight:700; color:#0f172a; cursor:not-allowed;" title="Static age recorded when this Consultation Form is created. Never changes as dates advance.">
+                                <label for="consultation-age-at-creation">Initial Age at Admission <span style="font-size:0.75rem; color:#1e40af; font-weight:700; background:#eff6ff; padding:2px 7px; border-radius:4px; border:1px solid #bfdbfe; margin-left:4px;">Permanent</span></label>
+                                <input type="text" id="consultation-age-at-creation" name="age_at_creation" placeholder="e.g. 2 yrs 6 mo" readonly style="background:#f1f5f9; font-weight:700; color:#1e40af; cursor:not-allowed;" title="Static age recorded when child is admitted / created. Never changes as dates advance.">
                                 <input type="hidden" id="consultation-age" name="age">
                             </div>
                             <div class="input-group">
-                                <label for="consultation-live-age">Current Age <span style="font-size:0.75rem; color:#2563eb; font-weight:700; background:#eff6ff; padding:2px 7px; border-radius:4px; border:1px solid #bfdbfe; margin-left:4px;">Live Today</span></label>
-                                <input type="text" id="consultation-live-age" name="current_live_age" placeholder="Live age today" readonly style="background:#f8fafc; color:#475569; font-weight:600; cursor:not-allowed;" title="Current dynamically calculated age from Date of Birth to today.">
+                                <label for="consultation-live-age">Current Age <span style="font-size:0.75rem; color:#059669; font-weight:700; background:#ecfdf5; padding:2px 7px; border-radius:4px; border:1px solid #a7f3d0; margin-left:4px;">Live Today</span></label>
+                                <input type="text" id="consultation-live-age" name="current_live_age" placeholder="Live age today" readonly style="background:#f8fafc; color:#059669; font-weight:700; cursor:not-allowed;" title="Current dynamically calculated age from Date of Birth to today.">
                             </div>
                             <div class="input-group" style="display:flex; align-items:center; gap:8px; margin-top:24px;">
                                 <label style="cursor:pointer; display:flex; align-items:center; gap:8px; font-weight:600; color:#4338ca; user-select:none;">
@@ -350,8 +350,13 @@
                                 <input type="date" name="dob">
                             </div>
                             <div class="input-group">
-                                <label>Age</label>
-                                <input type="text" name="age" placeholder="e.g. 3y 4m">
+                                <label for="dev-initial-age">Initial Age at Admission <span style="font-size:0.75rem; color:#1e40af; font-weight:700; background:#eff6ff; padding:2px 6px; border-radius:3px; border:1px solid #bfdbfe; margin-left:4px;">Permanent</span></label>
+                                <input type="text" id="dev-initial-age" name="age_at_creation" placeholder="e.g. 2 yrs 6 mo" readonly style="background:#f1f5f9; font-weight:700; color:#1e40af; cursor:not-allowed;" title="Static initial age at admission. Never changes.">
+                                <input type="hidden" id="dev-age" name="age">
+                            </div>
+                            <div class="input-group">
+                                <label for="dev-current-age">Current Age <span style="font-size:0.75rem; color:#059669; font-weight:700; background:#ecfdf5; padding:2px 6px; border-radius:3px; border:1px solid #a7f3d0; margin-left:4px;">Live Today</span></label>
+                                <input type="text" id="dev-current-age" name="current_live_age" placeholder="Live age today" readonly style="background:#f8fafc; color:#059669; font-weight:700; cursor:not-allowed;" title="Dynamic live age from Date of Birth to current date.">
                             </div>
                             <div class="input-group">
                                 <label>Grade</label>
@@ -1094,8 +1099,13 @@
                                     style="background: #e8e8e8;">
                             </div>
                             <div class="input-group">
-                                <label for="physio-age">Age</label>
-                                <input type="text" id="physio-age" name="age" readonly style="background: #e8e8e8;" placeholder="Child age">
+                                <label for="physio-initial-age">Initial Age at Admission <span style="font-size:0.75rem; color:#1e40af; font-weight:700; background:#eff6ff; padding:2px 6px; border-radius:3px; border:1px solid #bfdbfe; margin-left:4px;">Permanent</span></label>
+                                <input type="text" id="physio-initial-age" name="age_at_creation" readonly style="background: #f1f5f9; font-weight:700; color: #1e40af; cursor: not-allowed;" placeholder="e.g. 2 yrs 6 mo" title="Static initial age at admission. Never changes.">
+                                <input type="hidden" id="physio-age" name="age">
+                            </div>
+                            <div class="input-group">
+                                <label for="physio-current-age">Current Age <span style="font-size:0.75rem; color:#059669; font-weight:700; background:#ecfdf5; padding:2px 6px; border-radius:3px; border:1px solid #a7f3d0; margin-left:4px;">Live Today</span></label>
+                                <input type="text" id="physio-current-age" name="current_live_age" readonly style="background: #f8fafc; font-weight:700; color: #059669; cursor: not-allowed;" placeholder="Live age today" title="Dynamic live age from Date of Birth to current date.">
                             </div>
                             <div class="input-group">
                                 <label for="physio-dob">Date of Birth</label>
@@ -1925,8 +1935,13 @@
                                     style="background: #e8e8e8;">
                             </div>
                             <div class="input-group">
-                                <label for="speech-age">Age</label>
-                                <input type="text" id="speech-age" name="age" readonly style="background: #e8e8e8;" placeholder="Child age">
+                                <label for="speech-initial-age">Initial Age at Admission <span style="font-size:0.75rem; color:#1e40af; font-weight:700; background:#eff6ff; padding:2px 6px; border-radius:3px; border:1px solid #bfdbfe; margin-left:4px;">Permanent</span></label>
+                                <input type="text" id="speech-initial-age" name="age_at_creation" readonly style="background: #f1f5f9; font-weight:700; color: #1e40af; cursor: not-allowed;" placeholder="e.g. 2 yrs 6 mo" title="Static initial age at admission. Never changes.">
+                                <input type="hidden" id="speech-age" name="age">
+                            </div>
+                            <div class="input-group">
+                                <label for="speech-current-age">Current Age <span style="font-size:0.75rem; color:#059669; font-weight:700; background:#ecfdf5; padding:2px 6px; border-radius:3px; border:1px solid #a7f3d0; margin-left:4px;">Live Today</span></label>
+                                <input type="text" id="speech-current-age" name="current_live_age" readonly style="background: #f8fafc; font-weight:700; color: #059669; cursor: not-allowed;" placeholder="Live age today" title="Dynamic live age from Date of Birth to current date.">
                             </div>
                             <div class="input-group">
                                 <label for="speech-dob">Date of Birth</label>
@@ -2111,8 +2126,13 @@
                                     style="background: #e8e8e8;">
                             </div>
                             <div class="input-group">
-                                <label for="prog-age">Age</label>
-                                <input type="text" id="prog-age" name="age" readonly style="background: #e8e8e8;" placeholder="Child age">
+                                <label for="prog-initial-age">Initial Age at Admission <span style="font-size:0.75rem; color:#1e40af; font-weight:700; background:#eff6ff; padding:2px 6px; border-radius:3px; border:1px solid #bfdbfe; margin-left:4px;">Permanent</span></label>
+                                <input type="text" id="prog-initial-age" name="age_at_creation" readonly style="background: #f1f5f9; font-weight:700; color: #1e40af; cursor: not-allowed;" placeholder="e.g. 2 yrs 6 mo" title="Static initial age at admission. Never changes.">
+                                <input type="hidden" id="prog-age" name="age">
+                            </div>
+                            <div class="input-group">
+                                <label for="prog-current-age">Current Age <span style="font-size:0.75rem; color:#059669; font-weight:700; background:#ecfdf5; padding:2px 6px; border-radius:3px; border:1px solid #a7f3d0; margin-left:4px;">Live Today</span></label>
+                                <input type="text" id="prog-current-age" name="current_live_age" readonly style="background: #f8fafc; font-weight:700; color: #059669; cursor: not-allowed;" placeholder="Live age today" title="Dynamic live age from Date of Birth to current date.">
                             </div>
                             <div class="input-group">
                                 <label for="prog-dob">Date of Birth</label>
@@ -2199,8 +2219,13 @@
                                 <input type="text" id="abc-admission-no" name="admission_no" readonly style="background: #e8e8e8;">
                             </div>
                             <div class="input-group">
-                                <label for="abc-age">Age / வயது</label>
-                                <input type="text" id="abc-age" name="age" readonly style="background: #e8e8e8;" placeholder="Child age">
+                                <label for="abc-initial-age">Initial Age / சேர்க்கை வயது <span style="font-size:0.75rem; color:#1e40af; font-weight:700; background:#eff6ff; padding:2px 6px; border-radius:3px; border:1px solid #bfdbfe; margin-left:4px;">Permanent</span></label>
+                                <input type="text" id="abc-initial-age" name="age_at_creation" readonly style="background: #f1f5f9; font-weight:700; color: #1e40af; cursor: not-allowed;" placeholder="e.g. 2 yrs 6 mo">
+                                <input type="hidden" id="abc-age" name="age">
+                            </div>
+                            <div class="input-group">
+                                <label for="abc-current-age">Current Age / தற்போதைய வயது <span style="font-size:0.75rem; color:#059669; font-weight:700; background:#ecfdf5; padding:2px 6px; border-radius:3px; border:1px solid #a7f3d0; margin-left:4px;">Live Today</span></label>
+                                <input type="text" id="abc-current-age" name="current_live_age" readonly style="background: #f8fafc; font-weight:700; color: #059669; cursor: not-allowed;" placeholder="Live age today">
                             </div>
                             <div class="input-group">
                                 <label for="abc-dob">Date of Birth / பிறந்த தேதி</label>
@@ -2889,8 +2914,13 @@
                                 <input type="text" id="isaa-admission-no" name="admission_no" readonly style="background: #e8e8e8;">
                             </div>
                             <div class="input-group">
-                                <label for="isaa-age">Age / வயது</label>
-                                <input type="text" id="isaa-age" name="age" readonly style="background: #e8e8e8;" placeholder="Child age">
+                                <label for="isaa-initial-age">Initial Age / சேர்க்கை வயது <span style="font-size:0.75rem; color:#1e40af; font-weight:700; background:#eff6ff; padding:2px 6px; border-radius:3px; border:1px solid #bfdbfe; margin-left:4px;">Permanent</span></label>
+                                <input type="text" id="isaa-initial-age" name="age_at_creation" readonly style="background: #f1f5f9; font-weight:700; color: #1e40af; cursor: not-allowed;" placeholder="e.g. 2 yrs 6 mo">
+                                <input type="hidden" id="isaa-age" name="age">
+                            </div>
+                            <div class="input-group">
+                                <label for="isaa-current-age">Current Age / தறபோதைய வயது <span style="font-size:0.75rem; color:#059669; font-weight:700; background:#ecfdf5; padding:2px 6px; border-radius:3px; border:1px solid #a7f3d0; margin-left:4px;">Live Today</span></label>
+                                <input type="text" id="isaa-current-age" name="current_live_age" readonly style="background: #f8fafc; font-weight:700; color: #059669; cursor: not-allowed;" placeholder="Live age today">
                             </div>
                             <div class="input-group">
                                 <label for="isaa-dob">Date of Birth / பிறந்த தேதி</label>
@@ -5173,7 +5203,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="app.js?v=37"></script>
+    <script src="app.js?v=38"></script>
 </body>
 
 </html>
