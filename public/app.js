@@ -4502,13 +4502,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const admBadge = child.admission_no ? `<span class="adm-badge" style="display:inline-block; font-size:0.75rem; background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe; border-radius:4px; padding:1px 6px; font-weight:700; margin-bottom:3px;">${child.admission_no}</span><br>` : '';
             const cb = `<input type="checkbox" class="schedule-child-cb" data-child-id="${child.id}" ${isSelected ? 'checked' : ''} style="cursor: pointer; width: 16px; height: 16px; accent-color: #2563eb; margin-top: 3px; flex-shrink: 0;">`;
             html += `<tr class="${rowClass}${rowSelectedClass}" data-child-id="${child.id}">`;
-            html += `<td class="sticky-col" data-child-id="${child.id}" style="min-width: 175px;">
+            html += `<td class="sticky-col" data-child-id="${child.id}" style="min-width: 195px;">
                         <div style="display: flex; align-items: flex-start; gap: 8px;">
                             ${cb}
                             <div>
-                                <span style="font-size: 0.78rem; color: #64748b;">${index + 1}.</span>
+                                <span style="font-size: 0.82rem; color: #64748b;">${index + 1}.</span>
                                 ${admBadge}
-                                <strong style="color: #1e293b;">${child.name}</strong>
+                                <strong style="color: #1e293b; font-size: 0.94rem;">${child.name}</strong>
                             </div>
                         </div>
                      </td>`;
@@ -4740,8 +4740,8 @@ document.addEventListener('DOMContentLoaded', () => {
         let tableHeaderHtml = `
             <thead>
                 <tr>
-                    <th style="width: 13.5%; text-align: left; padding: 6px 8px; background: #f1f5f9; color: #0f172a; font-weight: 700; border: 1px solid #475569; font-size: 7.8pt;">NAME</th>
-                    ${TIME_SLOTS.map(slot => `<th style="width: 6.65%; text-align: center; padding: 4px 1px; background: #f1f5f9; color: #0f172a; font-weight: 700; border: 1px solid #475569; font-size: 7pt; line-height: 1.15;">${slot.replace(' - ', '<br>- ')}</th>`).join('')}
+                    <th style="width: 15%; text-align: left; padding: 8px 10px; background: #f1f5f9; color: #0f172a; font-weight: 800; border: 1.5px solid #334155; font-size: 9.5pt;">NAME</th>
+                    ${TIME_SLOTS.map(slot => `<th style="width: 6.53%; text-align: center; padding: 6px 2px; background: #f1f5f9; color: #0f172a; font-weight: 800; border: 1.5px solid #334155; font-size: 8.5pt; line-height: 1.25;">${slot.replace(' - ', '<br>- ')}</th>`).join('')}
                 </tr>
             </thead>
         `;
@@ -4750,11 +4750,11 @@ document.addEventListener('DOMContentLoaded', () => {
         let tableBodyHtml = '<tbody>';
         targetChildren.forEach((child, index) => {
             const admBadge = child.admission_no 
-                ? `<span style="display:inline-block; font-size:7pt; color:#1e40af; font-weight:700;">[${child.admission_no}]</span> ` 
+                ? `<span style="display:inline-block; font-size:8.5pt; color:#1e40af; font-weight:700;">[${child.admission_no}]</span> ` 
                 : '';
-            tableBodyHtml += `<tr>`;
-            tableBodyHtml += `<td style="border: 1px solid #475569; padding: 4px 6px; text-align: left; font-size: 7.5pt; background: #f8fafc; font-weight: 600;">
-                                <span style="color: #64748b; font-size: 7pt;">${index + 1}.</span> 
+            tableBodyHtml += `<tr style="height: 32px;">`;
+            tableBodyHtml += `<td style="border: 1.5px solid #334155; padding: 6px 8px; text-align: left; font-size: 9.5pt; background: #f8fafc; font-weight: 700; line-height: 1.25;">
+                                <span style="color: #64748b; font-size: 8.5pt; font-weight: 600;">${index + 1}.</span> 
                                 ${admBadge}<strong>${child.name}</strong>
                              </td>`;
             TIME_SLOTS.forEach(slot => {
@@ -4773,12 +4773,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     let shortTherapy = block.therapy_type.split(' ')[0];
                     if (block.therapy_type === 'Occupational Therapy') shortTherapy = 'OT';
 
-                    tableBodyHtml += `<td style="border: 1px solid #475569; padding: 2px 1px; text-align: center; vertical-align: middle; background-color: ${bgColor}; color: ${textColor}; font-weight: 700; font-size: 7pt; line-height: 1.15;">
+                    tableBodyHtml += `<td style="border: 1.5px solid #334155; padding: 4px 2px; text-align: center; vertical-align: middle; background-color: ${bgColor}; color: ${textColor}; font-weight: 800; font-size: 8.8pt; line-height: 1.2;">
                                         <div>${shortTherapy}</div>
-                                        <div style="font-size: 5.6pt; font-weight: 600; opacity: 0.9;">(${block.therapist_name || 'TBD'})</div>
+                                        <div style="font-size: 7.2pt; font-weight: 600; opacity: 0.95; margin-top: 1px;">(${block.therapist_name || 'TBD'})</div>
                                       </td>`;
                 } else {
-                    tableBodyHtml += `<td style="border: 1px solid #475569; padding: 2px;"></td>`;
+                    tableBodyHtml += `<td style="border: 1.5px solid #334155; padding: 4px 2px;"></td>`;
                 }
             });
             tableBodyHtml += `</tr>`;
@@ -4798,7 +4798,7 @@ document.addEventListener('DOMContentLoaded', () => {
     <style>
         @page {
             size: A4 landscape;
-            margin: 8mm 6mm;
+            margin: 6mm 5mm;
         }
         * {
             box-sizing: border-box;
@@ -4814,28 +4814,28 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         .header {
             text-align: center;
-            margin-bottom: 8px;
-            padding-bottom: 6px;
-            border-bottom: 2px solid #1e3a8a;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 2.5px solid #1e3a8a;
         }
         .header h1 {
-            margin: 0 0 2px 0;
-            font-size: 13pt;
+            margin: 0 0 3px 0;
+            font-size: 14pt;
             font-weight: 800;
             color: #1e3a8a;
             text-transform: uppercase;
             letter-spacing: 0.04em;
         }
         .header h2 {
-            margin: 0 0 3px 0;
-            font-size: 10pt;
+            margin: 0 0 4px 0;
+            font-size: 11pt;
             font-weight: 700;
             color: #0f172a;
             text-transform: uppercase;
         }
         .header .meta {
             margin: 0;
-            font-size: 8pt;
+            font-size: 9pt;
             color: #475569;
             font-weight: 600;
         }
@@ -4961,25 +4961,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Header Banner
             doc.setFillColor(30, 58, 138); // #1e3a8a
-            doc.rect(0, 0, pageWidth, 13, 'F');
+            doc.rect(0, 0, pageWidth, 15, 'F');
 
             doc.setTextColor(255, 255, 255);
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(10.5);
-            doc.text('EARLY INTERVENTION CENTRE FOR CHILDREN WITH CEREBRAL PALSY', 10, 8.5);
+            doc.setFontSize(11.5);
+            doc.text('EARLY INTERVENTION CENTRE FOR CHILDREN WITH CEREBRAL PALSY', 8, 9.5);
 
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(8.5);
-            doc.text('DAILY THERAPY SCHEDULE', pageWidth - 10, 8.5, { align: 'right' });
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(9.5);
+            doc.text('DAILY THERAPY SCHEDULE', pageWidth - 8, 9.5, { align: 'right' });
 
             // Sub-info bar
             doc.setTextColor(15, 23, 42);
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(9);
-            doc.text(`Schedule Date: ${formattedDate}`, 10, 18.5);
+            doc.setFontSize(9.5);
+            doc.text(`Schedule Date: ${formattedDate}`, 8, 20);
 
             doc.setFont('helvetica', 'normal');
-            doc.setFontSize(8);
+            doc.setFontSize(8.5);
             doc.setTextColor(100, 116, 139);
             const catVal = document.getElementById('schedule-category-filter')?.value || 'all';
             const catMap = { 'eic': 'EIC', 'th': 'TH', 'asd': 'ASD' };
@@ -5019,34 +5019,34 @@ document.addEventListener('DOMContentLoaded', () => {
             doc.autoTable({
                 columns: columns,
                 body: rows,
-                startY: 21,
-                margin: { left: 8, right: 8, bottom: 9 },
+                startY: 23,
+                margin: { left: 6, right: 6, bottom: 8 },
                 theme: 'grid',
                 styles: {
-                    fontSize: 6.2,
-                    cellPadding: 1.2,
+                    fontSize: 7.5,
+                    cellPadding: 2,
                     valign: 'middle',
                     halign: 'center',
-                    lineColor: [203, 213, 225],
-                    lineWidth: 0.15,
+                    lineColor: [148, 163, 184],
+                    lineWidth: 0.2,
                     textColor: [15, 23, 42]
                 },
                 headStyles: {
                     fillColor: [241, 245, 249],
                     textColor: [15, 23, 42],
                     fontStyle: 'bold',
-                    fontSize: 6.2,
+                    fontSize: 7.5,
                     halign: 'center',
-                    lineColor: [148, 163, 184],
-                    lineWidth: 0.2
+                    lineColor: [100, 116, 139],
+                    lineWidth: 0.25
                 },
                 columnStyles: {
                     name: {
                         halign: 'left',
                         fontStyle: 'bold',
-                        cellWidth: 32,
+                        cellWidth: 38,
                         fillColor: [248, 250, 252],
-                        fontSize: 6.8
+                        fontSize: 8.2
                     }
                 },
                 didParseCell: function(data) {

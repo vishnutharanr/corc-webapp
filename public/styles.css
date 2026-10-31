@@ -1251,24 +1251,25 @@ button {
 .schedule-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 0.85rem;
-    min-width: 1200px;
+    font-size: 0.92rem;
+    min-width: 1350px;
 }
 .schedule-table th, .schedule-table td {
-    border: 1px solid var(--border);
-    padding: 8px 6px;
+    border: 1.5px solid var(--border);
+    padding: 10px 8px;
     text-align: center;
     vertical-align: middle;
-    height: 60px;
-    min-width: 80px;
+    height: 68px;
+    min-width: 90px;
 }
 .schedule-table th {
     background: #f8fafc;
-    font-weight: 600;
+    font-weight: 700;
     color: var(--text-main);
     position: sticky;
     top: 0;
     z-index: 10;
+    font-size: 0.88rem;
 }
 .schedule-table .sticky-col {
     position: sticky;
@@ -1276,7 +1277,9 @@ button {
     background: #f8fafc;
     z-index: 11;
     text-align: left;
-    padding-left: 12px;
+    padding-left: 14px;
+    min-width: 195px;
+    font-size: 0.92rem;
 }
 .schedule-table tr.schedule-row-selected td {
     background-color: #f0f7ff !important;
@@ -1325,13 +1328,15 @@ button {
     align-items: center;
     width: 100%;
     height: 100%;
-    border-radius: 4px;
-    padding: 4px;
-    font-weight: 500;
+    border-radius: 6px;
+    padding: 6px 4px;
+    font-weight: 600;
+    font-size: 0.88rem;
 }
 .schedule-cell .therapist-name {
-    font-size: 0.75rem;
-    opacity: 0.8;
+    font-size: 0.78rem;
+    opacity: 0.85;
+    margin-top: 2px;
 }
 
 /* Schedule Colors */
@@ -1712,7 +1717,7 @@ button {
 @media print {
     @page {
         size: A4 landscape;
-        margin: 8mm 6mm;
+        margin: 6mm 5mm;
     }
 
     /* Completely hide all UI Chrome in print */
@@ -1802,23 +1807,23 @@ button {
     }
 
     .schedule-print-header h1 {
-        font-size: 13pt !important;
+        font-size: 14pt !important;
         font-weight: 800 !important;
         color: #1e3a8a !important;
-        margin: 0 0 2px 0 !important;
+        margin: 0 0 3px 0 !important;
         text-transform: uppercase !important;
         letter-spacing: 0.03em !important;
     }
 
     .schedule-print-header h2 {
-        font-size: 10pt !important;
+        font-size: 11pt !important;
         font-weight: 700 !important;
         color: #0f172a !important;
-        margin: 0 0 3px 0 !important;
+        margin: 0 0 4px 0 !important;
     }
 
     .schedule-print-header p {
-        font-size: 8pt !important;
+        font-size: 9pt !important;
         color: #475569 !important;
         margin: 0 !important;
     }
@@ -1830,17 +1835,17 @@ button {
         min-width: 100% !important;
         border-collapse: collapse !important;
         table-layout: fixed !important;
-        font-size: 7.5pt !important;
+        font-size: 9pt !important;
         margin: 0 !important;
     }
 
     .schedule-table th,
     .schedule-table td {
-        border: 1px solid #475569 !important;
-        padding: 3px 2px !important;
+        border: 1.5px solid #334155 !important;
+        padding: 5px 3px !important;
         text-align: center !important;
         vertical-align: middle !important;
-        height: auto !important;
+        height: 30px !important;
         min-width: auto !important;
         word-break: break-word !important;
         overflow: hidden !important;
@@ -1849,36 +1854,37 @@ button {
     .schedule-table th {
         background: #f1f5f9 !important;
         color: #0f172a !important;
-        font-weight: 700 !important;
-        font-size: 7pt !important;
+        font-weight: 800 !important;
+        font-size: 8.5pt !important;
         position: static !important;
     }
 
     .schedule-table .sticky-col {
         position: static !important;
-        width: 14% !important;
+        width: 15% !important;
         text-align: left !important;
-        padding-left: 5px !important;
+        padding-left: 8px !important;
         background: #f8fafc !important;
-        font-weight: 600 !important;
-        font-size: 7.5pt !important;
+        font-weight: 700 !important;
+        font-size: 9.2pt !important;
     }
 
     .schedule-table td:not(.sticky-col) {
-        width: 6.61% !important;
+        width: 6.53% !important;
     }
 
     .schedule-cell {
-        padding: 1px !important;
-        border-radius: 2px !important;
-        font-size: 6.8pt !important;
-        font-weight: 600 !important;
-        line-height: 1.15 !important;
+        padding: 2px 2px !important;
+        border-radius: 3px !important;
+        font-size: 8.5pt !important;
+        font-weight: 700 !important;
+        line-height: 1.2 !important;
     }
 
     .schedule-cell .therapist-name {
-        font-size: 5.5pt !important;
+        font-size: 7.2pt !important;
         display: block !important;
+        margin-top: 1px !important;
     }
 
     /* Filter rows: if specific children are selected, only show selected rows */
