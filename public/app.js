@@ -512,6 +512,12 @@ document.addEventListener('DOMContentLoaded', () => {
         tabContents.forEach(t => t.classList.toggle('active', t.id === targetId));
         document.querySelectorAll('.assessment-pane').forEach(p => p.classList.toggle('active', p.id === targetId));
         if (targetId === 'attendance') loadAttendanceTab();
+        if (targetId === 'reports') {
+            initReportDatesDefault();
+            populateReportChildSelect();
+            populateReportTherapistSelect();
+            fetchReports();
+        }
         if (targetId === 'records') fetchChildFolders();
         if (targetId === 'assessment-summaries') fetchAndRenderAssessmentSummaries();
         if (targetId === 'user-management') fetchUsers();
@@ -4368,26 +4374,45 @@ async function fetchReports() {
             updateAttendanceGraph(filteredData);
             
             // Update Dashboard Metrics
-            document.getElementById('metric-total-sessions').textContent = totalSessions;
+            const totSessEl = document.getElementById('metric-total-sessions');
+            if (totSessEl) totSessEl.textContent = totalSessions;
+
             const attRate = totalSessions > 0 ? Math.round((presentCount / totalSessions) * 100) : 0;
             const attRateEl = document.getElementById('metric-attendance-rate');
-            attRateEl.textContent = attRate + '%';
-            attRateEl.style.color = attRate >= 80 ? 'var(--success)' : (attRate >= 50 ? 'var(--warning)' : 'var(--danger)');
-            document.getElementById('metric-revenue').textContent = '₹' + sumPaid;
-            document.getElementById('metric-balance').textContent = '₹' + sumBalance;
+            if (attRateEl) {
+                attRateEl.textContent = attRate + '%';
+                attRateEl.style.color = attRate >= 80 ? 'var(--success)' : (attRate >= 50 ? 'var(--warning)' : 'var(--danger)');
+            }
+
+            const concEl = document.getElementById('metric-concessions');
+            if (concEl) concEl.textContent = '₹' + sumConcession;
+
+            const revEl = document.getElementById('metric-revenue');
+            if (revEl) revEl.textContent = '₹' + sumPaid;
+
+            const balEl = document.getElementById('metric-balance');
+            if (balEl) balEl.textContent = '₹' + sumBalance;
+
             window.currentReportData = filteredData; // Store for CSV export
 
         } catch (err) {
+            console.error('Error fetching/rendering reports:', err);
             tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; color: red;">Failed to load reports.</td></tr>';
             resetDashboardMetrics();
         }
     }
     
     function resetDashboardMetrics() {
-        document.getElementById('metric-total-sessions').textContent = '0';
-        document.getElementById('metric-attendance-rate').textContent = '0%';
-        document.getElementById('metric-revenue').textContent = '₹0';
-        document.getElementById('metric-balance').textContent = '₹0';
+        const totSessEl = document.getElementById('metric-total-sessions');
+        if (totSessEl) totSessEl.textContent = '0';
+        const attRateEl = document.getElementById('metric-attendance-rate');
+        if (attRateEl) attRateEl.textContent = '0%';
+        const concEl = document.getElementById('metric-concessions');
+        if (concEl) concEl.textContent = '₹0';
+        const revEl = document.getElementById('metric-revenue');
+        if (revEl) revEl.textContent = '₹0';
+        const balEl = document.getElementById('metric-balance');
+        if (balEl) balEl.textContent = '₹0';
         window.currentReportData = [];
     }
 

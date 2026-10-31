@@ -1,11 +1,11 @@
-const CACHE_NAME = 'corc-v42';
+const CACHE_NAME = 'corc-v43';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
   '/styles.css',
-  '/styles.css?v=42',
+  '/styles.css?v=43',
   '/app.js',
-  '/app.js?v=42',
+  '/app.js?v=43',
   '/logo.jpg',
   '/manifest.json'
 ];
