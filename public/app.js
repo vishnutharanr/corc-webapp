@@ -663,6 +663,35 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Section Objectives interactive dropdowns with "Other" free-typing fields
+    function setupObjectiveDropdowns(container = document) {
+        if (!container) return;
+        container.querySelectorAll('.objective-dropdown').forEach(sel => {
+            const updateOther = () => {
+                const targetName = sel.getAttribute('data-other-target');
+                if (!targetName) return;
+                const parent = sel.closest('.input-group') || sel.parentElement;
+                const otherEl = parent ? parent.querySelector(`[name="${targetName}"]`) : null;
+                if (!otherEl) return;
+                if (sel.value === 'Other') {
+                    otherEl.style.display = 'block';
+                } else {
+                    otherEl.style.display = 'none';
+                }
+            };
+            sel.addEventListener('change', () => {
+                updateOther();
+                if (sel.value === 'Other') {
+                    const targetName = sel.getAttribute('data-other-target');
+                    const parent = sel.closest('.input-group') || sel.parentElement;
+                    const otherEl = parent ? parent.querySelector(`[name="${targetName}"]`) : null;
+                    if (otherEl) otherEl.focus();
+                }
+            });
+            updateOther();
+        });
+    }
+
     // Auto-populate Child Development form from Rapid Assessment
     function populateDevFromRapid(force = false) {
         if (!activeChild) {
@@ -795,6 +824,38 @@ document.addEventListener('DOMContentLoaded', () => {
         form.querySelectorAll('.conditional-desc').forEach(desc => {
             const hasVal = Array.from(desc.querySelectorAll('input, select, textarea')).some(i => i.value && i.value.trim());
             if (hasVal) desc.style.display = 'block';
+        });
+
+        // Populate Objectives dropdowns & Other text fields
+        form.querySelectorAll('.objective-dropdown').forEach(sel => {
+            const name = sel.name;
+            const targetName = sel.getAttribute('data-other-target');
+            const parent = sel.closest('.input-group') || sel.parentElement;
+            const otherEl = targetName ? (parent ? parent.querySelector(`[name="${targetName}"]`) : null) : null;
+            const val = data[name];
+            if (val !== undefined && val !== null && String(val).trim()) {
+                const trimmed = String(val).trim();
+                const hasMatch = Array.from(sel.options).some(o => o.value === trimmed);
+                if (hasMatch) {
+                    sel.value = trimmed;
+                    if (otherEl) {
+                        otherEl.value = '';
+                        otherEl.style.display = 'none';
+                    }
+                } else {
+                    sel.value = 'Other';
+                    if (otherEl) {
+                        otherEl.value = trimmed;
+                        otherEl.style.display = 'block';
+                    }
+                }
+            } else {
+                sel.value = '';
+                if (otherEl) {
+                    otherEl.value = '';
+                    otherEl.style.display = 'none';
+                }
+            }
         });
 
         if (data.photo_base64) {
@@ -1051,6 +1112,7 @@ document.addEventListener('DOMContentLoaded', () => {
             inp.addEventListener('change', () => calcTotalSiblings(devFormEl));
         });
         setupMilestoneInteractions(devFormEl);
+        setupObjectiveDropdowns(devFormEl);
     }
 
     (document.getElementById('btn-import-consultation') || document.getElementById('btn-import-rapid'))?.addEventListener('click', async () => {
@@ -2231,6 +2293,24 @@ document.addEventListener('DOMContentLoaded', () => {
                     showToast('Please complete a Consultation Form first to create a child profile.', true);
                     return;
                 }
+
+                // Resolve Objectives dropdowns with "Other" custom text
+                const objectiveKeys = [
+                    'previous_doctor_reports',
+                    'previous_imaging_reports',
+                    'previous_therapies',
+                    'available_aids_appliances',
+                    'parent_expectations',
+                    'previous_corc_interventions',
+                    'treatment_goal',
+                    'treatment_plan'
+                ];
+                objectiveKeys.forEach(k => {
+                    if (data[k] === 'Other' && data[k + '_other'] && data[k + '_other'].trim()) {
+                        data[k] = data[k + '_other'].trim();
+                    }
+                    delete data[k + '_other'];
+                });
                 await saveAssessment(activeChild && activeChild.id, name, fi.type, data, el);
             }
         });
@@ -3132,6 +3212,38 @@ document.addEventListener('DOMContentLoaded', () => {
             if (hasVal) desc.style.display = 'block';
         });
 
+        // Objectives dropdowns & Other text in clone
+        clone.querySelectorAll('.objective-dropdown').forEach(sel => {
+            const name = sel.name;
+            const targetName = sel.getAttribute('data-other-target');
+            const parent = sel.closest('.input-group') || sel.parentElement;
+            const otherEl = targetName ? (parent ? parent.querySelector(`[name="${targetName}"]`) : null) : null;
+            const val = data[name];
+            if (val !== undefined && val !== null && String(val).trim()) {
+                const trimmed = String(val).trim();
+                const hasMatch = Array.from(sel.options).some(o => o.value === trimmed);
+                if (hasMatch) {
+                    sel.value = trimmed;
+                    if (otherEl) {
+                        otherEl.value = '';
+                        otherEl.style.display = 'none';
+                    }
+                } else {
+                    sel.value = 'Other';
+                    if (otherEl) {
+                        otherEl.value = trimmed;
+                        otherEl.style.display = 'block';
+                    }
+                }
+            } else {
+                sel.value = '';
+                if (otherEl) {
+                    otherEl.value = '';
+                    otherEl.style.display = 'none';
+                }
+            }
+        });
+
         // Siblings Auto-Calculation
         calcTotalSiblings(clone);
 
@@ -3141,6 +3253,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 inp.addEventListener('change', () => calcTotalSiblings(clone));
             });
             setupMilestoneInteractions(clone);
+            setupObjectiveDropdowns(clone);
             clone.querySelectorAll('.yes-no-select').forEach(sel => {
                 sel.addEventListener('change', e => {
                     const desc = e.target.parentElement.querySelector('.conditional-desc');
@@ -3275,6 +3388,23 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
                 if (data.photo_base64 && !newData.photo_base64) newData.photo_base64 = data.photo_base64;
+
+                const objectiveKeys = [
+                    'previous_doctor_reports',
+                    'previous_imaging_reports',
+                    'previous_therapies',
+                    'available_aids_appliances',
+                    'parent_expectations',
+                    'previous_corc_interventions',
+                    'treatment_goal',
+                    'treatment_plan'
+                ];
+                objectiveKeys.forEach(k => {
+                    if (newData[k] === 'Other' && newData[k + '_other'] && newData[k + '_other'].trim()) {
+                        newData[k] = newData[k + '_other'].trim();
+                    }
+                    delete newData[k + '_other'];
+                });
 
                 try {
                     const resp = await fetch('/api/assessments/' + id, {
@@ -10262,6 +10392,7 @@ function printChildSummarySheet(child, assessments = []) {
     }
 
     // ── Initial load ─────────────────────────────────────────
+    setupObjectiveDropdowns(document);
     fetchChildFolders(); // populate records on page load
     fetchTherapists(); // load therapists on load to populate dropdowns
     fetchTherapyFees(); // load therapy fees for session recording

@@ -16,7 +16,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="styles.css?v=38">
+    <link rel="stylesheet" href="styles.css?v=39">
 </head>
 
 <body>
@@ -1025,41 +1025,165 @@
 
                     <!-- Objectives (From CHILD ASSESSMENT.docx) -->
                     <div class="form-section">
-                        <h3>Objectives</h3>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                            <h3 style="margin: 0;">Objectives</h3>
+                            <span style="font-size: 0.78rem; font-weight: 600; color: #2563eb; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 4px; padding: 3px 8px;">
+                                📋 Select from clinical presets or choose "Other" to type custom notes
+                            </span>
+                        </div>
                         <div class="form-grid">
                             <div class="input-group full-width">
-                                <label>Previous reports from doctors</label>
-                                <textarea name="previous_doctor_reports" rows="3" placeholder="Summary of previous consultations, pediatric neurologist notes, orthopedic evaluations..."></textarea>
+                                <label for="dev-prev-doctor">Previous reports from doctors</label>
+                                <select id="dev-prev-doctor" name="previous_doctor_reports" class="objective-dropdown" data-other-target="previous_doctor_reports_other" style="padding: 9px 12px; border-radius: 6px; border: 1px solid var(--border); background: white; font-size: 0.9rem; color: #1e293b; width: 100%;">
+                                    <option value="">-- Select Previous Doctor Reports --</option>
+                                    <option value="None / No previous doctor reports">None / No previous doctor reports</option>
+                                    <option value="Pediatric Neurologist consultation report available">Pediatric Neurologist consultation report available</option>
+                                    <option value="Pediatrician consultation report available">Pediatrician consultation report available</option>
+                                    <option value="Orthopedic Surgeon consultation report available">Orthopedic Surgeon consultation report available</option>
+                                    <option value="Developmental Pediatrician assessment report available">Developmental Pediatrician assessment report available</option>
+                                    <option value="ENT / Audiologist evaluation report available">ENT / Audiologist evaluation report available</option>
+                                    <option value="Ophthalmologist / Visual evaluation report available">Ophthalmologist / Visual evaluation report available</option>
+                                    <option value="Geneticist consultation report available">Geneticist consultation report available</option>
+                                    <option value="Government Hospital / Medical Board disability certificate available">Government Hospital / Medical Board disability certificate available</option>
+                                    <option value="Other">Other (Please specify / type details)</option>
+                                </select>
+                                <textarea name="previous_doctor_reports_other" class="objective-other-text" rows="2" placeholder="Specify previous doctor consultation notes, hospital, or specialist findings..." style="display: none; margin-top: 8px; width: 100%; border: 1px solid #94a3b8; border-radius: 6px; padding: 8px 10px; font-size: 0.88rem;"></textarea>
                             </div>
+
                             <div class="input-group full-width">
-                                <label>Previous reports from imaging</label>
-                                <textarea name="previous_imaging_reports" rows="3" placeholder="MRI brain, CT scan, EEG, X-Rays, hip ultrasound findings..."></textarea>
+                                <label for="dev-prev-imaging">Previous reports from imaging</label>
+                                <select id="dev-prev-imaging" name="previous_imaging_reports" class="objective-dropdown" data-other-target="previous_imaging_reports_other" style="padding: 9px 12px; border-radius: 6px; border: 1px solid var(--border); background: white; font-size: 0.9rem; color: #1e293b; width: 100%;">
+                                    <option value="">-- Select Previous Imaging Reports --</option>
+                                    <option value="None / No imaging performed">None / No imaging performed</option>
+                                    <option value="MRI Brain: Hypoxic Ischemic Encephalopathy (HIE) changes">MRI Brain: Hypoxic Ischemic Encephalopathy (HIE) changes</option>
+                                    <option value="MRI Brain: Periventricular Leukomalacia (PVL)">MRI Brain: Periventricular Leukomalacia (PVL)</option>
+                                    <option value="MRI Brain: Cerebral Atrophy / Ventriculomegaly">MRI Brain: Cerebral Atrophy / Ventriculomegaly</option>
+                                    <option value="MRI Brain: Structural Malformation / Polymicrogyria / Schizencephaly">MRI Brain: Structural Malformation / Polymicrogyria / Schizencephaly</option>
+                                    <option value="MRI Brain / Spine: Normal findings">MRI Brain / Spine: Normal findings</option>
+                                    <option value="CT Scan Brain: Intracranial Calcifications / Infarct">CT Scan Brain: Intracranial Calcifications / Infarct</option>
+                                    <option value="EEG: Normal / No epileptiform activity">EEG: Normal / No epileptiform activity</option>
+                                    <option value="EEG: Abnormal / Focal or Generalized epileptiform discharges">EEG: Abnormal / Focal or Generalized epileptiform discharges</option>
+                                    <option value="X-Ray Pelvis: Normal hip joints">X-Ray Pelvis: Normal hip joints</option>
+                                    <option value="X-Ray Pelvis: Hip subluxation / Dysplasia noted">X-Ray Pelvis: Hip subluxation / Dysplasia noted</option>
+                                    <option value="X-Ray Spine: Scoliosis / Kyphoscoliosis noted">X-Ray Spine: Scoliosis / Kyphoscoliosis noted</option>
+                                    <option value="Other">Other (Please specify / type details)</option>
+                                </select>
+                                <textarea name="previous_imaging_reports_other" class="objective-other-text" rows="2" placeholder="Specify imaging report details (MRI, CT, EEG, X-Ray findings)..." style="display: none; margin-top: 8px; width: 100%; border: 1px solid #94a3b8; border-radius: 6px; padding: 8px 10px; font-size: 0.88rem;"></textarea>
                             </div>
+
                             <div class="input-group full-width">
-                                <label>Previous therapies (Surgery, Physiotherapy, OT, Speech…)</label>
-                                <textarea name="previous_therapies" rows="3" placeholder="Details of surgeries, prior or ongoing physiotherapy, occupational therapy, speech therapy..."></textarea>
+                                <label for="dev-prev-therapies">Previous therapies (Surgery, Physiotherapy, OT, Speech…)</label>
+                                <select id="dev-prev-therapies" name="previous_therapies" class="objective-dropdown" data-other-target="previous_therapies_other" style="padding: 9px 12px; border-radius: 6px; border: 1px solid var(--border); background: white; font-size: 0.9rem; color: #1e293b; width: 100%;">
+                                    <option value="">-- Select Previous Therapies --</option>
+                                    <option value="None / First-time intervention (No prior therapy)">None / First-time intervention (No prior therapy)</option>
+                                    <option value="Physiotherapy (Regular prior therapy)">Physiotherapy (Regular prior therapy)</option>
+                                    <option value="Occupational Therapy (Prior therapy)">Occupational Therapy (Prior therapy)</option>
+                                    <option value="Speech & Language Therapy (Prior therapy)">Speech & Language Therapy (Prior therapy)</option>
+                                    <option value="Multidisciplinary Therapy (PT + OT + Speech)">Multidisciplinary Therapy (PT + OT + Speech)</option>
+                                    <option value="Sensory Integration Therapy">Sensory Integration Therapy</option>
+                                    <option value="Surgery: Tendon Lengthening / Soft tissue release">Surgery: Tendon Lengthening / Soft tissue release</option>
+                                    <option value="Surgery: Botox (Botulinum toxin) injection done">Surgery: Botox (Botulinum toxin) injection done</option>
+                                    <option value="Surgery: Hip reconstruction / Femoral osteotomy">Surgery: Hip reconstruction / Femoral osteotomy</option>
+                                    <option value="Special Education / Early Intervention center prior attendance">Special Education / Early Intervention center prior attendance</option>
+                                    <option value="Alternative / Traditional therapies (Ayurveda, Naturopathy, Siddha)">Alternative / Traditional therapies (Ayurveda, Naturopathy, Siddha)</option>
+                                    <option value="Other">Other (Please specify / type details)</option>
+                                </select>
+                                <textarea name="previous_therapies_other" class="objective-other-text" rows="2" placeholder="Specify prior therapy centers, surgical details, dates, or response to therapy..." style="display: none; margin-top: 8px; width: 100%; border: 1px solid #94a3b8; border-radius: 6px; padding: 8px 10px; font-size: 0.88rem;"></textarea>
                             </div>
+
                             <div class="input-group full-width">
-                                <label>Availability of aids and appliances (CP chairs, standing frame, wheel chairs, night splints, day splints, walking aids – walker, crutches, tripod crutches -)</label>
-                                <textarea name="available_aids_appliances" rows="3" placeholder="List existing assistive devices available to the child (CP chair, standing frame, wheel chairs, night/day splints, walker, crutches...)"></textarea>
+                                <label for="dev-aids-appliances">Availability of aids and appliances (CP chairs, standing frame, wheel chairs, night splints, day splints, walking aids – walker, crutches, tripod crutches -)</label>
+                                <select id="dev-aids-appliances" name="available_aids_appliances" class="objective-dropdown" data-other-target="available_aids_appliances_other" style="padding: 9px 12px; border-radius: 6px; border: 1px solid var(--border); background: white; font-size: 0.9rem; color: #1e293b; width: 100%;">
+                                    <option value="">-- Select Aids and Appliances --</option>
+                                    <option value="None / No assistive devices available">None / No assistive devices available</option>
+                                    <option value="CP Chair / Corner chair available">CP Chair / Corner chair available</option>
+                                    <option value="Standing Frame available">Standing Frame available</option>
+                                    <option value="Pediatric Wheelchair available">Pediatric Wheelchair available</option>
+                                    <option value="Ankle Foot Orthosis (AFO) - Day splints available">Ankle Foot Orthosis (AFO) - Day splints available</option>
+                                    <option value="Knee Immobilizer / Gaiters - Night splints available">Knee Immobilizer / Gaiters - Night splints available</option>
+                                    <option value="AFO + Night splints available">AFO + Night splints available</option>
+                                    <option value="Walker / Rollator available">Walker / Rollator available</option>
+                                    <option value="Crutches (Elbow / Tripod / Quadripod) available">Crutches (Elbow / Tripod / Quadripod) available</option>
+                                    <option value="CP Chair + Standing Frame + Splints available">CP Chair + Standing Frame + Splints available</option>
+                                    <option value="Aids prescribed but not yet procured by family">Aids prescribed but not yet procured by family</option>
+                                    <option value="Other">Other (Please specify / type details)</option>
+                                </select>
+                                <textarea name="available_aids_appliances_other" class="objective-other-text" rows="2" placeholder="Specify condition of aids, custom orthotics, sizes, or pending requirements..." style="display: none; margin-top: 8px; width: 100%; border: 1px solid #94a3b8; border-radius: 6px; padding: 8px 10px; font-size: 0.88rem;"></textarea>
                             </div>
+
                             <div class="input-group full-width">
-                                <label>Expectations of the parents</label>
-                                <textarea name="parent_expectations" rows="3" placeholder="Parent expectations, goals for child's independence, ambulation, communication, schooling..."></textarea>
+                                <label for="dev-parent-expectations">Expectations of the parents</label>
+                                <select id="dev-parent-expectations" name="parent_expectations" class="objective-dropdown" data-other-target="parent_expectations_other" style="padding: 9px 12px; border-radius: 6px; border: 1px solid var(--border); background: white; font-size: 0.9rem; color: #1e293b; width: 100%;">
+                                    <option value="">-- Select Parent Expectations --</option>
+                                    <option value="Improve functional walking and independent mobility">Improve functional walking and independent mobility</option>
+                                    <option value="Improve head & trunk control and independent sitting balance">Improve head & trunk control and independent sitting balance</option>
+                                    <option value="Improve standing balance and assisted walking">Improve standing balance and assisted walking</option>
+                                    <option value="Improve speech, communication and language expression">Improve speech, communication and language expression</option>
+                                    <option value="Improve hand function, bilateral grasp and fine motor skills">Improve hand function, bilateral grasp and fine motor skills</option>
+                                    <option value="Improve activities of daily living (feeding, dressing, toilet independence)">Improve activities of daily living (feeding, dressing, toilet independence)</option>
+                                    <option value="Reduce muscle stiffness, spasms and prevent joint contractures">Reduce muscle stiffness, spasms and prevent joint contractures</option>
+                                    <option value="Improve eye contact, attention, social interaction and behavior">Improve eye contact, attention, social interaction and behavior</option>
+                                    <option value="Prepare child for mainstream / special school admission">Prepare child for mainstream / special school admission</option>
+                                    <option value="Overall holistic functional independence and pain relief">Overall holistic functional independence and pain relief</option>
+                                    <option value="Other">Other (Please specify / type details)</option>
+                                </select>
+                                <textarea name="parent_expectations_other" class="objective-other-text" rows="2" placeholder="Specify parent expectations, priorities, home environment factors..." style="display: none; margin-top: 8px; width: 100%; border: 1px solid #94a3b8; border-radius: 6px; padding: 8px 10px; font-size: 0.88rem;"></textarea>
                             </div>
+
                             <div class="input-group full-width">
-                                <label>Note on Previous interventions in CORC:</label>
-                                <textarea name="previous_corc_interventions" rows="3" placeholder="Record previous therapies received at CORC, response to treatment, attendance history..."></textarea>
+                                <label for="dev-prev-corc">Note on Previous interventions in CORC:</label>
+                                <select id="dev-prev-corc" name="previous_corc_interventions" class="objective-dropdown" data-other-target="previous_corc_interventions_other" style="padding: 9px 12px; border-radius: 6px; border: 1px solid var(--border); background: white; font-size: 0.9rem; color: #1e293b; width: 100%;">
+                                    <option value="">-- Select Previous CORC Interventions --</option>
+                                    <option value="New Admission / No previous interventions at CORC">New Admission / No previous interventions at CORC</option>
+                                    <option value="Attended Early Intervention Centre (EIC) regular sessions">Attended Early Intervention Centre (EIC) regular sessions</option>
+                                    <option value="Received regular Physiotherapy sessions at CORC">Received regular Physiotherapy sessions at CORC</option>
+                                    <option value="Received regular Occupational Therapy sessions at CORC">Received regular Occupational Therapy sessions at CORC</option>
+                                    <option value="Received regular Speech & Language training at CORC">Received regular Speech & Language training at CORC</option>
+                                    <option value="Comprehensive multidisciplinary sessions received with good progress">Comprehensive multidisciplinary sessions received with good progress</option>
+                                    <option value="Previously discontinued / irregular attendance, now restarted">Previously discontinued / irregular attendance, now restarted</option>
+                                    <option value="Under periodic quarterly review and home exercise follow-up">Under periodic quarterly review and home exercise follow-up</option>
+                                    <option value="Referred from community screening camp">Referred from community screening camp</option>
+                                    <option value="Other">Other (Please specify / type details)</option>
+                                </select>
+                                <textarea name="previous_corc_interventions_other" class="objective-other-text" rows="2" placeholder="Record previous therapies received at CORC, response to treatment, attendance history..." style="display: none; margin-top: 8px; width: 100%; border: 1px solid #94a3b8; border-radius: 6px; padding: 8px 10px; font-size: 0.88rem;"></textarea>
                             </div>
 
                             <!-- Optional Clinical Treatment Plan -->
-                            <div class="input-group">
-                                <label>Treatment Goal</label>
-                                <input type="text" name="treatment_goal" placeholder="Therapeutic goal (short-term / long-term)">
+                            <div class="input-group full-width">
+                                <label for="dev-treatment-goal">Treatment Goal</label>
+                                <select id="dev-treatment-goal" name="treatment_goal" class="objective-dropdown" data-other-target="treatment_goal_other" style="padding: 9px 12px; border-radius: 6px; border: 1px solid var(--border); background: white; font-size: 0.9rem; color: #1e293b; width: 100%;">
+                                    <option value="">-- Select Treatment Goal --</option>
+                                    <option value="Improve head and trunk control in sitting posture">Improve head and trunk control in sitting posture</option>
+                                    <option value="Facilitate independent sitting balance and dynamic transitions">Facilitate independent sitting balance and dynamic transitions</option>
+                                    <option value="Promote standing balance and weight-bearing tolerance">Promote standing balance and weight-bearing tolerance</option>
+                                    <option value="Facilitate assisted / independent reciprocal walking pattern">Facilitate assisted / independent reciprocal walking pattern</option>
+                                    <option value="Improve bilateral hand grasp, release and fine motor coordination">Improve bilateral hand grasp, release and fine motor coordination</option>
+                                    <option value="Develop functional speech, receptive and expressive language">Develop functional speech, receptive and expressive language</option>
+                                    <option value="Improve sensory modulation, tolerance and attention span">Improve sensory modulation, tolerance and attention span</option>
+                                    <option value="Achieve independent self-care skills (feeding, dressing, ADL)">Achieve independent self-care skills (feeding, dressing, ADL)</option>
+                                    <option value="Prevent musculoskeletal deformities, contractures and manage tone">Prevent musculoskeletal deformities, contractures and manage tone</option>
+                                    <option value="Long-term functional independence and community inclusion">Long-term functional independence and community inclusion</option>
+                                    <option value="Other">Other (Please specify / type details)</option>
+                                </select>
+                                <input type="text" name="treatment_goal_other" class="objective-other-text" placeholder="Specify custom treatment goal..." style="display: none; margin-top: 8px; width: 100%; border: 1px solid #94a3b8; border-radius: 6px; padding: 8px 10px; font-size: 0.88rem;">
                             </div>
-                            <div class="input-group">
-                                <label>Treatment Plan</label>
-                                <input type="text" name="treatment_plan" placeholder="Recommended multidisciplinary plan">
+
+                            <div class="input-group full-width">
+                                <label for="dev-treatment-plan">Treatment Plan</label>
+                                <select id="dev-treatment-plan" name="treatment_plan" class="objective-dropdown" data-other-target="treatment_plan_other" style="padding: 9px 12px; border-radius: 6px; border: 1px solid var(--border); background: white; font-size: 0.9rem; color: #1e293b; width: 100%;">
+                                    <option value="">-- Select Treatment Plan --</option>
+                                    <option value="Physiotherapy (3x/week) + Occupational Therapy (2x/week)">Physiotherapy (3x/week) + Occupational Therapy (2x/week)</option>
+                                    <option value="Physiotherapy (Daily / 5 days a week) for gross motor training">Physiotherapy (Daily / 5 days a week) for gross motor training</option>
+                                    <option value="Occupational Therapy + Sensory Integration (3 days a week)">Occupational Therapy + Sensory Integration (3 days a week)</option>
+                                    <option value="Speech & Language Therapy (2-3 days a week) + Oral motor exercises">Speech & Language Therapy (2-3 days a week) + Oral motor exercises</option>
+                                    <option value="Comprehensive Multidisciplinary Program (PT + OT + Speech)">Comprehensive Multidisciplinary Program (PT + OT + Speech)</option>
+                                    <option value="Hydrotherapy sessions (weekly) + Gait re-education in parallel bars">Hydrotherapy sessions (weekly) + Gait re-education in parallel bars</option>
+                                    <option value="Postural management with CP chair, Standing Frame and AFO splints">Postural management with CP chair, Standing Frame and AFO splints</option>
+                                    <option value="Home Exercise Program (HEP) training for parents + Weekly monitoring">Home Exercise Program (HEP) training for parents + Weekly monitoring</option>
+                                    <option value="Quarterly multidisciplinary evaluation and milestone progress review">Quarterly multidisciplinary evaluation and milestone progress review</option>
+                                    <option value="Other">Other (Please specify / type details)</option>
+                                </select>
+                                <input type="text" name="treatment_plan_other" class="objective-other-text" placeholder="Specify custom treatment plan..." style="display: none; margin-top: 8px; width: 100%; border: 1px solid #94a3b8; border-radius: 6px; padding: 8px 10px; font-size: 0.88rem;">
                             </div>
 
                             <div class="input-group">
@@ -5203,7 +5327,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="app.js?v=38"></script>
+    <script src="app.js?v=39"></script>
 </body>
 
 </html>
