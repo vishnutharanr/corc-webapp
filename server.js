@@ -843,8 +843,9 @@ app.post('/api/assessments', async (req, res) => {
         }
         const stringifiedData = typeof parsedData === 'object' ? JSON.stringify(parsedData) : (typeof data === 'string' ? data : JSON.stringify(data));
 
-        // If an assessment for this child and form type already exists, update it to avoid duplicate records
-        if (child_id) {
+        // If an assessment for this child and form type already exists for Consultation Form, update it to avoid duplicate intake profiles.
+        // For ABC, ISAA, and other clinical assessments, allow multiple assessments over time.
+        if (child_id && (form_type === 'Consultation Form' || form_type === 'Rapid Assessment')) {
             const existing = await pool.query(
                 `SELECT id FROM assessments WHERE child_id = $1 AND form_type = $2 ORDER BY created_at DESC LIMIT 1`,
                 [child_id, form_type]

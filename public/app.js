@@ -376,25 +376,105 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // ABC Assessment Edit Banner
+        // ABC Assessment Edit Banner & Selector
         const abcBanner = document.getElementById('abc-form-edit-banner');
         const abcChildName = document.getElementById('abc-editing-child-name');
-        if (abcBanner && abcChildName) {
-            if (activeChild && currentEditingAssessments['ABC Assessment']) {
+        const abcStatusText = document.getElementById('abc-banner-status-text');
+        const abcSelectWrapper = document.getElementById('abc-assessment-select-wrapper');
+        const abcSelector = document.getElementById('abc-assessment-selector');
+
+        if (abcBanner) {
+            if (activeChild && activeChild.id) {
                 abcBanner.style.display = 'flex';
-                abcChildName.textContent = activeChild.name;
+                if (abcChildName) abcChildName.textContent = activeChild.name;
+                const abcAssessments = (activeChild.assessments || []).filter(a => a.form_type === 'ABC Assessment')
+                    .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+                const currentId = currentEditingAssessments['ABC Assessment'];
+
+                if (abcSelectWrapper && abcSelector) {
+                    if (abcAssessments.length > 0) {
+                        abcSelectWrapper.style.display = 'inline-flex';
+                        let opts = `<option value="new"${!currentId ? ' selected' : ''}>➕ Create New Assessment</option>`;
+                        abcAssessments.forEach((a, idx) => {
+                            const dateStr = a.created_at ? new Date(a.created_at).toLocaleDateString() : '';
+                            const score = (a.data && a.data.abc_total_score !== undefined) ? ` (Score: ${a.data.abc_total_score}/158)` : '';
+                            const isSel = currentId == a.id ? ' selected' : '';
+                            opts += `<option value="${a.id}"${isSel}>Assessment #${idx + 1} — ${dateStr}${score}</option>`;
+                        });
+                        abcSelector.innerHTML = opts;
+                    } else {
+                        abcSelectWrapper.style.display = 'none';
+                    }
+                }
+
+                if (abcStatusText) {
+                    if (currentId) {
+                        const assIdx = abcAssessments.findIndex(a => a.id == currentId);
+                        const numStr = assIdx >= 0 ? ` (#${assIdx + 1})` : '';
+                        const ass = abcAssessments[assIdx];
+                        const dateStr = ass && ass.created_at ? ` from ${new Date(ass.created_at).toLocaleDateString()}` : '';
+                        abcStatusText.innerHTML = `✏️ <strong>Editing Mode:</strong> Modifying ABC Assessment${numStr}${dateStr} for <strong>${activeChild.name}</strong>. Saving will update this record.`;
+                        abcBanner.style.background = '#eff6ff';
+                        abcBanner.style.borderColor = '#93c5fd';
+                    } else {
+                        const nextNum = abcAssessments.length + 1;
+                        abcStatusText.innerHTML = `✨ <strong>New Assessment:</strong> Creating ABC Assessment #${nextNum} for <strong>${activeChild.name}</strong>. Saving will add a new assessment record.`;
+                        abcBanner.style.background = '#f0fdf4';
+                        abcBanner.style.borderColor = '#86efac';
+                    }
+                }
             } else {
                 abcBanner.style.display = 'none';
             }
         }
 
-        // ISAA Assessment Edit Banner
+        // ISAA Assessment Edit Banner & Selector
         const isaaBanner = document.getElementById('isaa-form-edit-banner');
         const isaaChildName = document.getElementById('isaa-editing-child-name');
-        if (isaaBanner && isaaChildName) {
-            if (activeChild && currentEditingAssessments['ISAA Assessment']) {
+        const isaaStatusText = document.getElementById('isaa-banner-status-text');
+        const isaaSelectWrapper = document.getElementById('isaa-assessment-select-wrapper');
+        const isaaSelector = document.getElementById('isaa-assessment-selector');
+
+        if (isaaBanner) {
+            if (activeChild && activeChild.id) {
                 isaaBanner.style.display = 'flex';
-                isaaChildName.textContent = activeChild.name;
+                if (isaaChildName) isaaChildName.textContent = activeChild.name;
+                const isaaAssessments = (activeChild.assessments || []).filter(a => a.form_type === 'ISAA Assessment')
+                    .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+                const currentId = currentEditingAssessments['ISAA Assessment'];
+
+                if (isaaSelectWrapper && isaaSelector) {
+                    if (isaaAssessments.length > 0) {
+                        isaaSelectWrapper.style.display = 'inline-flex';
+                        let opts = `<option value="new"${!currentId ? ' selected' : ''}>➕ Create New Assessment</option>`;
+                        isaaAssessments.forEach((a, idx) => {
+                            const dateStr = a.created_at ? new Date(a.created_at).toLocaleDateString() : '';
+                            const score = (a.data && a.data.isaa_total_score !== undefined) ? ` (Score: ${a.data.isaa_total_score}/200)` : '';
+                            const isSel = currentId == a.id ? ' selected' : '';
+                            opts += `<option value="${a.id}"${isSel}>Assessment #${idx + 1} — ${dateStr}${score}</option>`;
+                        });
+                        isaaSelector.innerHTML = opts;
+                    } else {
+                        isaaSelectWrapper.style.display = 'none';
+                    }
+                }
+
+                if (isaaStatusText) {
+                    if (currentId) {
+                        const assIdx = isaaAssessments.findIndex(a => a.id == currentId);
+                        const numStr = assIdx >= 0 ? ` (#${assIdx + 1})` : '';
+                        const ass = isaaAssessments[assIdx];
+                        const dateStr = ass && ass.created_at ? ` from ${new Date(ass.created_at).toLocaleDateString()}` : '';
+                        isaaStatusText.innerHTML = `✏️ <strong>Editing Mode:</strong> Modifying ISAA Assessment${numStr}${dateStr} for <strong>${activeChild.name}</strong>. Saving will update this record.`;
+                        isaaBanner.style.background = '#eff6ff';
+                        isaaBanner.style.borderColor = '#93c5fd';
+                    } else {
+                        const nextNum = isaaAssessments.length + 1;
+                        isaaStatusText.innerHTML = `✨ <strong>New Assessment:</strong> Creating ISAA Assessment #${nextNum} for <strong>${activeChild.name}</strong>. Saving will add a new assessment record.`;
+                        isaaBanner.style.background = '#f0fdf4';
+                        isaaBanner.style.borderColor = '#86efac';
+                    }
+                }
             } else {
                 isaaBanner.style.display = 'none';
             }
@@ -1504,40 +1584,73 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Start fresh assessment button listeners
-    const btnAbcNew = document.getElementById('btn-abc-new-version');
-    if (btnAbcNew) {
-        btnAbcNew.addEventListener('click', () => {
-            delete currentEditingAssessments['ABC Assessment'];
-            const f = document.getElementById('form-abc');
-            if (f) {
-                f.reset();
-                f.querySelectorAll('.abc-score-input').forEach(inp => {
-                    inp.value = '';
-                    inp.style.background = 'white';
-                    inp.style.borderColor = '#cbd5e1';
-                    inp.style.color = '#1e293b';
-                });
-            }
-            prefillFromActive();
-            calculateAbcScores();
-            updateFormEditBanners();
-            showToast('Started fresh ABC Assessment for ' + (activeChild ? activeChild.name : 'child'));
-        });
+    // Assessment Selectors & Start fresh assessment button listeners
+    function resetAbcFormToNew() {
+        delete currentEditingAssessments['ABC Assessment'];
+        const f = document.getElementById('form-abc');
+        if (f) {
+            f.reset();
+            f.querySelectorAll('.abc-score-input').forEach(inp => {
+                inp.value = '';
+                inp.style.background = 'white';
+                inp.style.borderColor = '#cbd5e1';
+                inp.style.color = '#1e293b';
+            });
+        }
+        prefillFromActive();
+        calculateAbcScores();
+        updateFormEditBanners();
+        showToast('Ready to create new ABC Assessment for ' + (activeChild ? activeChild.name : 'child'));
     }
 
-    const btnIsaaNew = document.getElementById('btn-isaa-new-version');
-    if (btnIsaaNew) {
-        btnIsaaNew.addEventListener('click', () => {
-            delete currentEditingAssessments['ISAA Assessment'];
-            const f = document.getElementById('form-isaa');
-            if (f) f.reset();
-            prefillFromActive();
-            calculateIsaaScores();
-            updateFormEditBanners();
-            showToast('Started fresh ISAA Assessment for ' + (activeChild ? activeChild.name : 'child'));
-        });
+    function resetIsaaFormToNew() {
+        delete currentEditingAssessments['ISAA Assessment'];
+        const f = document.getElementById('form-isaa');
+        if (f) f.reset();
+        prefillFromActive();
+        calculateIsaaScores();
+        updateFormEditBanners();
+        showToast('Ready to create new ISAA Assessment for ' + (activeChild ? activeChild.name : 'child'));
     }
+
+    document.getElementById('btn-abc-new-version')?.addEventListener('click', resetAbcFormToNew);
+    document.getElementById('btn-isaa-new-version')?.addEventListener('click', resetIsaaFormToNew);
+
+    document.getElementById('abc-assessment-selector')?.addEventListener('change', (e) => {
+        const val = e.target.value;
+        if (val === 'new') {
+            resetAbcFormToNew();
+        } else {
+            const assId = parseInt(val, 10);
+            currentEditingAssessments['ABC Assessment'] = assId;
+            const f = document.getElementById('form-abc');
+            const targetAss = activeChild?.assessments?.find(a => a.id == assId);
+            if (f && targetAss && targetAss.data) {
+                populateFormFields(f, targetAss.data);
+                calculateAbcScores(f);
+            }
+            updateFormEditBanners();
+            showToast('Loaded ABC Assessment record');
+        }
+    });
+
+    document.getElementById('isaa-assessment-selector')?.addEventListener('change', (e) => {
+        const val = e.target.value;
+        if (val === 'new') {
+            resetIsaaFormToNew();
+        } else {
+            const assId = parseInt(val, 10);
+            currentEditingAssessments['ISAA Assessment'] = assId;
+            const f = document.getElementById('form-isaa');
+            const targetAss = activeChild?.assessments?.find(a => a.id == assId);
+            if (f && targetAss && targetAss.data) {
+                populateFormFields(f, targetAss.data);
+                calculateIsaaScores(f);
+            }
+            updateFormEditBanners();
+            showToast('Loaded ISAA Assessment record');
+        }
+    });
 
     // ── Setup BMI Auto-Calculation ──────────────────────────────
     window.setupBmiAutoCalc = function(formEl) {
@@ -2304,18 +2417,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
             filteredChildren.forEach(child => {
                 const isActive = activeChild && activeChild.id === child.id;
-                const rows = child.assessments.length
-                    ? child.assessments.map(a =>
-                        '<div class="folder-assessment-row">' +
-                            '<span class="folder-assessment-icon">' + (ICONS[a.form_type] || '\ud83d\udcc4') + '</span>' +
-                            '<span class="folder-assessment-type">' + a.form_type + '</span>' +
-                            '<span class="folder-assessment-date">' + new Date(a.created_at).toLocaleDateString() + '</span>' +
-                            '<div class="row-btns">' +
-                                '<button class="btn-view-sm"   data-id="' + a.id + '">View</button>' +
-                                '<button class="btn-edit-sm"   data-id="' + a.id + '">&#9998; Edit</button>' +
-                                '<button class="btn-delete-sm" data-id="' + a.id + '">&#128465; Delete</button>' +
-                            '</div>' +
-                        '</div>').join('')
+                const typeTotals = {};
+                (child.assessments || []).forEach(a => {
+                    typeTotals[a.form_type] = (typeTotals[a.form_type] || 0) + 1;
+                });
+                const typeCounts = {};
+                const sortedAssessments = [...(child.assessments || [])].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+
+                const rows = sortedAssessments.length
+                    ? sortedAssessments.map(a => {
+                        typeCounts[a.form_type] = (typeCounts[a.form_type] || 0) + 1;
+                        const countSuffix = typeTotals[a.form_type] > 1 ? ` (#${typeCounts[a.form_type]})` : '';
+                        let scoreInfo = '';
+                        if (a.form_type === 'ABC Assessment' && a.data && a.data.abc_total_score !== undefined) {
+                            scoreInfo = ` · Score: ${a.data.abc_total_score}/158`;
+                        } else if (a.form_type === 'ISAA Assessment' && a.data && a.data.isaa_total_score !== undefined) {
+                            scoreInfo = ` · Score: ${a.data.isaa_total_score}/200`;
+                        }
+                        return (
+                            '<div class="folder-assessment-row">' +
+                                '<span class="folder-assessment-icon">' + (ICONS[a.form_type] || '\ud83d\udcc4') + '</span>' +
+                                '<span class="folder-assessment-type"><strong>' + a.form_type + countSuffix + '</strong><small style="color:#64748b; font-weight:600;">' + scoreInfo + '</small></span>' +
+                                '<span class="folder-assessment-date">' + new Date(a.created_at).toLocaleDateString() + '</span>' +
+                                '<div class="row-btns">' +
+                                    '<button class="btn-view-sm"   data-id="' + a.id + '">View</button>' +
+                                    '<button class="btn-edit-sm"   data-id="' + a.id + '">&#9998; Edit</button>' +
+                                    '<button class="btn-delete-sm" data-id="' + a.id + '">&#128465; Delete</button>' +
+                                '</div>' +
+                            '</div>'
+                        );
+                    }).join('')
                     : '<div class="folder-empty-msg">No assessments saved yet.</div>';
 
                 const isAutism = isAutismChild(child);
@@ -2499,12 +2630,33 @@ document.addEventListener('DOMContentLoaded', () => {
                     e.stopPropagation();
                     const formId = btn.getAttribute('data-form-id');
                     const cd = JSON.parse(btn.getAttribute('data-child-json').replace(/&quot;/g, '"'));
-                    // Activate child if different from current
-                    if (!activeChild || activeChild.id !== cd.id) {
-                        setActiveChild(cd);
+                    // Activate child
+                    setActiveChild(cd);
+
+                    // User clicked under "Add Assessment:" -> Start fresh assessment
+                    if (formId === 'abc-assessment') {
+                        delete currentEditingAssessments['ABC Assessment'];
+                        const f = document.getElementById('form-abc');
+                        if (f) {
+                            f.reset();
+                            f.querySelectorAll('.abc-score-input').forEach(inp => {
+                                inp.value = '';
+                                inp.style.background = 'white';
+                                inp.style.borderColor = '#cbd5e1';
+                                inp.style.color = '#1e293b';
+                            });
+                        }
+                    } else if (formId === 'isaa-assessment') {
+                        delete currentEditingAssessments['ISAA Assessment'];
+                        const f = document.getElementById('form-isaa');
+                        if (f) f.reset();
                     }
+
                     switchTab(formId);
                     prefillFromActive();
+                    if (formId === 'abc-assessment') calculateAbcScores();
+                    if (formId === 'isaa-assessment') calculateIsaaScores();
+                    updateFormEditBanners();
                     const target = document.getElementById(formId);
                     if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 });
