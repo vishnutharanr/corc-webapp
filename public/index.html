@@ -16,7 +16,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="styles.css?v=36">
+    <link rel="stylesheet" href="styles.css?v=37">
 </head>
 
 <body>
@@ -4082,7 +4082,9 @@
                             <thead>
                                 <tr style="background: #f8fafc; color: #1e293b; border-bottom: 2px solid #e2e8f0;">
                                     <th style="padding: 12px 14px; width: 40px; text-align: center;">#</th>
-                                    <th style="padding: 12px 14px; min-width: 170px;">Child Name & Demographics</th>
+                                    <th style="padding: 12px 14px; min-width: 150px;">Child Name</th>
+                                    <th style="padding: 12px 14px; min-width: 110px; color: #1e40af;">Initial Age<br><span style="font-weight: 500; font-size: 0.72rem; color: #64748b;">(at Admission)</span></th>
+                                    <th style="padding: 12px 14px; min-width: 110px; color: #059669;">Current Age<br><span style="font-weight: 500; font-size: 0.72rem; color: #64748b;">(as of Today)</span></th>
                                     <th style="padding: 12px 14px; min-width: 190px;">🩺 Consultation Form</th>
                                     <th style="padding: 12px 14px; min-width: 200px;">👶 Child Development</th>
                                     <th style="padding: 12px 14px; min-width: 200px;">💪 Physiotherapy</th>
@@ -4988,7 +4990,9 @@
                                 <thead>
                                     <tr style="background: #f1f5f9; color: #1e293b; border-bottom: 2px solid #cbd5e1;">
                                         <th style="padding: 10px 12px;">Child Name</th>
-                                        <th style="padding: 10px 12px;">Age / Sex</th>
+                                        <th style="padding: 10px 12px; color: #1e40af; min-width: 105px;">Initial Age<br><span style="font-weight: 500; font-size: 0.72rem; color: #64748b;">(at Admission)</span></th>
+                                        <th style="padding: 10px 12px; color: #059669; min-width: 105px;">Current Age<br><span style="font-weight: 500; font-size: 0.72rem; color: #64748b;">(as of Today)</span></th>
+                                        <th style="padding: 10px 12px; text-align: center;">Sex</th>
                                         <th style="padding: 10px 12px; text-align: center;">🩺 Consultation</th>
                                         <th style="padding: 10px 12px; text-align: center;">👶 Child Dev</th>
                                         <th style="padding: 10px 12px; text-align: center;">💪 Physio</th>
@@ -5128,8 +5132,12 @@
                             <input type="date" id="edit-child-dob">
                         </div>
                         <div class="input-group">
-                            <label for="edit-child-age">Age at Admission <span style="font-size:0.75rem; color:#6b7280; font-weight:normal;">(Permanent)</span></label>
-                            <input type="text" id="edit-child-age" placeholder="e.g. 2y 6m or 7 yrs">
+                            <label for="edit-child-age">Initial Age at Admission <span style="font-size:0.75rem; color:#1e40af; font-weight:700; background:#eff6ff; padding:1px 6px; border-radius:3px; border:1px solid #bfdbfe; margin-left:4px;">Permanent</span></label>
+                            <input type="text" id="edit-child-age" placeholder="e.g. 2y 6m or 7 yrs" title="Permanent age at admission. Never changes.">
+                        </div>
+                        <div class="input-group">
+                            <label for="edit-child-current-age">Current Age <span style="font-size:0.75rem; color:#059669; font-weight:700; background:#ecfdf5; padding:1px 6px; border-radius:3px; border:1px solid #a7f3d0; margin-left:4px;">Live Today</span></label>
+                            <input type="text" id="edit-child-current-age" readonly style="background:#f8fafc; color:#059669; font-weight:700; cursor:not-allowed;" placeholder="Live dynamic age today" title="Dynamically calculated periodic age from Date of Birth to current date.">
                         </div>
                         <div class="input-group">
                             <label for="edit-child-sex">Sex</label>
@@ -5165,7 +5173,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="app.js?v=36"></script>
+    <script src="app.js?v=37"></script>
 </body>
 
 </html>

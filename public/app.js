@@ -1851,20 +1851,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // Returns live incremented age, accompanied by the permanent admission age for reference
     function extractChildAgeString(childOrRow) {
         if (!childOrRow) return '—';
-        const dob = childOrRow.dob || childOrRow.child_dob;
-        const liveStr = dob ? calcAge(dob) : null;
-
-        const refAge = (childOrRow.age_at_creation && childOrRow.age_at_creation !== 'null') ? String(childOrRow.age_at_creation).trim() :
-                      (childOrRow.child_age_at_creation && childOrRow.child_age_at_creation !== 'null') ? String(childOrRow.child_age_at_creation).trim() :
-                      (childOrRow.age && childOrRow.age !== 'null') ? String(childOrRow.age).trim() :
-                      (childOrRow.child_age && childOrRow.child_age !== 'null') ? String(childOrRow.child_age).trim() :
-                      (childOrRow._consultationData && (childOrRow._consultationData.age_at_creation || childOrRow._consultationData.age)) ? String(childOrRow._consultationData.age_at_creation || childOrRow._consultationData.age).trim() :
-                      (childOrRow._rapidData && (childOrRow._rapidData.age_at_creation || childOrRow._rapidData.age)) ? String(childOrRow._rapidData.age_at_creation || childOrRow._rapidData.age).trim() : null;
-
-        if (liveStr && refAge && refAge !== liveStr) {
-            return `${liveStr} (Adm: ${refAge})`;
+        const initialAge = getChildInitialAge(childOrRow);
+        const currentAge = getChildCurrentAge(childOrRow);
+        if (currentAge !== '—' && initialAge !== '—' && currentAge !== initialAge) {
+            return `${currentAge} (Adm: ${initialAge})`;
         }
-        return liveStr || refAge || '—';
+        return currentAge !== '—' ? currentAge : (initialAge !== '—' ? initialAge : '—');
     }
 
     function isAutismChild(childOrRow) {
@@ -1954,6 +1946,113 @@ document.addEventListener('DOMContentLoaded', () => {
         if (years === 0) return months + ' month' + (months !== 1 ? 's' : '');
         if (months === 0) return years  + ' year'  + (years  !== 1 ? 's' : '');
         return years + ' yr' + (years !== 1 ? 's' : '') + ' ' + months + ' mo';
+    }
+
+    // Returns permanent static Initial Age (recorded at admission / registration; NEVER changes)
+    function getChildInitialAge(childOrRow) {
+        if (!childOrRow) return '—';
+
+        // 1. Direct explicit age_at_creation on child record
+        const staticAge = (childOrRow.age_at_creation && childOrRow.age_at_creation !== 'null' && String(childOrRow.age_at_creation).trim()) ? String(childOrRow.age_at_creation).trim() :
+                          (childOrRow.child_age_at_creation && childOrRow.child_age_at_creation !== 'null' && String(childOrRow.child_age_at_creation).trim()) ? String(childOrRow.child_age_at_creation).trim() : null;
+        if (staticAge) return staticAge;
+
+        // 2. From consultation form or rapid assessment data
+        const rd = childOrRow._consultationData || childOrRow._rapidData || 
+                  (childOrRow.rapid_data ? (typeof childOrRow.rapid_data === 'string' ? JSON.parse(childOrRow.rapid_data) : childOrRow.rapid_data) : null);
+        if (rd) {
+            const rdAge = (rd.age_at_creation && rd.age_at_creation !== 'null' && String(rd.age_at_creation).trim()) ? String(rd.age_at_creation).trim() :
+                          (rd.age && rd.age !== 'null' && String(rd.age).trim()) ? String(rd.age).trim() : null;
+            if (rdAge) return rdAge;
+        }
+
+        // 3. Search child's assessments for Consultation Form or Rapid Assessment
+        if (Array.isArray(childOrRow.assessments)) {
+            const cf = childOrRow.assessments.find(a => a.form_type === 'Consultation Form' || a.form_type === 'Rapid Assessment');
+            if (cf && cf.data) {
+                const cfAge = cf.data.age_at_creation || cf.data.age;
+                if (cfAge && String(cfAge).trim() && String(cfAge).trim() !== 'null') {
+                    return String(cfAge).trim();
+                }
+            }
+            const otherWithAge = childOrRow.assessments.find(a => a.data && (a.data.age_at_creation || a.data.age));
+            if (otherWithAge) {
+                const oAge = otherWithAge.data.age_at_creation || otherWithAge.data.age;
+                if (oAge && String(oAge).trim() && String(oAge).trim() !== 'null') {
+                    return String(oAge).trim();
+                }
+            }
+        }
+
+        // 4. Stored static 'age' column on child (set at admission)
+        const childAge = (childOrRow.age && childOrRow.age !== 'null' && String(childOrRow.age).trim()) ? String(childOrRow.age).trim() :
+                         (childOrRow.child_age && childOrRow.child_age !== 'null' && String(childOrRow.child_age).trim()) ? String(childOrRow.child_age).trim() : null;
+        if (childAge) return childAge;
+
+        // 5. If DOB is known and child.created_at is known, calculate age at admission timestamp
+        const dob = childOrRow.dob || childOrRow.child_dob || (rd && rd.dob);
+        const createdAt = childOrRow.created_at || childOrRow.child_created_at;
+        if (dob && createdAt) {
+            const calc = calcAge(dob, createdAt);
+            if (calc) return calc;
+        }
+
+        // 6. If DOB is known but no createdAt, calculate age at DOB
+        if (dob) {
+            const calc = calcAge(dob);
+            if (calc) return calc;
+        }
+
+        return '—';
+    }
+
+    // Returns dynamic Current Age (Calculated periodically/live based on Date of Birth and today's date)
+    function getChildCurrentAge(childOrRow) {
+        if (!childOrRow) return '—';
+
+        // 1. Direct DOB on child record
+        let dob = childOrRow.dob || childOrRow.child_dob;
+
+        // 2. DOB in consultation / assessment data
+        if (!dob) {
+            const rd = childOrRow._consultationData || childOrRow._rapidData || 
+                      (childOrRow.rapid_data ? (typeof childOrRow.rapid_data === 'string' ? JSON.parse(childOrRow.rapid_data) : childOrRow.rapid_data) : null);
+            if (rd && rd.dob) dob = rd.dob;
+        }
+        if (!dob && Array.isArray(childOrRow.assessments)) {
+            const aWithDob = childOrRow.assessments.find(a => a.data && a.data.dob);
+            if (aWithDob) dob = aWithDob.data.dob;
+        }
+
+        // If DOB is present, calculate live dynamic age as of today (new Date())
+        if (dob) {
+            const liveAge = calcAge(dob);
+            if (liveAge) return liveAge;
+        }
+
+        // 3. Fallback: If DOB is not stored, but we have an initial age and a created_at date,
+        // extrapolate the elapsed calendar time since admission:
+        const createdAt = childOrRow.created_at || childOrRow.child_created_at;
+        const initialAge = getChildInitialAge(childOrRow);
+        if (createdAt && initialAge && initialAge !== '—') {
+            const initYears = parseAgeStringToYears(initialAge);
+            if (initYears !== null) {
+                const createdDate = new Date(createdAt);
+                if (!isNaN(createdDate.getTime())) {
+                    const elapsedYears = new Date().getFullYear() - createdDate.getFullYear();
+                    const elapsedMonths = (new Date().getMonth() - createdDate.getMonth()) + (elapsedYears * 12);
+                    if (elapsedMonths > 0) {
+                        const totalMonths = (initYears * 12) + elapsedMonths;
+                        const curY = Math.floor(totalMonths / 12);
+                        const curM = totalMonths % 12;
+                        if (curM === 0) return `${curY} year${curY !== 1 ? 's' : ''}`;
+                        return `${curY} yr${curY !== 1 ? 's' : ''} ${curM} mo`;
+                    }
+                }
+            }
+        }
+
+        return initialAge !== '—' ? initialAge : '—';
     }
 
     function wireAgeDob(dobId, ageId) {
@@ -2499,12 +2598,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const card = document.createElement('div');
                 card.className = 'child-folder-card' + (isActive ? ' folder-active' : '');
-                const ageDisplay = extractChildAgeString(child);
+                const initialAge = getChildInitialAge(child);
+                const currentAge = getChildCurrentAge(child);
+                const ageMeta = [];
+                if (initialAge && initialAge !== '—') ageMeta.push('<span style="color:#1e40af; font-weight:600;">Init Age: ' + initialAge + '</span>');
+                if (currentAge && currentAge !== '—') ageMeta.push('<span style="color:#059669; font-weight:600;">Current Age: ' + currentAge + '</span>');
                 const meta = [
                     child.admission_no ? admPrefixLabel + child.admission_no : '', 
                     child.sex, 
                     child.dob ? 'DOB: ' + child.dob : '', 
-                    (ageDisplay && ageDisplay !== '—') ? 'Age: ' + ageDisplay : '',
+                    ...ageMeta,
                     child.mobile ? '📱 ' + child.mobile : '', 
                     child.assessments.length + ' assessment(s)'
                 ].filter(Boolean).join(' · ');
@@ -4665,6 +4768,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const rowSelectedClass = isSelected ? ' schedule-row-selected' : '';
             const admBadge = child.admission_no ? `<span class="adm-badge" style="display:inline-block; font-size:0.75rem; background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe; border-radius:4px; padding:1px 6px; font-weight:700; margin-bottom:3px;">${child.admission_no}</span><br>` : '';
             const cb = `<input type="checkbox" class="schedule-child-cb" data-child-id="${child.id}" ${isSelected ? 'checked' : ''} style="cursor: pointer; width: 16px; height: 16px; accent-color: #2563eb; margin-top: 3px; flex-shrink: 0;">`;
+            const initAge = getChildInitialAge(child);
+            const curAge = getChildCurrentAge(child);
+            const ageLine = (initAge !== '—' || curAge !== '—')
+                ? `<div style="font-size:0.73rem; color:#64748b; margin-top:2px; line-height:1.2;">Init: <strong style="color:#1e40af;">${initAge}</strong> | Cur: <strong style="color:#059669;">${curAge}</strong></div>`
+                : '';
             html += `<tr class="${rowClass}${rowSelectedClass}" data-child-id="${child.id}">`;
             html += `<td class="sticky-col" data-child-id="${child.id}" style="min-width: 195px;">
                         <div style="display: flex; align-items: flex-start; gap: 8px;">
@@ -4673,6 +4781,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <span style="font-size: 0.82rem; color: #64748b;">${index + 1}.</span>
                                 ${admBadge}
                                 <strong style="color: #1e293b; font-size: 0.94rem;">${child.name}</strong>
+                                ${ageLine}
                             </div>
                         </div>
                      </td>`;
@@ -5151,10 +5260,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const admBadge = child.admission_no 
                 ? `<span style="display:inline-block; font-size:8.5pt; color:#1e40af; font-weight:700;">[${child.admission_no}]</span> ` 
                 : '';
+            const initAge = getChildInitialAge(child);
+            const curAge = getChildCurrentAge(child);
+            const printAge = (initAge !== '—' || curAge !== '—')
+                ? `<div style="font-size:7pt; color:#475569; font-weight:600; margin-top:1px;">Init: ${initAge} | Cur: ${curAge}</div>`
+                : '';
             tableBodyHtml += `<tr style="height: 32px;">`;
             tableBodyHtml += `<td style="border: 1.5px solid #334155; padding: 6px 8px; text-align: left; font-size: 9.5pt; background: #f8fafc; font-weight: 700; line-height: 1.25;">
                                 <span style="color: #64748b; font-size: 8.5pt; font-weight: 600;">${index + 1}.</span> 
                                 ${admBadge}<strong>${child.name}</strong>
+                                ${printAge}
                              </td>`;
             TIME_SLOTS.forEach(slot => {
                 const block = currentScheduleData.find(s => s.child_id === child.id && s.time_slot === slot);
@@ -6806,6 +6921,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const pData = s.raw?.physio || {};
         const sData = s.raw?.speech || {};
 
+        const initialAge = getChildInitialAge(child);
+        const currentAge = getChildCurrentAge(child);
         const ageYears = extractChildAge(child);
         const ageStr = extractChildAgeString(child);
         const assessmentDate = rData.assessment_date || dData.assessment_date || pData.assessment_date || s.rapid.date || s.dev.date || s.physio.date || new Date().toLocaleDateString('en-IN');
@@ -6825,7 +6942,9 @@ document.addEventListener('DOMContentLoaded', () => {
             name: cleanVal(child.name),
             sex: cleanVal(child.sex),
             dob: cleanVal(child.dob),
-            age: ageStr,
+            initialAge,
+            currentAge,
+            age: currentAge !== '—' ? `${currentAge} (Adm: ${initialAge})` : (initialAge !== '—' ? initialAge : '—'),
             grade: cleanVal(child.grade || dData.grade || rData.grade),
             address: cleanVal(child.address || dData.address || rData.address),
 
@@ -7077,8 +7196,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     <tr>
                         <td class="label-col">Date of Birth</td>
                         <td class="val-col">${escapeHtml(f.dob)}</td>
-                        <td class="label-col">Age / Grade</td>
-                        <td class="val-col">${escapeHtml(f.age)} / Grade: ${escapeHtml(f.grade)}</td>
+                        <td class="label-col">Initial &amp; Current Age</td>
+                        <td class="val-col">Init: <strong style="color:#1e40af;">${escapeHtml(f.initialAge)}</strong> &nbsp;|&nbsp; Cur: <strong style="color:#059669;">${escapeHtml(f.currentAge)}</strong> (Grade: ${escapeHtml(f.grade)})</td>
                     </tr>
                     <tr>
                         <td class="label-col">Address</td>
@@ -7989,12 +8108,21 @@ function printChildSummarySheet(child, assessments = []) {
             ? `<span class="adm-badge" style="font-size:0.75rem; color:#1e40af; background:#eff6ff; border:1px solid #bfdbfe; border-radius:3px; padding:1px 6px; margin-right:6px; font-weight:700;">${child.admission_no}</span>`
             : '';
 
+        const initialAge = getChildInitialAge(child);
+        const currentAge = getChildCurrentAge(child);
+
         return `
             <tr style="border-bottom: 1px solid #f1f5f9;">
                 <td style="padding: 12px 14px; text-align: center; color: #64748b; font-weight: 600;">${index + 1}</td>
                 <td style="padding: 12px 14px;">
                     <strong style="color: #0f172a; font-size: 0.92rem; display: block;">${admBadge}${child.name}</strong>
-                    <div style="font-size: 0.78rem; color: #64748b;">${ageStr} / ${child.sex || '-'} · 📱 ${child.mobile || 'None'}</div>
+                    <div style="font-size: 0.78rem; color: #64748b;">${child.sex || '-'} · 📱 ${child.mobile || 'None'}</div>
+                </td>
+                <td style="padding: 12px 14px; font-weight: 600;">
+                    <span style="display:inline-block; background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe; border-radius:4px; padding:2px 7px; font-size:0.8rem; font-weight:700;">${initialAge}</span>
+                </td>
+                <td style="padding: 12px 14px; font-weight: 600;">
+                    <span style="display:inline-block; background:#ecfdf5; color:#059669; border:1px solid #a7f3d0; border-radius:4px; padding:2px 7px; font-size:0.8rem; font-weight:700;">${currentAge}</span>
                 </td>
                 <td style="padding: 12px 14px;">
                     ${r.exists ? `
@@ -8775,13 +8903,13 @@ function printChildSummarySheet(child, assessments = []) {
         if (!tbody) return;
 
         if (!children.length) {
-            tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 25px; color: var(--text-light);">No child records match current filters.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; padding: 25px; color: var(--text-light);">No child records match current filters.</td></tr>';
             return;
         }
 
         tbody.innerHTML = children.map(c => {
-            const ageYears = extractChildAge(c);
-            const ageStr = extractChildAgeString(c);
+            const initialAge = getChildInitialAge(c);
+            const currentAge = getChildCurrentAge(c);
             const aList = c.assessments || [];
 
             const renderBadge = (formType) => {
@@ -8806,7 +8934,13 @@ function printChildSummarySheet(child, assessments = []) {
             return `
                 <tr style="border-bottom: 1px solid #f1f5f9;">
                     <td style="padding: 10px 12px;"><strong>${c.name}</strong>${admBadge}</td>
-                    <td style="padding: 10px 12px; color: #64748b; font-size: 0.82rem;">${ageStr} / ${c.sex || '-'}</td>
+                    <td style="padding: 10px 12px; font-size: 0.82rem; font-weight: 600;">
+                        <span style="display:inline-block; background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe; border-radius:4px; padding:2px 7px; font-weight:700;">${initialAge}</span>
+                    </td>
+                    <td style="padding: 10px 12px; font-size: 0.82rem; font-weight: 600;">
+                        <span style="display:inline-block; background:#ecfdf5; color:#059669; border:1px solid #a7f3d0; border-radius:4px; padding:2px 7px; font-weight:700;">${currentAge}</span>
+                    </td>
+                    <td style="padding: 10px 12px; text-align: center; color: #64748b; font-size: 0.82rem;">${c.sex || '-'}</td>
                     <td style="padding: 10px 12px; text-align: center;">${renderBadge('Consultation Form')}</td>
                     <td style="padding: 10px 12px; text-align: center;">${renderBadge('Child Development')}</td>
                     <td style="padding: 10px 12px; text-align: center;">${renderBadge('Physiotherapy')}</td>
@@ -8889,8 +9023,8 @@ function printChildSummarySheet(child, assessments = []) {
             [
                 { content: 'Date of Birth', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
                 { content: f.dob },
-                { content: 'Age / Grade', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                { content: `${f.age} / Grade: ${f.grade}` }
+                { content: 'Initial / Current Age', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
+                { content: `Init: ${f.initialAge} | Cur: ${f.currentAge} (Grade: ${f.grade})` }
             ],
             [
                 { content: 'Address', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
@@ -9482,8 +9616,8 @@ function printChildSummarySheet(child, assessments = []) {
             doc.text(`Center-Wide Multi-Disciplinary Assessment Summary Report | Generated: ${new Date().toLocaleDateString('en-IN')} | Total Children: ${children.length}`, pageWidth / 2, 19, { align: 'center' });
 
             const tableBody = children.map((c, idx) => {
-                const ageYears = extractChildAge(c);
-                const ageStr = extractChildAgeString(c);
+                const initAge = getChildInitialAge(c);
+                const curAge = getChildCurrentAge(c);
                 const summary = extractAssessmentSummaries(c, c.assessments || []);
 
                 const rapidTxt = summary.rapid.exists ? `${summary.rapid.diagnosis}\n(Date: ${summary.rapid.date})` : '-';
@@ -9497,7 +9631,7 @@ function printChildSummarySheet(child, assessments = []) {
 
                 return [
                     (idx + 1).toString(),
-                    `${c.name}\n${admLine}(${ageStr}/${c.sex || '-'})`,
+                    `${c.name}\n${admLine}(Init: ${initAge} | Cur: ${curAge} / ${c.sex || '-'})`,
                     rapidTxt,
                     devTxt,
                     physioTxt,
@@ -9549,7 +9683,7 @@ function printChildSummarySheet(child, assessments = []) {
         }
 
         const headers = [
-            'Child ID', 'Admission No', 'Child Name', 'Sex', 'DOB', 'Age (Years)', 'Mobile',
+            'Child ID', 'Admission No', 'Child Name', 'Sex', 'DOB', 'Initial Age (Admission)', 'Current Age (Live Today)', 'Mobile',
             'Workup Status', 'Total Assessments',
             'Consultation Date', 'Consultation Observations', 'Consultation Suggestions', 'Consultation Symptoms', 'Consultant Name',
             'Child Dev Date', 'Child Dev Diagnosis', 'Child Dev Chief Complaint', 'Child Dev Delays', 'Child Dev Treatment Goal',
@@ -9569,13 +9703,16 @@ function printChildSummarySheet(child, assessments = []) {
             const s = summary.speech;
             const prog = summary.progress.length ? summary.progress[0] : {};
 
+            const initAge = getChildInitialAge(c);
+            const curAge = getChildCurrentAge(c);
             return [
                 c.id,
                 `"${(c.admission_no || '').replace(/"/g, '""')}"`,
                 `"${(c.name || '').replace(/"/g, '""')}"`,
                 `"${c.sex || ''}"`,
                 `"${c.dob || ''}"`,
-                `"${(extractChildAgeString(c) || '').replace(/"/g, '""')}"`, 
+                `"${(initAge || '').replace(/"/g, '""')}"`,
+                `"${(curAge || '').replace(/"/g, '""')}"`,
                 `"${c.mobile || ''}"`,
                 `"${summary.workupStatus}"`,
                 summary.totalCount,
@@ -9817,7 +9954,9 @@ function printChildSummarySheet(child, assessments = []) {
         document.getElementById('edit-child-adm').value = child.admission_no || '';
         document.getElementById('edit-child-name').value = child.name || '';
         document.getElementById('edit-child-dob').value = child.dob || '';
-        document.getElementById('edit-child-age').value = child.age_at_creation || child.age || extractChildAgeString(child) || '';
+        document.getElementById('edit-child-age').value = getChildInitialAge(child);
+        const curAgeInp = document.getElementById('edit-child-current-age');
+        if (curAgeInp) curAgeInp.value = getChildCurrentAge(child);
         document.getElementById('edit-child-sex').value = child.sex || '';
         document.getElementById('edit-child-mobile').value = child.mobile || '';
         const autismEl = document.getElementById('edit-child-is-autism');
@@ -9828,6 +9967,15 @@ function printChildSummarySheet(child, assessments = []) {
     document.getElementById('edit-child-dob')?.addEventListener('change', async function() {
         const val = this.value;
         if (!val) return;
+        const curAgeInp = document.getElementById('edit-child-current-age');
+        if (curAgeInp) {
+            const liveAge = calcAge(val);
+            if (liveAge) curAgeInp.value = liveAge;
+        }
+        const initAgeInp = document.getElementById('edit-child-age');
+        if (initAgeInp && (!initAgeInp.value || initAgeInp.value === '—')) {
+            initAgeInp.value = calcAge(val);
+        }
         const years = calcAgeYearsFromDob(val); // live incremented age
         if (years === null) return;
         const admInp = document.getElementById('edit-child-adm');
