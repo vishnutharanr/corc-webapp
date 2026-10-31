@@ -511,6 +511,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         tabContents.forEach(t => t.classList.toggle('active', t.id === targetId));
         document.querySelectorAll('.assessment-pane').forEach(p => p.classList.toggle('active', p.id === targetId));
+        if (targetId === 'attendance') loadAttendanceTab();
         if (targetId === 'records') fetchChildFolders();
         if (targetId === 'assessment-summaries') fetchAndRenderAssessmentSummaries();
         if (targetId === 'user-management') fetchUsers();
@@ -3638,6 +3639,287 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+    
+    // ══════════════════════════════════════════════════════════════════════════
+    // ── Dedicated Daily Attendance Tab Logic ─────────────────────────────────
+    // ══════════════════════════════════════════════════════════════════════════
+    let currentAttendanceDate = getLocalTodayDateString();
+    let currentAttendanceList = [];
+
+    async function loadAttendanceTab() {
+        const dateInput = document.getElementById('attendance-date-picker');
+        if (dateInput && !dateInput.value) {
+            dateInput.value = currentAttendanceDate;
+        } else if (dateInput) {
+            currentAttendanceDate = dateInput.value;
+        }
+
+        await populateAttendanceFilters();
+        await fetchAttendanceDailyData();
+    }
+
+    async function populateAttendanceFilters() {
+        const childSelect = document.getElementById('att-child-select');
+        const therapistSelect = document.getElementById('att-therapist-select');
+        if (!childSelect) return;
+
+        try {
+            const children = await (await fetch('/api/children' + ((userRole === 'autism' || userRole === 'asd') ? '?autism=true' : ''))).json();
+            const curChild = childSelect.value;
+            childSelect.innerHTML = '<option value="">All Children</option>' + children.map(c => 
+                `<option value="${c.id}">${c.admission_no ? '[' + c.admission_no + '] ' : ''}${c.name}</option>`
+            ).join('');
+            childSelect.value = curChild || '';
+
+            if (therapistSelect) {
+                const curTherapist = therapistSelect.value;
+                const therapists = await (await fetch('/api/therapists')).json();
+                therapistSelect.innerHTML = '<option value="">All Therapists</option>' + therapists.map(t => 
+                    `<option value="${t.name}">${t.name}</option>`
+                ).join('');
+                therapistSelect.value = curTherapist || '';
+            }
+        } catch (e) {
+            console.error('Error populating attendance filters:', e);
+        }
+    }
+
+    async function fetchAttendanceDailyData() {
+        const tbody = document.getElementById('attendance-table-body');
+        if (!tbody) return;
+
+        const dateInput = document.getElementById('attendance-date-picker');
+        const targetDate = dateInput ? dateInput.value : currentAttendanceDate;
+        currentAttendanceDate = targetDate;
+
+        const cutoffPill = document.getElementById('att-cutoff-pill');
+        if (cutoffPill) {
+            cutoffPill.style.display = isScheduleCutoffPassed(targetDate) ? 'inline-block' : 'none';
+        }
+
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 25px; color: var(--text-light);">Loading attendance records...</td></tr>';
+
+        try {
+            const url = `/api/schedules?date=${encodeURIComponent(targetDate)}` + ((userRole === 'autism' || userRole === 'asd') ? '&autism=true' : '');
+            const resp = await fetch(url);
+            const data = await resp.json();
+            currentAttendanceList = Array.isArray(data) ? data : [];
+
+            renderAttendanceDailyTable();
+        } catch (err) {
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--danger); padding: 25px;">Failed to load attendance records.</td></tr>';
+        }
+    }
+
+    function renderAttendanceDailyTable() {
+        const tbody = document.getElementById('attendance-table-body');
+        if (!tbody) return;
+
+        const childFilter = document.getElementById('att-child-select')?.value;
+        const therapistFilter = document.getElementById('att-therapist-select')?.value;
+        const ageFilter = document.getElementById('att-age-filter')?.value || 'all';
+        const statusFilter = document.getElementById('att-status-filter')?.value || 'all';
+
+        const cutoffPassed = isScheduleCutoffPassed(currentAttendanceDate);
+
+        // Filter records
+        let list = currentAttendanceList.map(item => {
+            const attStatus = item.attendance_status || (cutoffPassed ? 'Absent' : 'Pending');
+            const isAuto = (attStatus === 'Absent') && (!item.attendance_status || (item.attendance_notes && item.attendance_notes.includes('Auto-marked')));
+            return { ...item, computed_status: attStatus, is_auto: isAuto };
+        });
+
+        // Calculate Metrics
+        const totalScheduled = list.length;
+        const totalPresent = list.filter(i => i.computed_status === 'Present').length;
+        const totalAbsent = list.filter(i => i.computed_status === 'Absent').length;
+        const attRate = totalScheduled > 0 ? Math.round((totalPresent / totalScheduled) * 100) : 0;
+
+        document.getElementById('att-metric-total').textContent = totalScheduled;
+        document.getElementById('att-metric-present').textContent = totalPresent;
+        document.getElementById('att-metric-absent').textContent = totalAbsent;
+        document.getElementById('att-metric-rate').textContent = `${attRate}%`;
+
+        // Apply dropdown filters
+        if (childFilter) {
+            list = list.filter(i => String(i.child_id) === String(childFilter));
+        }
+        if (therapistFilter) {
+            list = list.filter(i => i.therapist_name === therapistFilter);
+        }
+        if (statusFilter !== 'all') {
+            list = list.filter(i => i.computed_status === statusFilter);
+        }
+        if (ageFilter !== 'all') {
+            list = list.filter(i => {
+                if (ageFilter === 'autism') return i.child_is_autism;
+                if (ageFilter === 'under8') return !i.child_is_autism && i.child_age !== null && i.child_age < 8;
+                if (ageFilter === '8plus') return !i.child_is_autism && i.child_age !== null && i.child_age >= 8;
+                return true;
+            });
+        }
+
+        if (list.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--text-light); padding: 30px;">No attendance sessions found for the selected date and filters.</td></tr>';
+            return;
+        }
+
+        let html = '';
+        list.forEach((item, idx) => {
+            const admBadge = item.child_admission_no ? `<span style="display:inline-block; font-size:0.75rem; background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe; border-radius:4px; padding:1px 6px; font-weight:700;">${item.child_admission_no}</span>` : '—';
+            
+            let statusPill = '';
+            if (item.computed_status === 'Present') {
+                statusPill = `<span class="sched-att-pill pill-present" style="font-size:0.8rem; padding:3px 10px;">🟢 ✓ Present</span>`;
+            } else if (item.computed_status === 'Absent') {
+                statusPill = `<span class="sched-att-pill pill-absent" style="font-size:0.8rem; padding:3px 10px;">🔴 ✕ Absent${item.is_auto ? ' (6PM Auto)' : ''}</span>`;
+            } else {
+                statusPill = `<span style="display:inline-block; font-size:0.8rem; font-weight:700; color:#854d0e; background:#fef9c3; border:1px solid #fde047; padding:3px 10px; border-radius:4px;">⏳ Pending</span>`;
+            }
+
+            const safeName = (item.child_name || '').replace(/"/g, '&quot;');
+            const safeType = (item.therapy_type || '').replace(/"/g, '&quot;');
+            const safeTherapist = (item.therapist_name || '').replace(/"/g, '&quot;');
+
+            html += `
+                <tr>
+                    <td style="color:#64748b; font-size:0.82rem;">${idx + 1}</td>
+                    <td>${admBadge}</td>
+                    <td><strong style="color:#1e293b;">${item.child_name || 'Child'}</strong></td>
+                    <td style="color:#334155; font-weight:600;">${item.time_slot || '—'}</td>
+                    <td><span style="font-weight:600; color:#0369a1;">${item.therapy_type || '—'}</span></td>
+                    <td style="color:#475569;">${item.therapist_name || 'TBD'}</td>
+                    <td>${statusPill}</td>
+                    <td style="text-align: center;">
+                        <div style="display: inline-flex; gap: 6px; align-items: center; justify-content: center;">
+                            <button type="button" class="btn-cell-att btn-quick-present" data-att-action="Present" data-child="${item.child_id}" data-childname="${safeName}" data-slot="${item.time_slot}" data-type="${safeType}" data-therapist="${safeTherapist}" title="1-Tap Mark Present" style="padding: 3px 10px; font-size: 0.78rem;">
+                                ✓ Present
+                            </button>
+                            <button type="button" class="btn-cell-att btn-quick-absent" data-att-action="Absent" data-child="${item.child_id}" data-childname="${safeName}" data-slot="${item.time_slot}" data-type="${safeType}" data-therapist="${safeTherapist}" title="1-Tap Mark Absent" style="padding: 3px 10px; font-size: 0.78rem;">
+                                ✕ Absent
+                            </button>
+                            <button type="button" class="btn-secondary btn-sm" data-att-action="Reset" data-child="${item.child_id}" data-childname="${safeName}" data-slot="${item.time_slot}" data-type="${safeType}" data-therapist="${safeTherapist}" title="Reset Attendance" style="padding: 3px 8px; font-size: 0.76rem; color: #64748b;">
+                                ↺
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        });
+
+        tbody.innerHTML = html;
+    }
+
+    // Attendance Tab Event Listeners
+    document.getElementById('attendance-table-body')?.addEventListener('click', async (e) => {
+        const btn = e.target.closest('[data-att-action]');
+        if (!btn) return;
+        e.stopPropagation();
+
+        const action = btn.dataset.attAction;
+        const childId = btn.dataset.child;
+        const childName = btn.dataset.childname;
+        const timeSlot = btn.dataset.slot;
+        const therapyType = btn.dataset.type;
+        const therapist = btn.dataset.therapist;
+
+        btn.disabled = true;
+
+        try {
+            const resp = await fetch('/api/schedules/mark-attendance', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    child_id: childId,
+                    date: currentAttendanceDate,
+                    time_slot: timeSlot,
+                    therapy_type: therapyType,
+                    therapist_name: therapist,
+                    status: action
+                })
+            });
+            const data = await resp.json();
+            if (resp.ok) {
+                if (action === 'Present') showToast(`✓ ${childName} marked Present`);
+                else if (action === 'Absent') showToast(`✕ ${childName} marked Absent`);
+                else showToast(`↺ Attendance reset for ${childName}`);
+                await fetchAttendanceDailyData();
+            } else {
+                showToast(data.error || 'Failed to update attendance', true);
+            }
+        } catch (err) {
+            showToast('Network error while updating attendance', true);
+        } finally {
+            btn.disabled = false;
+        }
+    });
+
+    document.getElementById('btn-att-today')?.addEventListener('click', () => {
+        const today = getLocalTodayDateString();
+        const datePicker = document.getElementById('attendance-date-picker');
+        if (datePicker) datePicker.value = today;
+        currentAttendanceDate = today;
+        fetchAttendanceDailyData();
+    });
+
+    document.getElementById('btn-att-yesterday')?.addEventListener('click', () => {
+        const d = new Date();
+        d.setDate(d.getDate() - 1);
+        const yest = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const datePicker = document.getElementById('attendance-date-picker');
+        if (datePicker) datePicker.value = yest;
+        currentAttendanceDate = yest;
+        fetchAttendanceDailyData();
+    });
+
+    document.getElementById('attendance-date-picker')?.addEventListener('change', (e) => {
+        currentAttendanceDate = e.target.value;
+        fetchAttendanceDailyData();
+    });
+
+    ['att-child-select', 'att-therapist-select', 'att-age-filter', 'att-status-filter'].forEach(id => {
+        document.getElementById(id)?.addEventListener('change', renderAttendanceDailyTable);
+    });
+
+    document.getElementById('btn-att-mark-all-present')?.addEventListener('click', async () => {
+        if (!currentAttendanceList.length) return showToast('No sessions scheduled for this date', true);
+        if (!confirm(`Mark all ${currentAttendanceList.length} scheduled sessions for ${formatDisplayDate(currentAttendanceDate)} as Present?`)) return;
+
+        try {
+            const resp = await fetch('/api/schedules/mark-all-attendance', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ date: currentAttendanceDate, status: 'Present' })
+            });
+            if (resp.ok) {
+                showToast('✓ All sessions marked as Present!');
+                await fetchAttendanceDailyData();
+            } else {
+                showToast('Failed to mark all sessions', true);
+            }
+        } catch (e) {
+            showToast('Network error', true);
+        }
+    });
+
+    document.getElementById('btn-export-att-csv')?.addEventListener('click', () => {
+        if (!currentAttendanceList.length) return showToast('No attendance records to export', true);
+        let csv = 'Admission No,Child Name,Date,Time Slot,Therapy,Therapist,Status\n';
+        currentAttendanceList.forEach(item => {
+            const status = item.attendance_status || (isScheduleCutoffPassed(currentAttendanceDate) ? 'Absent' : 'Pending');
+            csv += `"${item.child_admission_no || ''}","${item.child_name || ''}","${currentAttendanceDate}","${item.time_slot || ''}","${item.therapy_type || ''}","${item.therapist_name || ''}","${status}"\n`;
+        });
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `CORC_Attendance_${currentAttendanceDate}.csv`;
+        a.click();
+    });
+
+    document.getElementById('btn-print-attendance')?.addEventListener('click', () => {
+        window.print();
+    });
 
     // ── Reports Tab Logic ──────────────────────────────────────────
     const btnGenerateReport = document.getElementById('btn-generate-report');
