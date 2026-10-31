@@ -680,7 +680,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         } else {
                             el.value = (val !== undefined && val !== null) ? val : '';
                         }
-                        const num = parseInt(el.value, 10);
+                        const num = parseFloat(el.value);
                         if (!isNaN(num) && num > 0) {
                             el.style.background = '#f5f3ff';
                             el.style.borderColor = '#7c3aed';
@@ -1158,14 +1158,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         inputs.forEach(inp => {
             const sec = inp.getAttribute('data-section');
-            const maxWeight = parseInt(inp.getAttribute('data-weight'), 10) || 0;
+            const maxWeight = parseFloat(inp.getAttribute('data-weight')) || 0;
             let val = 0;
 
             if (inp.type === 'checkbox') {
                 val = inp.checked ? maxWeight : 0;
             } else {
-                // Number input entered by staff
-                val = parseInt(inp.value, 10);
+                // Decimal or whole number entered by staff (e.g. 0.5, 1.5, 2)
+                const rawVal = String(inp.value || '').trim().replace(',', '.');
+                val = parseFloat(rawVal);
                 if (isNaN(val) || val < 0) val = 0;
                 if (maxWeight > 0 && val > maxWeight) {
                     val = maxWeight;
@@ -1183,12 +1184,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (sectionTotals[sec] !== undefined) {
-                sectionTotals[sec] += val;
+                sectionTotals[sec] = parseFloat((sectionTotals[sec] + val).toFixed(2));
             }
-            totalScore += val;
+            totalScore = parseFloat((totalScore + val).toFixed(2));
         });
 
-        // Update section subtotals
+        // Update section subtotals with clean decimal display
         ['I', 'II', 'III', 'IV', 'V'].forEach(sec => {
             const subDisplay = root.querySelector('#abc-subtotal-' + sec) || root.querySelector('[data-orig-id="abc-subtotal-' + sec + '"]');
             if (subDisplay) subDisplay.textContent = sectionTotals[sec];
@@ -1388,8 +1389,8 @@ document.addEventListener('DOMContentLoaded', () => {
             ? e.target 
             : e.target.closest('tr')?.querySelector('.abc-score-input');
         if (inp && !inp.hasAttribute('readonly') && !inp.hasAttribute('disabled')) {
-            const maxW = parseInt(inp.getAttribute('data-weight'), 10) || 0;
-            const currentVal = parseInt(inp.value, 10) || 0;
+            const maxW = parseFloat(inp.getAttribute('data-weight')) || 0;
+            const currentVal = parseFloat(inp.value) || 0;
             inp.value = (currentVal >= maxW) ? '' : maxW;
             const form = inp.closest('form') || document.getElementById('form-abc');
             calculateAbcScores(form);
