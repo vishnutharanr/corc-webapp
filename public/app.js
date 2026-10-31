@@ -3718,6 +3718,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    const attCollapsedChildIds = new Set();
+    let attAllFoldersExpanded = true;
+
     function renderAttendanceDailyTable() {
         const tbody = document.getElementById('attendance-table-body');
         if (!tbody) return;
@@ -3729,14 +3732,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const cutoffPassed = isScheduleCutoffPassed(currentAttendanceDate);
 
-        // Filter records
+        // Process status for each session
         let list = currentAttendanceList.map(item => {
             const attStatus = item.attendance_status || (cutoffPassed ? 'Absent' : 'Pending');
             const isAuto = (attStatus === 'Absent') && (!item.attendance_status || (item.attendance_notes && item.attendance_notes.includes('Auto-marked')));
             return { ...item, computed_status: attStatus, is_auto: isAuto };
         });
 
-        // Calculate Metrics
+        // Overall Daily Metrics
         const totalScheduled = list.length;
         const totalPresent = list.filter(i => i.computed_status === 'Present').length;
         const totalAbsent = list.filter(i => i.computed_status === 'Absent').length;
@@ -3767,97 +3770,257 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (list.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--text-light); padding: 30px;">No attendance sessions found for the selected date and filters.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-light); padding: 35px; font-size: 0.95rem;">No attendance sessions found for this date.</td></tr>';
             return;
         }
 
+        // Group sessions by child (Folder / Accordion structure)
+        const childMap = new Map();
+        list.forEach(item => {
+            const cid = String(item.child_id);
+            if (!childMap.has(cid)) {
+                childMap.set(cid, {
+                    child_id: item.child_id,
+                    child_name: item.child_name || 'Child',
+                    child_admission_no: item.child_admission_no || '',
+                    child_is_autism: item.child_is_autism,
+                    child_age: item.child_age,
+                    sessions: []
+                });
+            }
+            childMap.get(cid).sessions.push(item);
+        });
+
         let html = '';
-        list.forEach((item, idx) => {
-            const admBadge = item.child_admission_no ? `<span style="display:inline-block; font-size:0.75rem; background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe; border-radius:4px; padding:1px 6px; font-weight:700;">${item.child_admission_no}</span>` : '—';
-            
-            let statusPill = '';
-            if (item.computed_status === 'Present') {
-                statusPill = `<span class="sched-att-pill pill-present" style="font-size:0.8rem; padding:3px 10px;">🟢 ✓ Present</span>`;
-            } else if (item.computed_status === 'Absent') {
-                statusPill = `<span class="sched-att-pill pill-absent" style="font-size:0.8rem; padding:3px 10px;">🔴 ✕ Absent${item.is_auto ? ' (6PM Auto)' : ''}</span>`;
+        childMap.forEach((group) => {
+            const total = group.sessions.length;
+            const present = group.sessions.filter(s => s.computed_status === 'Present').length;
+            const absent = group.sessions.filter(s => s.computed_status === 'Absent').length;
+            const pending = group.sessions.filter(s => s.computed_status === 'Pending').length;
+
+            let statusBadge = '';
+            if (present === total) {
+                statusBadge = `<span class="sched-att-pill pill-present" style="font-size:0.8rem; padding:3px 10px;">🟢 All Present (${present}/${total})</span>`;
+            } else if (absent === total) {
+                statusBadge = `<span class="sched-att-pill pill-absent" style="font-size:0.8rem; padding:3px 10px;">🔴 All Absent (${absent}/${total})</span>`;
+            } else if (present > 0) {
+                statusBadge = `<span style="display:inline-block; font-size:0.8rem; font-weight:700; color:#15803d; background:#dcfce7; border:1px solid #86efac; padding:3px 10px; border-radius:4px;">🟡 ${present}/${total} Present${absent > 0 ? `, ${absent} Absent` : ''}</span>`;
             } else {
-                statusPill = `<span style="display:inline-block; font-size:0.8rem; font-weight:700; color:#854d0e; background:#fef9c3; border:1px solid #fde047; padding:3px 10px; border-radius:4px;">⏳ Pending</span>`;
+                statusBadge = `<span style="display:inline-block; font-size:0.8rem; font-weight:700; color:#854d0e; background:#fef9c3; border:1px solid #fde047; padding:3px 10px; border-radius:4px;">⏳ Pending (${pending}/${total})</span>`;
             }
 
-            const safeName = (item.child_name || '').replace(/"/g, '&quot;');
-            const safeType = (item.therapy_type || '').replace(/"/g, '&quot;');
-            const safeTherapist = (item.therapist_name || '').replace(/"/g, '&quot;');
+            const admBadge = group.child_admission_no ? `<span style="display:inline-block; font-size:0.75rem; background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe; border-radius:4px; padding:1px 6px; font-weight:700;">${group.child_admission_no}</span>` : '—';
+            const safeChildName = (group.child_name || '').replace(/"/g, '&quot;');
+            const isCollapsed = attCollapsedChildIds.has(String(group.child_id));
+            const iconChar = isCollapsed ? '▶' : '▼';
+            const rowDisplay = isCollapsed ? 'none' : 'table-row';
 
+            // Child Folder Header Row
             html += `
-                <tr>
-                    <td style="color:#64748b; font-size:0.82rem;">${idx + 1}</td>
+                <tr class="att-folder-header" data-child-id="${group.child_id}" style="cursor: pointer; background: #f8fafc; border-bottom: 1.5px solid #e2e8f0; transition: background 0.15s ease;" title="Click to ${isCollapsed ? 'extend' : 'collapse'} ${safeChildName}'s sessions">
+                    <td style="text-align: center; font-size: 0.95rem; color: #475569;">
+                        <span class="att-toggle-icon" style="display: inline-block; font-size: 0.85rem; color: #475569;">${iconChar}</span>
+                    </td>
                     <td>${admBadge}</td>
-                    <td><strong style="color:#1e293b;">${item.child_name || 'Child'}</strong></td>
-                    <td style="color:#334155; font-weight:600;">${item.time_slot || '—'}</td>
-                    <td><span style="font-weight:600; color:#0369a1;">${item.therapy_type || '—'}</span></td>
-                    <td style="color:#475569;">${item.therapist_name || 'TBD'}</td>
-                    <td>${statusPill}</td>
+                    <td>
+                        <strong style="color: #1e293b; font-size: 0.98rem;">${group.child_name}</strong>
+                    </td>
                     <td style="text-align: center;">
-                        <div style="display: inline-flex; gap: 6px; align-items: center; justify-content: center;">
-                            <button type="button" class="btn-cell-att btn-quick-present" data-att-action="Present" data-child="${item.child_id}" data-childname="${safeName}" data-slot="${item.time_slot}" data-type="${safeType}" data-therapist="${safeTherapist}" title="1-Tap Mark Present" style="padding: 3px 10px; font-size: 0.78rem;">
-                                ✓ Present
+                        <span style="font-weight: 700; color: #0284c7; background: #e0f2fe; padding: 2px 10px; border-radius: 12px; font-size: 0.8rem;">
+                            ${total} session${total > 1 ? 's' : ''}
+                        </span>
+                    </td>
+                    <td>${statusBadge}</td>
+                    <td style="text-align: center;" onclick="event.stopPropagation();">
+                        <div style="display: inline-flex; gap: 6px;">
+                            <button type="button" class="btn-cell-att btn-quick-present" data-child-bulk-present="${group.child_id}" data-childname="${safeChildName}" title="Mark All Sessions for ${safeChildName} as Present" style="padding: 4px 10px; font-size: 0.78rem;">
+                                ✓ All Present
                             </button>
-                            <button type="button" class="btn-cell-att btn-quick-absent" data-att-action="Absent" data-child="${item.child_id}" data-childname="${safeName}" data-slot="${item.time_slot}" data-type="${safeType}" data-therapist="${safeTherapist}" title="1-Tap Mark Absent" style="padding: 3px 10px; font-size: 0.78rem;">
-                                ✕ Absent
-                            </button>
-                            <button type="button" class="btn-secondary btn-sm" data-att-action="Reset" data-child="${item.child_id}" data-childname="${safeName}" data-slot="${item.time_slot}" data-type="${safeType}" data-therapist="${safeTherapist}" title="Reset Attendance" style="padding: 3px 8px; font-size: 0.76rem; color: #64748b;">
-                                ↺
+                            <button type="button" class="btn-cell-att btn-quick-absent" data-child-bulk-absent="${group.child_id}" data-childname="${safeChildName}" title="Mark All Sessions for ${safeChildName} as Absent" style="padding: 4px 10px; font-size: 0.78rem;">
+                                ✕ All Absent
                             </button>
                         </div>
                     </td>
                 </tr>
             `;
+
+            // Expanded Session Detail Rows for this child
+            group.sessions.forEach(session => {
+                let sessionPill = '';
+                if (session.computed_status === 'Present') {
+                    sessionPill = `<span class="sched-att-pill pill-present" style="font-size:0.78rem; padding:2px 8px;">🟢 ✓ Present</span>`;
+                } else if (session.computed_status === 'Absent') {
+                    sessionPill = `<span class="sched-att-pill pill-absent" style="font-size:0.78rem; padding:2px 8px;">🔴 ✕ Absent${session.is_auto ? ' (6PM)' : ''}</span>`;
+                } else {
+                    sessionPill = `<span style="display:inline-block; font-size:0.78rem; font-weight:700; color:#854d0e; background:#fef9c3; border:1px solid #fde047; padding:2px 8px; border-radius:4px;">⏳ Pending</span>`;
+                }
+
+                const safeType = (session.therapy_type || '').replace(/"/g, '&quot;');
+                const safeTherapist = (session.therapist_name || '').replace(/"/g, '&quot;');
+
+                html += `
+                    <tr class="att-detail-row att-detail-${group.child_id}" style="display: ${rowDisplay}; background: #ffffff; border-bottom: 1px solid #f1f5f9;">
+                        <td></td>
+                        <td style="color: #94a3b8; text-align: right; font-weight: bold; font-size: 1.1rem; padding-right: 14px;">↳</td>
+                        <td style="color: #334155; font-weight: 600;">
+                            <span style="color: #0369a1; font-weight: 700; font-size: 0.9rem;">${session.therapy_type || '—'}</span>
+                            ${session.therapist_name ? `<span style="color: #64748b; font-size: 0.82rem; background: #f1f5f9; padding: 2px 7px; border-radius: 4px; margin-left: 6px;">${session.therapist_name}</span>` : ''}
+                        </td>
+                        <td style="text-align: center;">
+                            <span style="font-family: monospace; font-size: 0.82rem; font-weight: 700; color: #475569; background: #f8fafc; border: 1px solid #e2e8f0; padding: 2px 8px; border-radius: 4px;">
+                                ${session.time_slot || '—'}
+                            </span>
+                        </td>
+                        <td>${sessionPill}</td>
+                        <td style="text-align: center;" onclick="event.stopPropagation();">
+                            <div style="display: inline-flex; gap: 6px; align-items: center; justify-content: center;">
+                                <button type="button" class="btn-cell-att btn-quick-present" data-att-action="Present" data-child="${group.child_id}" data-childname="${safeChildName}" data-slot="${session.time_slot}" data-type="${safeType}" data-therapist="${safeTherapist}" title="Mark Present" style="padding: 3px 9px; font-size: 0.78rem;">
+                                    ✓ Present
+                                </button>
+                                <button type="button" class="btn-cell-att btn-quick-absent" data-att-action="Absent" data-child="${group.child_id}" data-childname="${safeChildName}" data-slot="${session.time_slot}" data-type="${safeType}" data-therapist="${safeTherapist}" title="Mark Absent" style="padding: 3px 9px; font-size: 0.78rem;">
+                                    ✕ Absent
+                                </button>
+                                <button type="button" class="btn-secondary btn-sm" data-att-action="Reset" data-child="${group.child_id}" data-childname="${safeChildName}" data-slot="${session.time_slot}" data-type="${safeType}" data-therapist="${safeTherapist}" title="Reset Attendance" style="padding: 3px 8px; font-size: 0.76rem; color: #64748b;">
+                                    ↺
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
         });
 
         tbody.innerHTML = html;
     }
 
-    // Attendance Tab Event Listeners
+    // Attendance Tab Click Listeners: Accordion Folder Toggle + 1-Tap Actions + Bulk Actions
     document.getElementById('attendance-table-body')?.addEventListener('click', async (e) => {
+        // 1. Toggle Accordion Folder Header
+        const header = e.target.closest('.att-folder-header');
+        if (header && !e.target.closest('button')) {
+            const childId = header.dataset.childId;
+            const cidStr = String(childId);
+            const detailRows = document.querySelectorAll(`.att-detail-${childId}`);
+            const icon = header.querySelector('.att-toggle-icon');
+            if (attCollapsedChildIds.has(cidStr)) {
+                attCollapsedChildIds.delete(cidStr);
+                detailRows.forEach(r => r.style.display = 'table-row');
+                if (icon) icon.textContent = '▼';
+            } else {
+                attCollapsedChildIds.add(cidStr);
+                detailRows.forEach(r => r.style.display = 'none');
+                if (icon) icon.textContent = '▶';
+            }
+            return;
+        }
+
+        // 2. Child-Level Bulk Actions on Folder Header
+        const bulkPresentBtn = e.target.closest('[data-child-bulk-present]');
+        if (bulkPresentBtn) {
+            e.stopPropagation();
+            const childId = bulkPresentBtn.dataset.childBulkPresent;
+            const childName = bulkPresentBtn.dataset.childname;
+            await markAllSessionsForChild(childId, childName, 'Present');
+            return;
+        }
+
+        const bulkAbsentBtn = e.target.closest('[data-child-bulk-absent]');
+        if (bulkAbsentBtn) {
+            e.stopPropagation();
+            const childId = bulkAbsentBtn.dataset.childBulkAbsent;
+            const childName = bulkAbsentBtn.dataset.childname;
+            await markAllSessionsForChild(childId, childName, 'Absent');
+            return;
+        }
+
+        // 3. Individual Session 1-Tap Attendance Action
         const btn = e.target.closest('[data-att-action]');
-        if (!btn) return;
-        e.stopPropagation();
+        if (btn) {
+            e.stopPropagation();
+            const action = btn.dataset.attAction;
+            const childId = btn.dataset.child;
+            const childName = btn.dataset.childname;
+            const timeSlot = btn.dataset.slot;
+            const therapyType = btn.dataset.type;
+            const therapist = btn.dataset.therapist;
 
-        const action = btn.dataset.attAction;
-        const childId = btn.dataset.child;
-        const childName = btn.dataset.childname;
-        const timeSlot = btn.dataset.slot;
-        const therapyType = btn.dataset.type;
-        const therapist = btn.dataset.therapist;
+            btn.disabled = true;
 
-        btn.disabled = true;
+            try {
+                const resp = await fetch('/api/schedules/mark-attendance', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        child_id: childId,
+                        date: currentAttendanceDate,
+                        time_slot: timeSlot,
+                        therapy_type: therapyType,
+                        therapist_name: therapist,
+                        status: action
+                    })
+                });
+                const data = await resp.json();
+                if (resp.ok) {
+                    if (action === 'Present') showToast(`✓ ${childName} marked Present`);
+                    else if (action === 'Absent') showToast(`✕ ${childName} marked Absent`);
+                    else showToast(`↺ Attendance reset for ${childName}`);
+                    await fetchAttendanceDailyData();
+                } else {
+                    showToast(data.error || 'Failed to update attendance', true);
+                }
+            } catch (err) {
+                showToast('Network error while updating attendance', true);
+            } finally {
+                btn.disabled = false;
+            }
+            return;
+        }
+    });
+
+    async function markAllSessionsForChild(childId, childName, status) {
+        const childSessions = currentAttendanceList.filter(s => String(s.child_id) === String(childId));
+        if (!childSessions.length) return;
 
         try {
-            const resp = await fetch('/api/schedules/mark-attendance', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    child_id: childId,
-                    date: currentAttendanceDate,
-                    time_slot: timeSlot,
-                    therapy_type: therapyType,
-                    therapist_name: therapist,
-                    status: action
+            await Promise.all(childSessions.map(s => 
+                fetch('/api/schedules/mark-attendance', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        child_id: childId,
+                        date: currentAttendanceDate,
+                        time_slot: s.time_slot,
+                        therapy_type: s.therapy_type,
+                        therapist_name: s.therapist_name,
+                        status: status
+                    })
                 })
+            ));
+            showToast(`✓ Marked all ${childSessions.length} session(s) for ${childName} as ${status}`);
+            await fetchAttendanceDailyData();
+        } catch (e) {
+            showToast('Failed to update sessions', true);
+        }
+    }
+
+    // Toggle Expand / Collapse All Folders
+    document.getElementById('btn-att-toggle-expand')?.addEventListener('click', (e) => {
+        attAllFoldersExpanded = !attAllFoldersExpanded;
+        const detailRows = document.querySelectorAll('.att-detail-row');
+        const icons = document.querySelectorAll('.att-toggle-icon');
+
+        if (attAllFoldersExpanded) {
+            attCollapsedChildIds.clear();
+            detailRows.forEach(r => r.style.display = 'table-row');
+            icons.forEach(ic => ic.textContent = '▼');
+            e.target.textContent = '▼ Collapse All';
+        } else {
+            document.querySelectorAll('.att-folder-header').forEach(h => {
+                if (h.dataset.childId) attCollapsedChildIds.add(String(h.dataset.childId));
             });
-            const data = await resp.json();
-            if (resp.ok) {
-                if (action === 'Present') showToast(`✓ ${childName} marked Present`);
-                else if (action === 'Absent') showToast(`✕ ${childName} marked Absent`);
-                else showToast(`↺ Attendance reset for ${childName}`);
-                await fetchAttendanceDailyData();
-            } else {
-                showToast(data.error || 'Failed to update attendance', true);
-            }
-        } catch (err) {
-            showToast('Network error while updating attendance', true);
-        } finally {
-            btn.disabled = false;
+            detailRows.forEach(r => r.style.display = 'none');
+            icons.forEach(ic => ic.textContent = '▶');
+            e.target.textContent = '▶ Expand All';
         }
     });
 
@@ -3927,7 +4090,7 @@ document.addEventListener('DOMContentLoaded', () => {
         window.print();
     });
 
-    // ── Reports Tab Logic ──────────────────────────────────────────
+        // ── Reports Tab Logic ──────────────────────────────────────────
     const btnGenerateReport = document.getElementById('btn-generate-report');
     if (btnGenerateReport) {
         btnGenerateReport.addEventListener('click', fetchReports);
