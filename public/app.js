@@ -95,6 +95,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function filterAssessmentCardsForRole() {
         const isAsd = (userRole === 'autism' || userRole === 'asd');
         const isGeneralStaff = (userRole === 'staff' || userRole === 'staff8');
+        const isChildAutism = activeChild ? isAutismChild(activeChild) : false;
 
         document.querySelectorAll('.ap-type-card').forEach(card => {
             const formId = card.getAttribute('data-form-id');
@@ -107,8 +108,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 // In other staff logins: other assessment forms are available, ASD assessments hidden
                 card.style.display = !isAutism ? 'flex' : 'none';
             } else {
-                // Admin: all forms available
-                card.style.display = 'flex';
+                // Admin: ABC & ISAA assessments are available ONLY for ASD children!
+                if (activeChild) {
+                    if (isChildAutism) {
+                        card.style.display = isAutism ? 'flex' : 'none';
+                    } else {
+                        card.style.display = !isAutism ? 'flex' : 'none';
+                    }
+                } else {
+                    card.style.display = 'flex';
+                }
             }
         });
     }
@@ -402,10 +411,15 @@ document.addEventListener('DOMContentLoaded', () => {
             targetId = 'records';
         }
 
-        // Other logins (staff, staff8): ASD assessment forms are NOT available!
-        if (isGeneralStaff && (targetId === 'abc-assessment' || targetId === 'isaa-assessment')) {
-            showToast('Autism assessments are restricted to the ASD unit.', true);
-            targetId = 'records';
+        // ABC & ISAA assessment forms are available ONLY for ASD children!
+        if (targetId === 'abc-assessment' || targetId === 'isaa-assessment') {
+            if (activeChild && !isAutismChild(activeChild)) {
+                showToast('The ABC and ISAA assessment forms are available only for ASD children.', true);
+                targetId = 'records';
+            } else if (isGeneralStaff) {
+                showToast('Autism assessments are restricted to the ASD unit.', true);
+                targetId = 'records';
+            }
         }
 
         navItems.forEach(n => {
@@ -659,7 +673,26 @@ document.addEventListener('DOMContentLoaded', () => {
                         el.checked = (el.value === val || val === true);
                     }
                 } else {
-                    el.value = (val !== undefined && val !== null) ? val : '';
+                    if (el.classList && el.classList.contains('abc-score-input')) {
+                        // Handle legacy boolean/checkbox or numeric value
+                        if (val === true || val === 'on') {
+                            el.value = el.getAttribute('data-weight') || '0';
+                        } else {
+                            el.value = (val !== undefined && val !== null) ? val : '';
+                        }
+                        const num = parseInt(el.value, 10);
+                        if (!isNaN(num) && num > 0) {
+                            el.style.background = '#f5f3ff';
+                            el.style.borderColor = '#7c3aed';
+                            el.style.color = '#6b21a8';
+                        } else {
+                            el.style.background = 'white';
+                            el.style.borderColor = '#cbd5e1';
+                            el.style.color = '#1e293b';
+                        }
+                    } else {
+                        el.value = (val !== undefined && val !== null) ? val : '';
+                    }
                 }
             });
         });
@@ -1117,21 +1150,42 @@ document.addEventListener('DOMContentLoaded', () => {
     // ── Autism Assessments Scoring & Live Evaluation ────────────
     function calculateAbcScores(container) {
         const root = container || document.getElementById('form-abc') || document;
-        const checkboxes = root.querySelectorAll('.abc-checkbox');
-        if (!checkboxes.length) return;
+        const inputs = root.querySelectorAll('.abc-score-input, .abc-checkbox');
+        if (!inputs.length) return;
 
         const sectionTotals = { 'I': 0, 'II': 0, 'III': 0, 'IV': 0, 'V': 0 };
         let totalScore = 0;
 
-        checkboxes.forEach(cb => {
-            if (cb.checked) {
-                const sec = cb.getAttribute('data-section');
-                const weight = parseInt(cb.getAttribute('data-weight'), 10) || 0;
-                if (sectionTotals[sec] !== undefined) {
-                    sectionTotals[sec] += weight;
+        inputs.forEach(inp => {
+            const sec = inp.getAttribute('data-section');
+            const maxWeight = parseInt(inp.getAttribute('data-weight'), 10) || 0;
+            let val = 0;
+
+            if (inp.type === 'checkbox') {
+                val = inp.checked ? maxWeight : 0;
+            } else {
+                // Number input entered by staff
+                val = parseInt(inp.value, 10);
+                if (isNaN(val) || val < 0) val = 0;
+                if (maxWeight > 0 && val > maxWeight) {
+                    val = maxWeight;
+                    inp.value = maxWeight;
                 }
-                totalScore += weight;
+                if (val > 0) {
+                    inp.style.background = '#f5f3ff';
+                    inp.style.borderColor = '#7c3aed';
+                    inp.style.color = '#6b21a8';
+                } else {
+                    inp.style.background = 'white';
+                    inp.style.borderColor = '#cbd5e1';
+                    inp.style.color = '#1e293b';
+                }
             }
+
+            if (sectionTotals[sec] !== undefined) {
+                sectionTotals[sec] += val;
+            }
+            totalScore += val;
         });
 
         // Update section subtotals
@@ -1313,16 +1367,32 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Live Change Event Delegation for Autism Assessments
-    document.addEventListener('change', e => {
-        if (!e.target) return;
-        if (e.target.classList && e.target.classList.contains('abc-checkbox')) {
-            const form = e.target.closest('form') || document.getElementById('form-abc');
+    // Live Input & Change Event Delegation for Autism Assessments (ABC score inputs & ISAA radio)
+    ['input', 'change'].forEach(evtType => {
+        document.addEventListener(evtType, e => {
+            if (!e.target) return;
+            if (e.target.classList && (e.target.classList.contains('abc-score-input') || e.target.classList.contains('abc-checkbox'))) {
+                const form = e.target.closest('form') || document.getElementById('form-abc');
+                calculateAbcScores(form);
+            }
+            if (e.target.classList && e.target.classList.contains('isaa-radio')) {
+                const form = e.target.closest('form') || document.getElementById('form-isaa');
+                calculateIsaaScores(form);
+            }
+        });
+    });
+
+    // Double-click row or input to quickly toggle between 0 and max marks
+    document.addEventListener('dblclick', e => {
+        const inp = e.target.classList?.contains('abc-score-input') 
+            ? e.target 
+            : e.target.closest('tr')?.querySelector('.abc-score-input');
+        if (inp && !inp.hasAttribute('readonly') && !inp.hasAttribute('disabled')) {
+            const maxW = parseInt(inp.getAttribute('data-weight'), 10) || 0;
+            const currentVal = parseInt(inp.value, 10) || 0;
+            inp.value = (currentVal >= maxW) ? '' : maxW;
+            const form = inp.closest('form') || document.getElementById('form-abc');
             calculateAbcScores(form);
-        }
-        if (e.target.classList && e.target.classList.contains('isaa-radio')) {
-            const form = e.target.closest('form') || document.getElementById('form-isaa');
-            calculateIsaaScores(form);
         }
     });
 
@@ -1332,7 +1402,15 @@ document.addEventListener('DOMContentLoaded', () => {
         btnAbcNew.addEventListener('click', () => {
             delete currentEditingAssessments['ABC Assessment'];
             const f = document.getElementById('form-abc');
-            if (f) f.reset();
+            if (f) {
+                f.reset();
+                f.querySelectorAll('.abc-score-input').forEach(inp => {
+                    inp.value = '';
+                    inp.style.background = 'white';
+                    inp.style.borderColor = '#cbd5e1';
+                    inp.style.color = '#1e293b';
+                });
+            }
             prefillFromActive();
             calculateAbcScores();
             updateFormEditBanners();
@@ -2155,32 +2233,23 @@ document.addEventListener('DOMContentLoaded', () => {
                     ? '<span class="active-badge">\u25cf Active</span>'
                     : '<button class="btn-open-folder" data-child-json="' + safeChildJson + '">Open</button>';
 
-                // Assessment form shortcut buttons shown inside the folder
+                // Assessment form shortcut buttons shown inside the folder:
+                // THE ABC, ISAA assessment forms are available ONLY for ASD children!
                 let baseBtns = [];
-                const isAsd = (userRole === 'autism' || userRole === 'asd');
-                if (isAsd) {
-                    // In ASD login: ONLY ABC and ISAA assessments are available to assess!
+                const isChildAutism = isAutismChild(child);
+                if (isChildAutism) {
+                    // ASD Child: ONLY ABC & ISAA assessment forms are available
                     baseBtns = [
                         { id:'abc-assessment',  icon:'\ud83e\udde9', label:'ABC (Tamil)'  },
                         { id:'isaa-assessment', icon:'\ud83d\udcca', label:'ISAA (Tamil)' }
                     ];
-                } else if (userRole === 'staff' || userRole === 'staff8') {
-                    // In other logins: only general assessment forms
+                } else {
+                    // Non-ASD Child: ONLY general assessment forms (ABC & ISAA are hidden)
                     baseBtns = [
                         { id:'child-development', icon:'\ud83d\udc76', label:'Child Dev.' },
                         { id:'physiotherapy',     icon:'\ud83d\udcaa', label:'Physio'     },
                         { id:'speech',            icon:'\ud83d\udde3\ufe0f', label:'Speech' },
                         { id:'progress-review',   icon:'\ud83d\udcc8', label:'Progress'   }
-                    ];
-                } else {
-                    // Admin: show all
-                    baseBtns = [
-                        { id:'child-development', icon:'\ud83d\udc76', label:'Child Dev.' },
-                        { id:'physiotherapy',     icon:'\ud83d\udcaa', label:'Physio'     },
-                        { id:'speech',            icon:'\ud83d\udde3\ufe0f', label:'Speech' },
-                        { id:'progress-review',   icon:'\ud83d\udcc8', label:'Progress'   },
-                        { id:'abc-assessment',    icon:'\ud83e\udde9', label:'ABC (Tamil)' },
-                        { id:'isaa-assessment',   icon:'\ud83d\udcca', label:'ISAA (Tamil)'}
                     ];
                 }
                 const formBtns = baseBtns.map(f =>
@@ -2655,11 +2724,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Live calculation for Autism Assessment Forms (ABC & ISAA) in clone
-        if (clone.querySelector('.abc-checkbox')) {
+        if (clone.querySelector('.abc-score-input, .abc-checkbox')) {
             calculateAbcScores(clone);
             if (!readOnly) {
-                clone.querySelectorAll('.abc-checkbox').forEach(cb => {
-                    cb.addEventListener('change', () => calculateAbcScores(clone));
+                clone.querySelectorAll('.abc-score-input, .abc-checkbox').forEach(inp => {
+                    inp.addEventListener('input', () => calculateAbcScores(clone));
+                    inp.addEventListener('change', () => calculateAbcScores(clone));
                 });
             }
         }
