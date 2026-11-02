@@ -7287,7 +7287,7 @@ async function fetchReports() {
             });
 
             const pageWidth = doc.internal.pageSize.getWidth();
-            const margin = 12;
+            const margin = 10;
 
             // Navy Header Banner
             doc.setFillColor(30, 58, 138);
@@ -7302,57 +7302,134 @@ async function fetchReports() {
             doc.setFontSize(9);
             doc.text('Official Statement of Therapy Attendance & Financial Account', pageWidth / 2, 16, { align: 'center' });
 
-            const startDate = document.getElementById('report-start-date')?.value || 'All_Time';
-            const endDate = document.getElementById('report-end-date')?.value || 'Present';
+            const startDate = document.getElementById('report-start-date')?.value || '';
+            const endDate = document.getElementById('report-end-date')?.value || '';
             const childSelect = document.getElementById('report-child-select');
-            const childName = childSelect && childSelect.selectedIndex > 0 ? childSelect.options[childSelect.selectedIndex].text : 'All_Children';
+            const childName = childSelect && childSelect.selectedIndex > 0 ? childSelect.options[childSelect.selectedIndex].text : 'All Children';
+
+            let periodText = '';
+            if (startDate && endDate && startDate === endDate) {
+                periodText = `Date: ${formatDisplayDate(startDate)}`;
+            } else if (startDate && endDate) {
+                periodText = `Period: ${formatDisplayDate(startDate)} to ${formatDisplayDate(endDate)}`;
+            } else if (startDate) {
+                periodText = `From: ${formatDisplayDate(startDate)}`;
+            } else {
+                periodText = 'All Records';
+            }
 
             doc.setFontSize(8.5);
             doc.setTextColor(51, 65, 85);
-            doc.text(`Target Child / Group: ${childName.replace(/_/g, ' ')}   |   Period: ${startDate.replace(/_/g, ' ')} to ${endDate}   |   Generated: ${new Date().toLocaleDateString('en-IN')}`, margin, 30);
+            doc.text(`Target Child / Group: ${childName}   |   ${periodText}   |   Generated: ${new Date().toLocaleDateString('en-IN')}`, margin, 30);
 
-            let totalFee = 0, totalPaid = 0, totalBal = 0;
+            let totalFee = 0, totalConcession = 0, totalPaid = 0, totalBal = 0;
             const tableBody = data.map((row, idx) => {
                 const fee = parseFloat(row.fee) || 0;
+                const concession = parseFloat(row.concession) || 0;
                 const paid = parseFloat(row.paid) || 0;
-                const bal = parseFloat(row.balance) || 0;
+                const bal = (row.balance !== undefined && row.balance !== null && row.balance !== '') 
+                    ? (parseFloat(row.balance) || 0) 
+                    : Math.max(0, fee - concession - paid);
+
                 totalFee += fee;
+                totalConcession += concession;
                 totalPaid += paid;
                 totalBal += bal;
+
+                const therapyText = row.therapy_type 
+                    ? (row.therapy_type + (row.sub_therapy ? ` (${row.sub_therapy})` : '')) 
+                    : '-';
 
                 return [
                     idx + 1,
                     row.date ? formatDisplayDate(row.date) : '-',
                     row.child_name || '-',
-                    row.therapy_type + (row.sub_therapy ? ` (${row.sub_therapy})` : ''),
+                    row.time_slot || '-',
+                    therapyText,
                     row.therapist_name || '-',
                     row.status || 'Present',
+                    'Rs. ' + fee,
+                    'Rs. ' + concession,
+                    'Rs. ' + paid,
                     row.payment_mode || 'Cash',
-                    '₹' + fee,
-                    '₹' + paid,
-                    '₹' + bal
+                    'Rs. ' + bal
                 ];
             });
 
             tableBody.push([
                 '', '', '', '', '', '', 'TOTALS:',
-                '₹' + totalFee,
-                '₹' + totalPaid,
-                '₹' + totalBal
+                'Rs. ' + totalFee,
+                'Rs. ' + totalConcession,
+                'Rs. ' + totalPaid,
+                '',
+                'Rs. ' + totalBal
             ]);
 
             doc.autoTable({
                 startY: 34,
-                head: [['#', 'Date', 'Child Name', 'Therapy Service', 'Therapist', 'Status', 'Mode', 'Fee', 'Paid', 'Balance']],
+                head: [[
+                    '#',
+                    'Date',
+                    'Child Name',
+                    'Time Slot',
+                    'Therapy',
+                    'Therapist',
+                    'Status',
+                    'Fee (Rs.)',
+                    'Concession (Rs.)',
+                    'Paid (Rs.)',
+                    'Payment Mode',
+                    'Balance (Rs.)'
+                ]],
                 body: tableBody,
                 theme: 'striped',
-                styles: { fontSize: 8, cellPadding: 2.2, textColor: [30, 41, 59] },
-                headStyles: { fillColor: [37, 99, 235], textColor: [255, 255, 255], fontStyle: 'bold' },
+                styles: {
+                    fontSize: 7.5,
+                    cellPadding: 2,
+                    textColor: [30, 41, 59],
+                    overflow: 'linebreak',
+                    valign: 'middle'
+                },
+                headStyles: {
+                    fillColor: [30, 58, 138],
+                    textColor: [255, 255, 255],
+                    fontStyle: 'bold',
+                    fontSize: 8,
+                    halign: 'center',
+                    valign: 'middle'
+                },
+                columnStyles: {
+                    0: { halign: 'center' },      // #
+                    1: { halign: 'center' },      // Date
+                    2: { halign: 'left' },        // Child Name
+                    3: { halign: 'center' },      // Time Slot
+                    4: { halign: 'left' },        // Therapy
+                    5: { halign: 'left' },        // Therapist
+                    6: { halign: 'center' },      // Status
+                    7: { halign: 'right' },       // Fee (Rs.)
+                    8: { halign: 'right' },       // Concession (Rs.)
+                    9: { halign: 'right' },       // Paid (Rs.)
+                    10: { halign: 'center' },     // Payment Mode
+                    11: { halign: 'right' }       // Balance (Rs.)
+                },
                 margin: { left: margin, right: margin },
                 didParseCell: (hookData) => {
+                    if (hookData.section === 'body' && hookData.column.index === 6 && hookData.row.index !== tableBody.length - 1) {
+                        const val = String(hookData.cell.raw || '');
+                        if (val === 'Present') {
+                            hookData.cell.styles.textColor = [22, 101, 52];
+                            hookData.cell.styles.fontStyle = 'bold';
+                        } else if (val === 'Absent') {
+                            hookData.cell.styles.textColor = [153, 27, 27];
+                            hookData.cell.styles.fontStyle = 'bold';
+                        }
+                    }
                     if (hookData.row.index === tableBody.length - 1) {
                         hookData.cell.styles.fontStyle = 'bold';
                         hookData.cell.styles.fillColor = [226, 232, 240];
+                        if (hookData.column.index === 11 && totalBal > 0) {
+                            hookData.cell.styles.textColor = [220, 38, 38];
+                        }
                     }
                 },
                 didDrawPage: (pageData) => {
@@ -7365,8 +7442,8 @@ async function fetchReports() {
             });
 
             const safeChild = childName.replace(/[^a-zA-Z0-9]/g, '_');
-            const safeStart = startDate.replace(/[^a-zA-Z0-9]/g, '_');
-            const safeEnd = endDate.replace(/[^a-zA-Z0-9]/g, '_');
+            const safeStart = (startDate || 'Start').replace(/[^a-zA-Z0-9]/g, '_');
+            const safeEnd = (endDate || 'End').replace(/[^a-zA-Z0-9]/g, '_');
             const filename = `Statement_${safeChild}_${safeStart}_to_${safeEnd}.pdf`;
             saveAndOpenPdf(doc, filename);
             showToast('Statement PDF opened & downloaded!');
@@ -7421,10 +7498,10 @@ async function fetchReports() {
                 startY: doc.lastAutoTable.finalY + 4,
                 head: [['Fee Breakdown Description', 'Amount (INR)']],
                 body: [
-                    ['Standard Session Fee', '₹' + (row.fee || 0)],
-                    ['Concession / Discount Applied', '₹' + (row.concession || 0)],
-                    ['Amount Paid', '₹' + (row.paid || 0)],
-                    ['Remaining Balance', '₹' + (row.balance || 0)]
+                    ['Standard Session Fee', 'Rs. ' + (row.fee || 0)],
+                    ['Concession / Discount Applied', 'Rs. ' + (row.concession || 0)],
+                    ['Amount Paid', 'Rs. ' + (row.paid || 0)],
+                    ['Remaining Balance', 'Rs. ' + (row.balance || 0)]
                 ],
                 theme: 'striped',
                 styles: { fontSize: 8.5, cellPadding: 2.8 },
