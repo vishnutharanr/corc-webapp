@@ -5127,6 +5127,95 @@ async function fetchReports() {
     let selectedScheduleChildIds = new Set();
     let selectedFilterChildIds = new Set();
 
+    // ── Therapist Distinct Palette & Color Resolution ─────────────────
+    const THERAPIST_PALETTE = [
+        { bg: '#dbeafe', text: '#1e40af', border: '#93c5fd', name: 'blue' },     // 0: Blue (Dr. Belsi Felix)
+        { bg: '#d1fae5', text: '#065f46', border: '#6ee7b7', name: 'emerald' },  // 1: Emerald (Dr. Fredly / Mr. Fredly)
+        { bg: '#ede9fe', text: '#5b21b6', border: '#c4b5fd', name: 'purple' },   // 2: Purple (Dr. Alen Sam)
+        { bg: '#ffedd5', text: '#9a3412', border: '#fdba74', name: 'orange' },   // 3: Orange (Ms. Anisha)
+        { bg: '#ffe4e6', text: '#9f1239', border: '#fda4af', name: 'rose' },     // 4: Rose (Dr. Vimal)
+        { bg: '#ccfbf1', text: '#0f766e', border: '#5eead4', name: 'teal' },     // 5: Teal (Ms. Jeya Nadhini / Nandini)
+        { bg: '#e0e7ff', text: '#3730a3', border: '#a5b4fc', name: 'indigo' },   // 6: Indigo (Dr. Vijayasanthi)
+        { bg: '#ecfccb', text: '#3f6212', border: '#bef264', name: 'lime' },     // 7: Lime (Mr. Justin Vens)
+        { bg: '#fae8ff', text: '#86198f', border: '#f0abfc', name: 'fuchsia' },  // 8: Fuchsia (Mr. Natharajan)
+        { bg: '#e0f2fe', text: '#0369a1', border: '#7dd3fc', name: 'sky' },      // 9: Sky (Mr. Jenish)
+        { bg: '#fef3c7', text: '#854d0e', border: '#fde047', name: 'amber' },    // 10: Amber (Dr. Mohandoss)
+        { bg: '#fee2e2', text: '#991b1b', border: '#fca5a5', name: 'red' }       // 11: Red
+    ];
+
+    function getTherapistColor(name) {
+        if (!name || !name.trim() || name.trim().toUpperCase() === 'TBD' || name.trim() === '-') {
+            return {
+                bg: '#f1f5f9',
+                text: '#475569',
+                border: '#cbd5e1',
+                name: 'tbd',
+                className: 'therapist-color-tbd'
+            };
+        }
+        const clean = name.trim().toLowerCase();
+
+        // Signature mappings for clinic staff
+        if (clean.includes('belsi')) return { ...THERAPIST_PALETTE[0], className: 'therapist-color-0' };
+        if (clean.includes('fredly')) return { ...THERAPIST_PALETTE[1], className: 'therapist-color-1' };
+        if (clean.includes('alen') || clean.includes('sam')) return { ...THERAPIST_PALETTE[2], className: 'therapist-color-2' };
+        if (clean.includes('anisha')) return { ...THERAPIST_PALETTE[3], className: 'therapist-color-3' };
+        if (clean.includes('vimal')) return { ...THERAPIST_PALETTE[4], className: 'therapist-color-4' };
+        if (clean.includes('nadhini') || clean.includes('nandini')) return { ...THERAPIST_PALETTE[5], className: 'therapist-color-5' };
+        if (clean.includes('vijayasanthi') || clean.includes('santhi')) return { ...THERAPIST_PALETTE[6], className: 'therapist-color-6' };
+        if (clean.includes('justin') || clean.includes('vens')) return { ...THERAPIST_PALETTE[7], className: 'therapist-color-7' };
+        if (clean.includes('natharajan')) return { ...THERAPIST_PALETTE[8], className: 'therapist-color-8' };
+        if (clean.includes('jenish')) return { ...THERAPIST_PALETTE[9], className: 'therapist-color-9' };
+        if (clean.includes('mohandoss')) return { ...THERAPIST_PALETTE[10], className: 'therapist-color-10' };
+
+        // Stable hash for any custom/new therapist
+        let hash = 0;
+        for (let i = 0; i < clean.length; i++) {
+            hash = (hash * 31 + clean.charCodeAt(i)) & 0xffffffff;
+        }
+        const index = Math.abs(hash) % THERAPIST_PALETTE.length;
+        return { ...THERAPIST_PALETTE[index], className: `therapist-color-${index}` };
+    }
+
+    function renderTherapistColorLegend() {
+        const legendEl = document.getElementById('schedule-therapist-legend');
+        if (!legendEl) return;
+
+        const scheduledTherapists = new Set();
+        if (Array.isArray(currentScheduleData)) {
+            currentScheduleData.forEach(s => {
+                if (s.therapist_name && s.therapist_name.trim() && s.therapist_name.trim().toUpperCase() !== 'TBD') {
+                    scheduledTherapists.add(s.therapist_name.trim());
+                }
+            });
+        }
+
+        if (scheduledTherapists.size === 0 && typeof dynamicTherapists !== 'undefined' && Array.isArray(dynamicTherapists)) {
+            dynamicTherapists.forEach(t => {
+                if (t.name && t.name.trim()) scheduledTherapists.add(t.name.trim());
+            });
+        }
+
+        if (scheduledTherapists.size === 0) {
+            legendEl.style.display = 'none';
+            return;
+        }
+
+        legendEl.style.display = 'flex';
+        const sorted = [...scheduledTherapists].sort();
+        let html = '<span style="font-weight: 700; color: #334155; display: flex; align-items: center; gap: 5px; margin-right: 4px; font-size: 0.82rem;">👥 Therapists:</span>';
+        sorted.forEach(name => {
+            const c = getTherapistColor(name);
+            html += `
+                <span style="display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 6px; font-weight: 700; font-size: 0.78rem; background: ${c.bg}; color: ${c.text}; border: 1.5px solid ${c.border}; box-shadow: 0 1px 2px rgba(0,0,0,0.03);">
+                    <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${c.text};"></span>
+                    <span>${name}</span>
+                </span>
+            `;
+        });
+        legendEl.innerHTML = html;
+    }
+
     function matchesScheduleCategory(child, category = 'all') {
         if (!category || category === 'all') return true;
         const isAutism = isAutismChild(child);
@@ -5578,14 +5667,8 @@ async function fetchReports() {
                 const block = currentScheduleData.find(s => s.child_id === child.id && s.time_slot === slot);
                 
                 if (block) {
-                    let colorClass = 'sched-other';
-                    const t = block.therapy_type.toLowerCase();
-                    if (t.includes('physio')) colorClass = 'sched-physio';
-                    else if (t.includes('occupational') || t.includes('ot')) colorClass = 'sched-ot';
-                    else if (t.includes('hydro')) colorClass = 'sched-hydro';
-                    else if (t.includes('music')) colorClass = 'sched-music';
-                    else if (t.includes('speech')) colorClass = 'sched-speech';
-                    else if (t.includes('assessment')) colorClass = 'sched-assessment';
+                    const therapistColor = getTherapistColor(block.therapist_name);
+                    const colorClass = therapistColor.className;
 
                     let shortTherapy = block.therapy_type.split(' ')[0];
                     if (block.therapy_type === 'Occupational Therapy') shortTherapy = 'OT';
@@ -5624,7 +5707,7 @@ async function fetchReports() {
                     const safeTherapist = (block.therapist_name || '').replace(/"/g, '&quot;');
 
                     html += `<td data-child="${child.id}" data-childadm="${child.admission_no || ''}" data-childname="${safeName}" data-slot="${slot}" data-id="${block.id}" data-type="${safeType}" data-therapist="${safeTherapist}" data-att-status="${attStatus}" data-att-id="${block.attendance_id || ''}" data-att-auto="${isAutoAbsent ? 'true' : 'false'}" data-att-fee="${block.attendance_fee || ''}">
-                                <div class="schedule-cell ${colorClass}${draftClass}${statusClass}"${draftTitle}>
+                                <div class="schedule-cell ${colorClass}${draftClass}${statusClass}" style="background-color: ${therapistColor.bg}; color: ${therapistColor.text}; border: 1.5px solid ${therapistColor.border};"${draftTitle}>
                                     <span class="sched-therapy-name">${shortTherapy}</span>
                                     <span class="therapist-name">(${block.therapist_name || 'TBD'})</span>
                                     ${statusPill}
@@ -5639,6 +5722,7 @@ async function fetchReports() {
         });
         tbody.innerHTML = html;
         updateScheduleSelectionUI();
+        renderTherapistColorLegend();
     }
 
     async function loadDailySchedule() {
@@ -6103,21 +6187,15 @@ async function fetchReports() {
             if (td) {
                 td.dataset.type = change.therapy_type;
                 td.dataset.therapist = change.therapist_name || '';
-                let colorClass = 'sched-other';
-                const t = change.therapy_type.toLowerCase();
-                if (t.includes('physio')) colorClass = 'sched-physio';
-                else if (t.includes('occupational') || t.includes('ot')) colorClass = 'sched-ot';
-                else if (t.includes('hydro')) colorClass = 'sched-hydro';
-                else if (t.includes('music')) colorClass = 'sched-music';
-                else if (t.includes('speech')) colorClass = 'sched-speech';
-                else if (t.includes('assessment')) colorClass = 'sched-assessment';
+                const therapistColor = getTherapistColor(change.therapist_name);
+                const colorClass = therapistColor.className;
 
                 let shortTherapy = change.therapy_type.split(' ')[0];
                 if (change.therapy_type === 'Occupational Therapy') shortTherapy = 'OT';
 
                 td.innerHTML = `
-                    <div class="schedule-cell ${colorClass} pending-save" title="Unsaved schedule change">
-                        <span>${shortTherapy}</span>
+                    <div class="schedule-cell ${colorClass} pending-save" style="background-color: ${therapistColor.bg}; color: ${therapistColor.text}; border: 1.5px solid ${therapistColor.border};" title="Unsaved schedule change">
+                        <span class="sched-therapy-name">${shortTherapy}</span>
                         <span class="therapist-name">(${change.therapist_name || 'TBD'})</span>
                     </div>
                 `;
@@ -6136,6 +6214,7 @@ async function fetchReports() {
         }
 
         updateScheduleSaveButtonUI();
+        renderTherapistColorLegend();
     }
 
     if (scheduleForm) {
@@ -6360,22 +6439,13 @@ async function fetchReports() {
             TIME_SLOTS.forEach(slot => {
                 const block = currentScheduleData.find(s => s.child_id === child.id && s.time_slot === slot);
                 if (block) {
-                    let bgColor = '#f8fafc';
-                    let textColor = '#0f172a';
-                    const t = block.therapy_type.toLowerCase();
-                    if (t.includes('physio')) { bgColor = '#e0f2fe'; textColor = '#0369a1'; }
-                    else if (t.includes('occupational') || t.includes('ot')) { bgColor = '#fef3c7'; textColor = '#b45309'; }
-                    else if (t.includes('hydro')) { bgColor = '#cffafe'; textColor = '#0e7490'; }
-                    else if (t.includes('music')) { bgColor = '#f3e8ff'; textColor = '#7e22ce'; }
-                    else if (t.includes('speech')) { bgColor = '#dcfce7'; textColor = '#15803d'; }
-                    else if (t.includes('assessment')) { bgColor = '#ffe4e6'; textColor = '#be123c'; }
-
+                    const therapistColor = getTherapistColor(block.therapist_name);
                     let shortTherapy = block.therapy_type.split(' ')[0];
                     if (block.therapy_type === 'Occupational Therapy') shortTherapy = 'OT';
 
-                    tableBodyHtml += `<td style="border: 1.5px solid #334155; padding: 4px 2px; text-align: center; vertical-align: middle; background-color: ${bgColor}; color: ${textColor}; font-weight: 800; font-size: 8.8pt; line-height: 1.2;">
+                    tableBodyHtml += `<td style="border: 1.5px solid #334155; padding: 4px 2px; text-align: center; vertical-align: middle; background-color: ${therapistColor.bg}; color: ${therapistColor.text}; font-weight: 800; font-size: 8.8pt; line-height: 1.2;">
                                         <div>${shortTherapy}</div>
-                                        <div style="font-size: 7.2pt; font-weight: 600; opacity: 0.95; margin-top: 1px;">(${block.therapist_name || 'TBD'})</div>
+                                        <div style="font-size: 7.2pt; font-weight: 700; opacity: 0.95; margin-top: 1px;">(${block.therapist_name || 'TBD'})</div>
                                       </td>`;
                 } else {
                     tableBodyHtml += `<td style="border: 1.5px solid #334155; padding: 4px 2px;"></td>`;
@@ -6389,6 +6459,22 @@ async function fetchReports() {
         const catMap = { 'eic': 'EIC (Under 8)', 'th': 'TH (8 & Above)', 'asd': 'ASD (Autism)' };
         const catInfo = catVal !== 'all' ? ` • Category: ${catMap[catVal] || catVal.toUpperCase()}` : '';
         const printMetaLine = `<p class="meta">Date: ${formattedDate}${catInfo}${selectedScheduleChildIds.size > 0 ? ` • Selected Children: ${targetChildren.length}` : ` • Total Children: ${targetChildren.length}`}</p>`;
+
+        const printTherapists = new Set();
+        currentScheduleData.forEach(s => {
+            if (s.therapist_name && s.therapist_name.trim() && s.therapist_name.trim().toUpperCase() !== 'TBD') {
+                printTherapists.add(s.therapist_name.trim());
+            }
+        });
+        let printLegendHtml = '';
+        if (printTherapists.size > 0) {
+            printLegendHtml = `<div style="display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin-top: 5px; font-size: 8pt; font-weight: 700;">`;
+            [...printTherapists].sort().forEach(name => {
+                const c = getTherapistColor(name);
+                printLegendHtml += `<span style="background: ${c.bg}; color: ${c.text}; border: 1px solid ${c.border}; padding: 1px 7px; border-radius: 4px;">• ${name}</span>`;
+            });
+            printLegendHtml += `</div>`;
+        }
 
         const printHtml = `<!DOCTYPE html>
 <html>
@@ -6456,6 +6542,7 @@ async function fetchReports() {
         <h1>Early Intervention Centre for Children with Cerebral Palsy</h1>
         <h2>Daily Therapy Schedule</h2>
         ${printMetaLine}
+        ${printLegendHtml}
     </div>
     <table>
         ${tableHeaderHtml}
