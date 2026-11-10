@@ -7464,7 +7464,6 @@ async function fetchReports() {
                     row.time_slot || '-',
                     therapyText,
                     row.therapist_name || '-',
-                    row.status || 'Present',
                     'Rs. ' + fee,
                     'Rs. ' + concession,
                     'Rs. ' + paid,
@@ -7474,7 +7473,7 @@ async function fetchReports() {
             });
 
             tableBody.push([
-                '', '', '', '', '', '', 'TOTALS:',
+                '', '', '', '', '', 'TOTALS:',
                 'Rs. ' + totalFee,
                 'Rs. ' + totalConcession,
                 'Rs. ' + totalPaid,
@@ -7483,33 +7482,31 @@ async function fetchReports() {
             ]);
 
             const a5ColStyles = {
-                0:  { cellWidth: 4.5,  halign: 'center' },      // #
-                1:  { cellWidth: 13.5, halign: 'center' },      // Date
-                2:  { cellWidth: 18,   halign: 'left' },        // Child Name
-                3:  { cellWidth: 13.5, halign: 'center' },      // Time Slot
-                4:  { cellWidth: 18,   halign: 'left' },        // Therapy
-                5:  { cellWidth: 15,   halign: 'left' },        // Therapist
-                6:  { cellWidth: 9.5,  halign: 'center' },      // Status
-                7:  { cellWidth: 10,   halign: 'right' },       // Fee (Rs.)
-                8:  { cellWidth: 9,    halign: 'right' },       // Conc. (Rs.)
-                9:  { cellWidth: 10,   halign: 'right' },       // Paid (Rs.)
-                10: { cellWidth: 8,    halign: 'center' },      // Mode
-                11: { cellWidth: 11,   halign: 'right' }        // Balance (Rs.)
+                0:  { cellWidth: 5,    halign: 'center' },      // #
+                1:  { cellWidth: 15,   halign: 'center' },      // Date
+                2:  { cellWidth: 22,   halign: 'left' },        // Child Name
+                3:  { cellWidth: 15,   halign: 'center' },      // Time Slot
+                4:  { cellWidth: 22,   halign: 'left' },        // Therapy
+                5:  { cellWidth: 18,   halign: 'left' },        // Therapist
+                6:  { cellWidth: 11,   halign: 'right' },       // Fee (Rs.)
+                7:  { cellWidth: 10,   halign: 'right' },       // Conc. (Rs.)
+                8:  { cellWidth: 11,   halign: 'right' },       // Paid (Rs.)
+                9:  { cellWidth: 9,    halign: 'center' },      // Mode
+                10: { cellWidth: 12,   halign: 'right' }        // Balance (Rs.)
             };
 
             const a4ColStyles = {
-                0:  { cellWidth: 6,  halign: 'center' },      // #
-                1:  { cellWidth: 16, halign: 'center' },      // Date
-                2:  { cellWidth: 23, halign: 'left' },        // Child Name
-                3:  { cellWidth: 17, halign: 'center' },      // Time Slot
-                4:  { cellWidth: 26, halign: 'left' },        // Therapy
-                5:  { cellWidth: 22, halign: 'left' },        // Therapist
-                6:  { cellWidth: 14, halign: 'center' },      // Status
-                7:  { cellWidth: 14, halign: 'right' },       // Fee (Rs.)
-                8:  { cellWidth: 14, halign: 'right' },       // Conc. (Rs.)
-                9:  { cellWidth: 14, halign: 'right' },       // Paid (Rs.)
-                10: { cellWidth: 13, halign: 'center' },      // Mode
-                11: { cellWidth: 17, halign: 'right' }        // Balance (Rs.)
+                0:  { cellWidth: 6,    halign: 'center' },      // #
+                1:  { cellWidth: 17,   halign: 'center' },      // Date
+                2:  { cellWidth: 26,   halign: 'left' },        // Child Name
+                3:  { cellWidth: 18,   halign: 'center' },      // Time Slot
+                4:  { cellWidth: 29,   halign: 'left' },        // Therapy
+                5:  { cellWidth: 25,   halign: 'left' },        // Therapist
+                6:  { cellWidth: 15,   halign: 'right' },       // Fee (Rs.)
+                7:  { cellWidth: 14,   halign: 'right' },       // Conc. (Rs.)
+                8:  { cellWidth: 15,   halign: 'right' },       // Paid (Rs.)
+                9:  { cellWidth: 14,   halign: 'center' },      // Mode
+                10: { cellWidth: 17,   halign: 'right' }        // Balance (Rs.)
             };
 
             doc.autoTable({
@@ -7521,7 +7518,6 @@ async function fetchReports() {
                     'Time Slot',
                     'Therapy',
                     'Therapist',
-                    'Status',
                     'Fee (Rs.)',
                     'Conc. (Rs.)',
                     'Paid (Rs.)',
@@ -7549,20 +7545,10 @@ async function fetchReports() {
                 columnStyles: isA5 ? a5ColStyles : a4ColStyles,
                 margin: { left: margin, right: margin },
                 didParseCell: (hookData) => {
-                    if (hookData.section === 'body' && hookData.column.index === 6 && hookData.row.index !== tableBody.length - 1) {
-                        const val = String(hookData.cell.raw || '');
-                        if (val === 'Present') {
-                            hookData.cell.styles.textColor = [22, 101, 52];
-                            hookData.cell.styles.fontStyle = 'bold';
-                        } else if (val === 'Absent') {
-                            hookData.cell.styles.textColor = [153, 27, 27];
-                            hookData.cell.styles.fontStyle = 'bold';
-                        }
-                    }
                     if (hookData.row.index === tableBody.length - 1) {
                         hookData.cell.styles.fontStyle = 'bold';
                         hookData.cell.styles.fillColor = [226, 232, 240];
-                        if (hookData.column.index === 11 && totalBal > 0) {
+                        if (hookData.column.index === 10 && totalBal > 0) {
                             hookData.cell.styles.textColor = [220, 38, 38];
                         }
                     }
