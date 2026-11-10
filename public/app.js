@@ -747,7 +747,8 @@ document.addEventListener('DOMContentLoaded', () => {
             ['input[name="head_circ"]',               rd.head_circ || ''],
             ['input[name="chest_circ"]',              rd.chest_circ || ''],
             ['input[name="muac_r"]',                  rd.muac_r || ''],
-            ['input[name="muac_l"]',                  rd.muac_l || '']
+            ['input[name="muac_l"]',                  rd.muac_l || ''],
+            ['select[name="type_of_birth"]',          rd.type_of_birth || '']
         ];
 
         let populatedCount = 0;
@@ -8214,6 +8215,7 @@ async function fetchReports() {
             siblingsSisters: cleanVal(dData.siblings_sisters || rData.siblings_sisters, '0'),
             siblingsTotal: cleanVal(dData.siblings_count || rData.siblings_count, '0'),
             birthOrder: cleanVal(dData.birth_order || rData.birth_order),
+            typeOfBirth: cleanVal(dData.type_of_birth || rData.type_of_birth, 'Singleton'),
             pregnancies: cleanVal(dData.no_of_pregnancies || rData.no_of_pregnancies),
             deliveries: cleanVal(dData.no_of_deliveries || rData.no_of_deliveries),
             disabilityInFamily: cleanVal(dData.family_disability || rData.family_disability),
@@ -8473,7 +8475,7 @@ async function fetchReports() {
                         <td class="label-col">Siblings</td>
                         <td class="val-col">Brothers: ${escapeHtml(f.siblingsBrothers)} | Sisters: ${escapeHtml(f.siblingsSisters)} | Total: ${escapeHtml(f.siblingsTotal)}</td>
                         <td class="label-col">Birth Order / Pregnancies</td>
-                        <td class="val-col">Order: ${escapeHtml(f.birthOrder)} | Pregnancies: ${escapeHtml(f.pregnancies)} | Deliveries: ${escapeHtml(f.deliveries)}</td>
+                        <td class="val-col">Order: ${escapeHtml(f.birthOrder)} | Type: ${escapeHtml(f.typeOfBirth)} | Preg: ${escapeHtml(f.pregnancies)} | Deliv: ${escapeHtml(f.deliveries)}</td>
                     </tr>
                     <tr>
                         <td class="label-col">History of disability in family</td>
@@ -10293,7 +10295,7 @@ function printChildSummarySheet(child, assessments = []) {
                 { content: 'Siblings', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
                 { content: `Brothers: ${f.siblingsBrothers} | Sisters: ${f.siblingsSisters} | Total: ${f.siblingsTotal}` },
                 { content: 'Birth Order / Preg.', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
-                { content: `Order: ${f.birthOrder} | Preg: ${f.pregnancies} | Deliv: ${f.deliveries}` }
+                { content: `Order: ${f.birthOrder} | Type: ${f.typeOfBirth} | Preg: ${f.pregnancies} | Deliv: ${f.deliveries}` }
             ],
             [
                 { content: 'History of disability in family', styles: { fontStyle: 'bold', fillColor: [248, 250, 252] } },
