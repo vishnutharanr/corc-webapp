@@ -7369,25 +7369,25 @@ async function fetchReports() {
         try {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF({
-                orientation: 'landscape',
+                orientation: 'portrait',
                 unit: 'mm',
                 format: 'a4'
             });
 
             const pageWidth = doc.internal.pageSize.getWidth();
-            const margin = 10;
+            const margin = 7;
 
             // Navy Header Banner
             doc.setFillColor(30, 58, 138);
-            doc.rect(0, 0, pageWidth, 24, 'F');
+            doc.rect(0, 0, pageWidth, 22, 'F');
 
             doc.setTextColor(255, 255, 255);
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(13);
-            doc.text('CHILD DEVELOPMENT & EARLY INTERVENTION CENTRE', pageWidth / 2, 10, { align: 'center' });
+            doc.setFontSize(11.5);
+            doc.text('CHILD DEVELOPMENT & EARLY INTERVENTION CENTRE', pageWidth / 2, 9.5, { align: 'center' });
 
             doc.setFont('helvetica', 'normal');
-            doc.setFontSize(9);
+            doc.setFontSize(8.5);
             doc.text('Official Statement of Therapy Attendance & Financial Account', pageWidth / 2, 16, { align: 'center' });
 
             const startDate = document.getElementById('report-start-date')?.value || '';
@@ -7406,9 +7406,14 @@ async function fetchReports() {
                 periodText = 'All Records';
             }
 
-            doc.setFontSize(8.5);
-            doc.setTextColor(51, 65, 85);
-            doc.text(`Target Child / Group: ${childName}   |   ${periodText}   |   Generated: ${new Date().toLocaleDateString('en-IN')}`, margin, 30);
+            doc.setFontSize(8);
+            doc.setTextColor(30, 41, 59);
+            doc.setFont('helvetica', 'bold');
+            doc.text(`Target Child / Group: ${childName}`, margin, 28);
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(7.5);
+            doc.setTextColor(100, 116, 139);
+            doc.text(`${periodText}   |   Generated: ${new Date().toLocaleDateString('en-IN')}`, margin, 32);
 
             let totalFee = 0, totalConcession = 0, totalPaid = 0, totalBal = 0;
             const tableBody = data.map((row, idx) => {
@@ -7454,7 +7459,7 @@ async function fetchReports() {
             ]);
 
             doc.autoTable({
-                startY: 34,
+                startY: 35,
                 head: [[
                     '#',
                     'Date',
@@ -7464,16 +7469,16 @@ async function fetchReports() {
                     'Therapist',
                     'Status',
                     'Fee (Rs.)',
-                    'Concession (Rs.)',
+                    'Conc. (Rs.)',
                     'Paid (Rs.)',
-                    'Payment Mode',
+                    'Mode',
                     'Balance (Rs.)'
                 ]],
                 body: tableBody,
                 theme: 'striped',
                 styles: {
-                    fontSize: 7.5,
-                    cellPadding: 2,
+                    fontSize: 6.8,
+                    cellPadding: 1.5,
                     textColor: [30, 41, 59],
                     overflow: 'linebreak',
                     valign: 'middle'
@@ -7482,23 +7487,24 @@ async function fetchReports() {
                     fillColor: [30, 58, 138],
                     textColor: [255, 255, 255],
                     fontStyle: 'bold',
-                    fontSize: 8,
+                    fontSize: 7,
+                    cellPadding: 1.8,
                     halign: 'center',
                     valign: 'middle'
                 },
                 columnStyles: {
-                    0: { halign: 'center' },      // #
-                    1: { halign: 'center' },      // Date
-                    2: { halign: 'left' },        // Child Name
-                    3: { halign: 'center' },      // Time Slot
-                    4: { halign: 'left' },        // Therapy
-                    5: { halign: 'left' },        // Therapist
-                    6: { halign: 'center' },      // Status
-                    7: { halign: 'right' },       // Fee (Rs.)
-                    8: { halign: 'right' },       // Concession (Rs.)
-                    9: { halign: 'right' },       // Paid (Rs.)
-                    10: { halign: 'center' },     // Payment Mode
-                    11: { halign: 'right' }       // Balance (Rs.)
+                    0:  { cellWidth: 6,  halign: 'center' },      // #
+                    1:  { cellWidth: 16, halign: 'center' },      // Date
+                    2:  { cellWidth: 23, halign: 'left' },        // Child Name
+                    3:  { cellWidth: 17, halign: 'center' },      // Time Slot
+                    4:  { cellWidth: 26, halign: 'left' },        // Therapy
+                    5:  { cellWidth: 22, halign: 'left' },        // Therapist
+                    6:  { cellWidth: 14, halign: 'center' },      // Status
+                    7:  { cellWidth: 14, halign: 'right' },       // Fee (Rs.)
+                    8:  { cellWidth: 14, halign: 'right' },       // Conc. (Rs.)
+                    9:  { cellWidth: 14, halign: 'right' },       // Paid (Rs.)
+                    10: { cellWidth: 13, halign: 'center' },      // Mode
+                    11: { cellWidth: 17, halign: 'right' }        // Balance (Rs.)
                 },
                 margin: { left: margin, right: margin },
                 didParseCell: (hookData) => {
