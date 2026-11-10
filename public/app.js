@@ -7388,6 +7388,7 @@ async function fetchReports() {
             const pageWidth = doc.internal.pageSize.getWidth();
             const pageHeight = doc.internal.pageSize.getHeight();
             const margin = isA5 ? 4 : 7;
+            const availableWidth = pageWidth - (margin * 2);
 
             // Navy Header Banner
             const bannerHeight = isA5 ? 18 : 22;
@@ -7457,6 +7458,11 @@ async function fetchReports() {
                     ? (row.therapy_type + (row.sub_therapy ? ` (${row.sub_therapy})` : '')) 
                     : '-';
 
+                const feeText = fee > 0 ? 'Rs.' + fee : '0';
+                const concText = concession > 0 ? 'Rs.' + concession : '0';
+                const paidText = paid > 0 ? 'Rs.' + paid : '0';
+                const balText = bal > 0 ? 'Rs.' + bal : '0';
+
                 return [
                     idx + 1,
                     row.date ? formatDisplayDate(row.date) : '-',
@@ -7464,71 +7470,73 @@ async function fetchReports() {
                     row.time_slot || '-',
                     therapyText,
                     row.therapist_name || '-',
-                    'Rs. ' + fee,
-                    'Rs. ' + concession,
-                    'Rs. ' + paid,
+                    feeText,
+                    concText,
+                    paidText,
                     row.payment_mode || 'Cash',
-                    'Rs. ' + bal
+                    balText
                 ];
             });
 
             tableBody.push([
                 '', '', '', '', '', 'TOTALS:',
-                'Rs. ' + totalFee,
-                'Rs. ' + totalConcession,
-                'Rs. ' + totalPaid,
+                'Rs.' + totalFee,
+                'Rs.' + totalConcession,
+                'Rs.' + totalPaid,
                 '',
-                'Rs. ' + totalBal
+                'Rs.' + totalBal
             ]);
 
             const a5ColStyles = {
-                0:  { cellWidth: 5,    halign: 'center' },      // #
-                1:  { cellWidth: 15,   halign: 'center' },      // Date
-                2:  { cellWidth: 22,   halign: 'left' },        // Child Name
-                3:  { cellWidth: 15,   halign: 'center' },      // Time Slot
-                4:  { cellWidth: 22,   halign: 'left' },        // Therapy
-                5:  { cellWidth: 18,   halign: 'left' },        // Therapist
+                0:  { cellWidth: 4,    halign: 'center' },      // #
+                1:  { cellWidth: 13,   halign: 'center' },      // Date
+                2:  { cellWidth: 20,   halign: 'left' },        // Child Name
+                3:  { cellWidth: 13,   halign: 'center' },      // Time
+                4:  { cellWidth: 18,   halign: 'left' },        // Therapy
+                5:  { cellWidth: 16,   halign: 'left' },        // Therapist
                 6:  { cellWidth: 11,   halign: 'right' },       // Fee (Rs.)
-                7:  { cellWidth: 10,   halign: 'right' },       // Conc. (Rs.)
+                7:  { cellWidth: 10,   halign: 'right' },       // Conc.
                 8:  { cellWidth: 11,   halign: 'right' },       // Paid (Rs.)
-                9:  { cellWidth: 9,    halign: 'center' },      // Mode
-                10: { cellWidth: 12,   halign: 'right' }        // Balance (Rs.)
+                9:  { cellWidth: 10,   halign: 'center' },      // Mode
+                10: { cellWidth: 14,   halign: 'right' }        // Balance
             };
 
             const a4ColStyles = {
                 0:  { cellWidth: 6,    halign: 'center' },      // #
                 1:  { cellWidth: 17,   halign: 'center' },      // Date
                 2:  { cellWidth: 26,   halign: 'left' },        // Child Name
-                3:  { cellWidth: 18,   halign: 'center' },      // Time Slot
+                3:  { cellWidth: 18,   halign: 'center' },      // Time
                 4:  { cellWidth: 29,   halign: 'left' },        // Therapy
                 5:  { cellWidth: 25,   halign: 'left' },        // Therapist
                 6:  { cellWidth: 15,   halign: 'right' },       // Fee (Rs.)
-                7:  { cellWidth: 14,   halign: 'right' },       // Conc. (Rs.)
+                7:  { cellWidth: 14,   halign: 'right' },       // Conc.
                 8:  { cellWidth: 15,   halign: 'right' },       // Paid (Rs.)
                 9:  { cellWidth: 14,   halign: 'center' },      // Mode
-                10: { cellWidth: 17,   halign: 'right' }        // Balance (Rs.)
+                10: { cellWidth: 17,   halign: 'right' }        // Balance
             };
 
             doc.autoTable({
                 startY: isA5 ? 30 : 35,
+                tableWidth: availableWidth,
+                margin: { left: margin, right: margin },
                 head: [[
                     '#',
                     'Date',
                     'Child Name',
-                    'Time Slot',
+                    'Time',
                     'Therapy',
                     'Therapist',
                     'Fee (Rs.)',
-                    'Conc. (Rs.)',
+                    'Conc.',
                     'Paid (Rs.)',
                     'Mode',
-                    'Balance (Rs.)'
+                    'Balance'
                 ]],
                 body: tableBody,
                 theme: 'striped',
                 styles: {
-                    fontSize: isA5 ? 5.8 : 6.8,
-                    cellPadding: isA5 ? 1.2 : 1.5,
+                    fontSize: isA5 ? 5.5 : 6.8,
+                    cellPadding: isA5 ? 0.8 : 1.5,
                     textColor: [30, 41, 59],
                     overflow: 'linebreak',
                     valign: 'middle'
@@ -7537,8 +7545,8 @@ async function fetchReports() {
                     fillColor: [30, 58, 138],
                     textColor: [255, 255, 255],
                     fontStyle: 'bold',
-                    fontSize: isA5 ? 6 : 7,
-                    cellPadding: isA5 ? 1.4 : 1.8,
+                    fontSize: isA5 ? 5.8 : 7,
+                    cellPadding: isA5 ? 1.0 : 1.8,
                     halign: 'center',
                     valign: 'middle'
                 },
@@ -7569,7 +7577,6 @@ async function fetchReports() {
                 finalY = isA5 ? 15 : 20;
             }
 
-            const availableWidth = pageWidth - (margin * 2);
             const cardGap = isA5 ? 2.5 : 4;
             const cardW = (availableWidth - (3 * cardGap)) / 4;
             const cardH = isA5 ? 13 : 15;
