@@ -7367,28 +7367,41 @@ async function fetchReports() {
         }
 
         try {
+            const formatSelect = document.getElementById('statement-pdf-format')?.value || 'auto';
+            let isA5 = false;
+            if (formatSelect === 'a5') {
+                isA5 = true;
+            } else if (formatSelect === 'a4') {
+                isA5 = false;
+            } else {
+                // Adaptive: use compact A5 slip for 6 or fewer entries, standard A4 for 7+
+                isA5 = data.length <= 6;
+            }
+
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF({
                 orientation: 'portrait',
                 unit: 'mm',
-                format: 'a4'
+                format: isA5 ? [148, 210] : 'a4'
             });
 
             const pageWidth = doc.internal.pageSize.getWidth();
-            const margin = 7;
+            const pageHeight = doc.internal.pageSize.getHeight();
+            const margin = isA5 ? 4 : 7;
 
             // Navy Header Banner
+            const bannerHeight = isA5 ? 18 : 22;
             doc.setFillColor(30, 58, 138);
-            doc.rect(0, 0, pageWidth, 22, 'F');
+            doc.rect(0, 0, pageWidth, bannerHeight, 'F');
 
             doc.setTextColor(255, 255, 255);
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(11.5);
-            doc.text('CHILD DEVELOPMENT & EARLY INTERVENTION CENTRE', pageWidth / 2, 9.5, { align: 'center' });
+            doc.setFontSize(isA5 ? 9.5 : 11.5);
+            doc.text('CHILD DEVELOPMENT & EARLY INTERVENTION CENTRE', pageWidth / 2, isA5 ? 7.5 : 9.5, { align: 'center' });
 
             doc.setFont('helvetica', 'normal');
-            doc.setFontSize(8.5);
-            doc.text('Official Statement of Therapy Attendance & Financial Account', pageWidth / 2, 16, { align: 'center' });
+            doc.setFontSize(isA5 ? 7 : 8.5);
+            doc.text(isA5 ? 'Official Statement of Therapy Attendance & Account (Slip)' : 'Official Statement of Therapy Attendance & Financial Account', pageWidth / 2, isA5 ? 13 : 16, { align: 'center' });
 
             const startDate = document.getElementById('report-start-date')?.value || '';
             const endDate = document.getElementById('report-end-date')?.value || '';
@@ -7406,14 +7419,25 @@ async function fetchReports() {
                 periodText = 'All Records';
             }
 
-            doc.setFontSize(8);
-            doc.setTextColor(30, 41, 59);
-            doc.setFont('helvetica', 'bold');
-            doc.text(`Target Child / Group: ${childName}`, margin, 28);
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(7.5);
-            doc.setTextColor(100, 116, 139);
-            doc.text(`${periodText}   |   Generated: ${new Date().toLocaleDateString('en-IN')}`, margin, 32);
+            if (isA5) {
+                doc.setFontSize(7.5);
+                doc.setTextColor(30, 41, 59);
+                doc.setFont('helvetica', 'bold');
+                doc.text(`Target: ${childName}`, margin, 23);
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(6.5);
+                doc.setTextColor(100, 116, 139);
+                doc.text(`${periodText}   |   Generated: ${new Date().toLocaleDateString('en-IN')}`, margin, 27);
+            } else {
+                doc.setFontSize(8);
+                doc.setTextColor(30, 41, 59);
+                doc.setFont('helvetica', 'bold');
+                doc.text(`Target Child / Group: ${childName}`, margin, 28);
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(7.5);
+                doc.setTextColor(100, 116, 139);
+                doc.text(`${periodText}   |   Generated: ${new Date().toLocaleDateString('en-IN')}`, margin, 32);
+            }
 
             let totalFee = 0, totalConcession = 0, totalPaid = 0, totalBal = 0;
             const tableBody = data.map((row, idx) => {
@@ -7458,8 +7482,38 @@ async function fetchReports() {
                 'Rs. ' + totalBal
             ]);
 
+            const a5ColStyles = {
+                0:  { cellWidth: 4.5,  halign: 'center' },      // #
+                1:  { cellWidth: 13.5, halign: 'center' },      // Date
+                2:  { cellWidth: 18,   halign: 'left' },        // Child Name
+                3:  { cellWidth: 13.5, halign: 'center' },      // Time Slot
+                4:  { cellWidth: 18,   halign: 'left' },        // Therapy
+                5:  { cellWidth: 15,   halign: 'left' },        // Therapist
+                6:  { cellWidth: 9.5,  halign: 'center' },      // Status
+                7:  { cellWidth: 10,   halign: 'right' },       // Fee (Rs.)
+                8:  { cellWidth: 9,    halign: 'right' },       // Conc. (Rs.)
+                9:  { cellWidth: 10,   halign: 'right' },       // Paid (Rs.)
+                10: { cellWidth: 8,    halign: 'center' },      // Mode
+                11: { cellWidth: 11,   halign: 'right' }        // Balance (Rs.)
+            };
+
+            const a4ColStyles = {
+                0:  { cellWidth: 6,  halign: 'center' },      // #
+                1:  { cellWidth: 16, halign: 'center' },      // Date
+                2:  { cellWidth: 23, halign: 'left' },        // Child Name
+                3:  { cellWidth: 17, halign: 'center' },      // Time Slot
+                4:  { cellWidth: 26, halign: 'left' },        // Therapy
+                5:  { cellWidth: 22, halign: 'left' },        // Therapist
+                6:  { cellWidth: 14, halign: 'center' },      // Status
+                7:  { cellWidth: 14, halign: 'right' },       // Fee (Rs.)
+                8:  { cellWidth: 14, halign: 'right' },       // Conc. (Rs.)
+                9:  { cellWidth: 14, halign: 'right' },       // Paid (Rs.)
+                10: { cellWidth: 13, halign: 'center' },      // Mode
+                11: { cellWidth: 17, halign: 'right' }        // Balance (Rs.)
+            };
+
             doc.autoTable({
-                startY: 35,
+                startY: isA5 ? 30 : 35,
                 head: [[
                     '#',
                     'Date',
@@ -7477,8 +7531,8 @@ async function fetchReports() {
                 body: tableBody,
                 theme: 'striped',
                 styles: {
-                    fontSize: 6.8,
-                    cellPadding: 1.5,
+                    fontSize: isA5 ? 5.8 : 6.8,
+                    cellPadding: isA5 ? 1.2 : 1.5,
                     textColor: [30, 41, 59],
                     overflow: 'linebreak',
                     valign: 'middle'
@@ -7487,25 +7541,12 @@ async function fetchReports() {
                     fillColor: [30, 58, 138],
                     textColor: [255, 255, 255],
                     fontStyle: 'bold',
-                    fontSize: 7,
-                    cellPadding: 1.8,
+                    fontSize: isA5 ? 6 : 7,
+                    cellPadding: isA5 ? 1.4 : 1.8,
                     halign: 'center',
                     valign: 'middle'
                 },
-                columnStyles: {
-                    0:  { cellWidth: 6,  halign: 'center' },      // #
-                    1:  { cellWidth: 16, halign: 'center' },      // Date
-                    2:  { cellWidth: 23, halign: 'left' },        // Child Name
-                    3:  { cellWidth: 17, halign: 'center' },      // Time Slot
-                    4:  { cellWidth: 26, halign: 'left' },        // Therapy
-                    5:  { cellWidth: 22, halign: 'left' },        // Therapist
-                    6:  { cellWidth: 14, halign: 'center' },      // Status
-                    7:  { cellWidth: 14, halign: 'right' },       // Fee (Rs.)
-                    8:  { cellWidth: 14, halign: 'right' },       // Conc. (Rs.)
-                    9:  { cellWidth: 14, halign: 'right' },       // Paid (Rs.)
-                    10: { cellWidth: 13, halign: 'center' },      // Mode
-                    11: { cellWidth: 17, halign: 'right' }        // Balance (Rs.)
-                },
+                columnStyles: isA5 ? a5ColStyles : a4ColStyles,
                 margin: { left: margin, right: margin },
                 didParseCell: (hookData) => {
                     if (hookData.section === 'body' && hookData.column.index === 6 && hookData.row.index !== tableBody.length - 1) {
@@ -7527,20 +7568,102 @@ async function fetchReports() {
                     }
                 },
                 didDrawPage: (pageData) => {
-                    const pageHeight = doc.internal.pageSize.getHeight();
-                    doc.setFontSize(7.5);
+                    doc.setFontSize(isA5 ? 6.5 : 7.5);
                     doc.setTextColor(148, 163, 184);
-                    doc.text(`Page ${pageData.pageNumber}`, pageWidth - margin, pageHeight - 6, { align: 'right' });
-                    doc.text('Child Development & Early Intervention Centre — Official Statement of Account', margin, pageHeight - 6);
+                    doc.text(`Page ${pageData.pageNumber}`, pageWidth - margin, pageHeight - (isA5 ? 5 : 6), { align: 'right' });
+                    doc.text('Child Development & Early Intervention Centre — Official Statement of Account', margin, pageHeight - (isA5 ? 5 : 6));
                 }
             });
+
+            // Financial KPI Cards & Official Signatures Block
+            const neededHeight = isA5 ? 42 : 52;
+            let finalY = doc.lastAutoTable.finalY + (isA5 ? 5 : 8);
+            if (finalY + neededHeight > pageHeight - (isA5 ? 10 : 15)) {
+                doc.addPage();
+                finalY = isA5 ? 15 : 20;
+            }
+
+            const availableWidth = pageWidth - (margin * 2);
+            const cardGap = isA5 ? 2.5 : 4;
+            const cardW = (availableWidth - (3 * cardGap)) / 4;
+            const cardH = isA5 ? 13 : 15;
+
+            const cards = [
+                {
+                    label: 'TOTAL BILLED',
+                    val: 'Rs. ' + totalFee,
+                    bg: [248, 250, 252],
+                    border: [203, 213, 225],
+                    textCol: [30, 58, 138]
+                },
+                {
+                    label: 'CONCESSIONS',
+                    val: 'Rs. ' + totalConcession,
+                    bg: [248, 250, 252],
+                    border: [203, 213, 225],
+                    textCol: [71, 85, 105]
+                },
+                {
+                    label: 'TOTAL PAID',
+                    val: 'Rs. ' + totalPaid,
+                    bg: [240, 253, 244],
+                    border: [187, 247, 208],
+                    textCol: [22, 101, 52]
+                },
+                {
+                    label: 'BALANCE DUE',
+                    val: 'Rs. ' + totalBal,
+                    bg: totalBal > 0 ? [254, 242, 242] : [240, 253, 244],
+                    border: totalBal > 0 ? [254, 202, 202] : [187, 247, 208],
+                    textCol: totalBal > 0 ? [220, 38, 38] : [22, 101, 52]
+                }
+            ];
+
+            cards.forEach((c, i) => {
+                const cx = margin + i * (cardW + cardGap);
+                doc.setFillColor(...c.bg);
+                doc.setDrawColor(...c.border);
+                doc.setLineWidth(0.3);
+                doc.roundedRect(cx, finalY, cardW, cardH, 1.5, 1.5, 'FD');
+
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(isA5 ? 5 : 6);
+                doc.setTextColor(100, 116, 139);
+                doc.text(c.label, cx + cardW / 2, finalY + (isA5 ? 4 : 4.8), { align: 'center' });
+
+                doc.setFontSize(isA5 ? 7.5 : 9.5);
+                doc.setTextColor(...c.textCol);
+                doc.text(c.val, cx + cardW / 2, finalY + (isA5 ? 9.5 : 11.5), { align: 'center' });
+            });
+
+            // Signatures Block
+            const sigY = finalY + cardH + (isA5 ? 10 : 16);
+            const sigLineWidth = isA5 ? 42 : 55;
+
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(isA5 ? 6.5 : 7.5);
+            doc.setTextColor(100, 116, 139);
+
+            // Left: Parent / Guardian
+            doc.text('Parent / Guardian Signature:', margin, sigY);
+            doc.setDrawColor(148, 163, 184);
+            doc.setLineWidth(0.3);
+            doc.line(margin, sigY + (isA5 ? 8 : 11), margin + sigLineWidth, sigY + (isA5 ? 8 : 11));
+            doc.text('Acknowledgement & Verification', margin, sigY + (isA5 ? 12 : 15));
+
+            // Right: Authorized Signatory
+            const rightSigX = pageWidth - margin - sigLineWidth;
+            doc.text('For Child Development Centre:', rightSigX, sigY);
+            doc.line(rightSigX, sigY + (isA5 ? 8 : 11), pageWidth - margin, sigY + (isA5 ? 8 : 11));
+            doc.text('Authorized Signatory & Seal', rightSigX, sigY + (isA5 ? 12 : 15));
 
             const safeChild = childName.replace(/[^a-zA-Z0-9]/g, '_');
             const safeStart = (startDate || 'Start').replace(/[^a-zA-Z0-9]/g, '_');
             const safeEnd = (endDate || 'End').replace(/[^a-zA-Z0-9]/g, '_');
-            const filename = `Statement_${safeChild}_${safeStart}_to_${safeEnd}.pdf`;
+            const formatSuffix = isA5 ? '_A5_Slip' : '_Statement';
+            const filename = `Statement_${safeChild}_${safeStart}_to_${safeEnd}${formatSuffix}.pdf`;
             saveAndOpenPdf(doc, filename);
-            showToast('Statement PDF opened & downloaded!');
+            showToast(`Statement ${isA5 ? 'A5 Slip' : 'A4 PDF'} opened & downloaded!`);
         } catch (err) {
             console.error('Statement PDF error:', err);
             showToast('Error generating Statement PDF', true);

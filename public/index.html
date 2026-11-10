@@ -16,7 +16,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="styles.css?v=48">
+    <link rel="stylesheet" href="styles.css?v=49">
 </head>
 
 <body>
@@ -4623,7 +4623,14 @@
                             style="margin: 0; font-size: 0.9rem; cursor: pointer;">Pending Balances</label>
                     </div>
                     <button id="btn-generate-report" class="btn-primary">Generate Report</button>
-                    <button id="btn-export-statement-pdf" class="btn-secondary">📄 Statement PDF</button>
+                    <div style="display: inline-flex; align-items: center; gap: 4px;">
+                        <button id="btn-export-statement-pdf" class="btn-secondary" title="Export Statement PDF">📄 Statement PDF</button>
+                        <select id="statement-pdf-format" style="padding: 6px 8px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.8rem; font-weight: 500; background: white; color: #334155; cursor: pointer; height: 38px;" title="Statement Document Format">
+                            <option value="auto" selected>Auto (A5 Slip ≤6, A4 for 7+)</option>
+                            <option value="a5">A5 Slip (Half-A4)</option>
+                            <option value="a4">A4 Full Statement</option>
+                        </select>
+                    </div>
                     <button id="btn-export-csv" class="btn-secondary" style="margin-left: auto;">📥 Export CSV</button>
                     <button id="btn-print-receipt" class="btn-secondary">🖨 Print</button>
                 </div>
@@ -5520,7 +5527,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="app.js?v=48"></script>
+    <script src="app.js?v=49"></script>
 </body>
 
 </html>
