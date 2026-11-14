@@ -3705,11 +3705,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
             renderAttendanceDailyTable();
         } catch (err) {
+            console.error('Error in fetchAttendanceDailyData / renderAttendanceDailyTable:', err);
             tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--danger); padding: 25px;">Failed to load attendance records.</td></tr>';
             if (tbodyPresent) {
                 tbodyPresent.innerHTML = '<tr><td colspan="9" style="text-align: center; color: var(--danger); padding: 25px;">Failed to load present children.</td></tr>';
             }
         }
+    }
+
+    function escapeHtmlSafe(str) {
+        if (str === null || str === undefined) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
     }
 
     const attCollapsedChildIds = new Set();
@@ -3800,10 +3811,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const metPresChildren = document.getElementById('att-metric-children-present');
         if (metPresChildren) metPresChildren.textContent = `${presChildren} / ${totChildren}`;
 
-        document.getElementById('att-metric-total').textContent = totalScheduled;
-        document.getElementById('att-metric-present').textContent = totalPresent;
-        document.getElementById('att-metric-absent').textContent = totalAbsent;
-        document.getElementById('att-metric-rate').textContent = `${attRate}%`;
+        const elTot = document.getElementById('att-metric-total');
+        if (elTot) elTot.textContent = totalScheduled;
+
+        const elPres = document.getElementById('att-metric-present');
+        if (elPres) elPres.textContent = totalPresent;
+
+        const elAbs = document.getElementById('att-metric-absent');
+        if (elAbs) elAbs.textContent = totalAbsent;
+
+        const elRate = document.getElementById('att-metric-rate');
+        if (elRate) elRate.textContent = `${attRate}%`;
 
         // Update badge on "Children Present" tab
         const badgeCount = document.getElementById('att-present-children-count');
@@ -3840,7 +3858,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     const therapiesHtml = group.presentSessions.map(s => `
                         <div style="margin-bottom: 3px;">
-                            <strong style="color: #0369a1; font-size: 0.88rem;">${escapeHtml(s.therapy_type)}</strong>
+                            <strong style="color: #0369a1; font-size: 0.88rem;">${escapeHtmlSafe(s.therapy_type)}</strong>
                             <span style="font-family: monospace; font-size: 0.76rem; font-weight: 600; color: #475569; background: #f1f5f9; padding: 1px 6px; border-radius: 3px; margin-left: 4px;">${s.time_slot || '-'}</span>
                         </div>
                     `).join('');
@@ -3852,13 +3870,13 @@ document.addEventListener('DOMContentLoaded', () => {
                             <td style="text-align: center; font-weight: 600; color: #64748b; padding: 10px 8px;">${idx + 1}</td>
                             <td style="padding: 10px 10px;">${admBadge}</td>
                             <td style="padding: 10px 12px;">
-                                <strong style="color: #1e293b; font-size: 0.95rem;">${escapeHtml(group.child_name)}</strong>
+                                <strong style="color: #1e293b; font-size: 0.95rem;">${escapeHtmlSafe(group.child_name)}</strong>
                                 ${group.child_age ? `<span style="color: #64748b; font-size: 0.8rem; margin-left: 6px;">(${group.child_age} yrs)</span>` : ''}
                             </td>
                             <td style="padding: 10px 10px;">${catBadge}</td>
                             <td style="text-align: center; padding: 10px 8px;">${sessBadge}</td>
                             <td style="padding: 10px 12px;">${therapiesHtml}</td>
-                            <td style="padding: 10px 12px; color: #334155; font-size: 0.85rem;">${escapeHtml(therapistsText)}</td>
+                            <td style="padding: 10px 12px; color: #334155; font-size: 0.85rem;">${escapeHtmlSafe(therapistsText)}</td>
                             <td style="text-align: center; padding: 10px 10px;">
                                 <span style="background: #16a34a; color: #ffffff; font-weight: 700; padding: 4px 11px; border-radius: 12px; font-size: 0.8rem; display: inline-block; box-shadow: 0 1px 2px rgba(22,163,74,0.2);">
                                     ✓ PRESENT
