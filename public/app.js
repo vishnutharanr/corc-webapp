@@ -1964,6 +1964,14 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
+        // 4. Fallback based on admission number prefix if DOB and age are missing
+        const adm = childOrRow.admission_no || childOrRow.child_admission_no;
+        if (adm) {
+            const uAdm = String(adm).trim().toUpperCase();
+            if (uAdm.startsWith('TH')) return 8; // 8 & Above unit
+            if (uAdm.startsWith('EIC')) return 3; // Under 8 unit
+        }
+
         return 0;
     }
 
@@ -1980,6 +1988,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function isAutismChild(childOrRow) {
         if (!childOrRow) return false;
+        const adm = childOrRow.admission_no || childOrRow.child_admission_no;
+        if (adm && String(adm).trim().toUpperCase().startsWith('ASD')) return true;
         if (childOrRow.is_autism === true || childOrRow.is_autism === 'true' || childOrRow.is_autism === 1) return true;
         if (childOrRow.child_is_autism === true || childOrRow.child_is_autism === 'true' || childOrRow.child_is_autism === 1) return true;
         if (childOrRow.diagnosis && /\b(autism|asd)\b/i.test(String(childOrRow.diagnosis))) return true;
@@ -2596,18 +2606,125 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // ── Child Folder Records ─────────────────────────────────
+    let allLoadedChildFolders = [];
+    let childSearchDebounceTimer = null;
     const searchBtn     = document.getElementById('search-btn');
     const searchInput   = document.getElementById('search-input');
     const foldersEl     = document.getElementById('children-folders');
-
-    searchBtn   && searchBtn.addEventListener('click',  () => fetchChildFolders(searchInput.value));
-    searchInput && searchInput.addEventListener('keyup', e => { if (e.key === 'Enter') fetchChildFolders(searchInput.value); });
-    
     const recordsAgeFilter = document.getElementById('records-age-filter');
-    recordsAgeFilter && recordsAgeFilter.addEventListener('change', () => fetchChildFolders(searchInput.value));
-
     const recordsTherapyFilter = document.getElementById('records-therapy-filter');
-    recordsTherapyFilter && recordsTherapyFilter.addEventListener('change', () => fetchChildFolders(searchInput.value));
+
+    function matchesChildSearch(child, query) {
+        if (!query) return true;
+        const q = String(query).trim().toLowerCase();
+        if (!q) return true;
+        const qAlnum = q.replace(/[^a-z0-9]/g, '');
+
+        // Child name
+        if (child.name && String(child.name).toLowerCase().includes(q)) return true;
+
+        // Child admission number (e.g. EIC-005, TH-033, ASD-032)
+        if (child.admission_no) {
+            const adm = String(child.admission_no).toLowerCase();
+            if (adm.includes(q)) return true;
+            if (qAlnum && adm.replace(/[^a-z0-9]/g, '').includes(qAlnum)) return true;
+        }
+
+        // Child mobile
+        if (child.mobile) {
+            const mob = String(child.mobile).replace(/[^0-9]/g, '');
+            if (mob && (mob.includes(q) || (qAlnum && mob.includes(qAlnum)))) return true;
+        }
+
+        // Search through child assessments
+        if (Array.isArray(child.assessments)) {
+            for (const a of child.assessments) {
+                const d = a.data;
+                if (!d) continue;
+
+                if (d.child_name && String(d.child_name).toLowerCase().includes(q)) return true;
+                if (d.admission_no) {
+                    const admD = String(d.admission_no).toLowerCase();
+                    if (admD.includes(q)) return true;
+                    if (qAlnum && admD.replace(/[^a-z0-9]/g, '').includes(qAlnum)) return true;
+                }
+
+                // Phone numbers in assessment
+                const contacts = [d.mobile, d.father_contact, d.mother_contact, d.other_contact];
+                for (const c of contacts) {
+                    if (c) {
+                        const cDigits = String(c).replace(/[^0-9]/g, '');
+                        if (cDigits && (cDigits.includes(q) || (qAlnum && cDigits.includes(qAlnum)))) return true;
+                    }
+                }
+
+                // Parent names, diagnoses, symptoms
+                if (d.father_name && String(d.father_name).toLowerCase().includes(q)) return true;
+                if (d.mother_name && String(d.mother_name).toLowerCase().includes(q)) return true;
+                if (d.informant && String(d.informant).toLowerCase().includes(q)) return true;
+                if (d.diagnosis && String(d.diagnosis).toLowerCase().includes(q)) return true;
+                if (d.dev_diagnosis && String(d.dev_diagnosis).toLowerCase().includes(q)) return true;
+                if (d.physio_diagnosis && String(d.physio_diagnosis).toLowerCase().includes(q)) return true;
+                if (d.symptoms && String(d.symptoms).toLowerCase().includes(q)) return true;
+                if (a.form_type && String(a.form_type).toLowerCase().includes(q)) return true;
+            }
+        }
+
+        return false;
+    }
+
+    const handleRecordsSearchInput = () => {
+        const q = (searchInput?.value || '').trim();
+        if (allLoadedChildFolders.length > 0) {
+            renderFilteredChildFolders(allLoadedChildFolders, q);
+        }
+        clearTimeout(childSearchDebounceTimer);
+        childSearchDebounceTimer = setTimeout(() => {
+            fetchChildFolders(q, true);
+        }, 300);
+    };
+
+    if (searchInput) {
+        searchInput.addEventListener('input', handleRecordsSearchInput);
+        searchInput.addEventListener('search', () => {
+            const q = (searchInput.value || '').trim();
+            if (allLoadedChildFolders.length > 0) {
+                renderFilteredChildFolders(allLoadedChildFolders, q);
+            } else {
+                fetchChildFolders(q, true);
+            }
+        });
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                clearTimeout(childSearchDebounceTimer);
+                fetchChildFolders((searchInput.value || '').trim(), true);
+            }
+        });
+    }
+
+    if (searchBtn) {
+        searchBtn.addEventListener('click', () => {
+            clearTimeout(childSearchDebounceTimer);
+            fetchChildFolders((searchInput?.value || '').trim(), true);
+        });
+    }
+
+    recordsAgeFilter && recordsAgeFilter.addEventListener('change', () => {
+        if (allLoadedChildFolders.length > 0) {
+            renderFilteredChildFolders(allLoadedChildFolders, (searchInput?.value || '').trim());
+        } else {
+            fetchChildFolders((searchInput?.value || '').trim(), true);
+        }
+    });
+
+    recordsTherapyFilter && recordsTherapyFilter.addEventListener('change', () => {
+        if (allLoadedChildFolders.length > 0) {
+            renderFilteredChildFolders(allLoadedChildFolders, (searchInput?.value || '').trim());
+        } else {
+            fetchChildFolders((searchInput?.value || '').trim(), true);
+        }
+    });
 
     const ICONS = {
         'Rapid Assessment':         '\u26a1',
@@ -2619,8 +2736,18 @@ document.addEventListener('DOMContentLoaded', () => {
         'ISAA Assessment':          '\ud83d\udcca'
     };
 
-    async function fetchChildFolders(q) {
-        q = q || '';
+    async function fetchChildFolders(q = '', forceServer = false) {
+        q = (typeof q === 'string' ? q : (searchInput?.value || '')).trim();
+
+        // When no query is passed, always pull fresh records from server
+        if (!q) forceServer = true;
+
+        // Instant local filter if cache is already populated
+        if (!forceServer && allLoadedChildFolders.length > 0) {
+            renderFilteredChildFolders(allLoadedChildFolders, q);
+            return;
+        }
+
         try {
             let url = '/api/children';
             const params = [];
@@ -2638,33 +2765,76 @@ document.addEventListener('DOMContentLoaded', () => {
                 showToast('Unexpected server response for child list', true);
                 return;
             }
-            foldersEl.innerHTML = '';
-            
-            const ageFilter = document.getElementById('records-age-filter')?.value || 'all';
-            const therapyFilter = document.getElementById('records-therapy-filter')?.value || 'all';
-            let filteredChildren = children;
-            
-            if (userRole === 'autism' || userRole === 'asd') {
-                filteredChildren = children.filter(child => isAutismChild(child));
-            } else if (userRole === 'staff' || userRole === 'staff8' || (userRole === 'admin' && ageFilter !== 'all')) {
-                filteredChildren = children.filter(child => matchesAgeFilter(child, ageFilter));
+
+            // Populate / merge cache
+            if (!q || allLoadedChildFolders.length === 0) {
+                allLoadedChildFolders = children;
+            } else {
+                const map = new Map(allLoadedChildFolders.map(c => [c.id, c]));
+                children.forEach(c => map.set(c.id, c));
+                allLoadedChildFolders = Array.from(map.values());
             }
 
-            if (therapyFilter !== 'all') {
-                filteredChildren = filteredChildren.filter(child =>
-                    child.assessments && child.assessments.some(a => a.form_type === therapyFilter)
-                );
-            }
+            renderFilteredChildFolders(allLoadedChildFolders, q);
+        } catch (err) {
+            console.error('Folder fetch error', err);
+        }
+    }
 
-            if (!filteredChildren.length) {
-                const emptyMsg = (userRole === 'autism' || userRole === 'asd') 
-                    ? 'No child profiles found for Autism (ASD) unit.' 
-                    : 'No child profiles found.';
-                foldersEl.innerHTML = '<div class="empty-folders"><span style="font-size:3rem">📂</span><p>' + emptyMsg + '</p></div>';
-                return;
-            }
+    function renderFilteredChildFolders(sourceList, q) {
+        if (!foldersEl) return;
+        const query = (typeof q === 'string' ? q : (searchInput?.value || '')).trim();
+        const ageFilter = document.getElementById('records-age-filter')?.value || 'all';
+        const therapyFilter = document.getElementById('records-therapy-filter')?.value || 'all';
 
-            filteredChildren.forEach(child => {
+        let filteredChildren = sourceList || allLoadedChildFolders || [];
+
+        if (userRole === 'autism' || userRole === 'asd') {
+            filteredChildren = filteredChildren.filter(child => isAutismChild(child));
+        } else if (userRole === 'staff' || userRole === 'staff8' || (userRole === 'admin' && ageFilter !== 'all')) {
+            filteredChildren = filteredChildren.filter(child => matchesAgeFilter(child, ageFilter));
+        }
+
+        if (therapyFilter !== 'all') {
+            filteredChildren = filteredChildren.filter(child =>
+                child.assessments && child.assessments.some(a => a.form_type === therapyFilter)
+            );
+        }
+
+        if (query) {
+            filteredChildren = filteredChildren.filter(child => matchesChildSearch(child, query));
+        }
+
+        renderChildFolderCards(filteredChildren, query);
+    }
+
+    function renderChildFolderCards(filteredChildren, query = '') {
+        if (!foldersEl) return;
+        foldersEl.innerHTML = '';
+
+        if (!filteredChildren.length) {
+            const queryStr = query ? ` matching "<strong>${escapeHtmlSafe(query)}</strong>"` : '';
+            const emptyMsg = (userRole === 'autism' || userRole === 'asd') 
+                ? `No child profiles found for Autism (ASD) unit${queryStr}.` 
+                : `No child profiles found${queryStr}.`;
+            foldersEl.innerHTML = `
+                <div class="empty-folders" style="text-align: center; padding: 40px 20px;">
+                    <span style="font-size:3rem">🔍</span>
+                    <p style="margin: 10px 0; color: #475569; font-weight: 500;">${emptyMsg}</p>
+                    ${query ? `<button type="button" id="btn-clear-search-records" class="btn-secondary btn-sm" style="cursor: pointer; padding: 6px 14px; font-weight: 600; margin-top: 6px;">✕ Clear Search</button>` : ''}
+                </div>
+            `;
+            const btnClear = document.getElementById('btn-clear-search-records');
+            if (btnClear) {
+                btnClear.addEventListener('click', () => {
+                    if (searchInput) searchInput.value = '';
+                    renderFilteredChildFolders(allLoadedChildFolders, '');
+                });
+            }
+            return;
+        }
+
+        filteredChildren.forEach(child => {
                 const isActive = activeChild && activeChild.id === child.id;
                 const typeTotals = {};
                 (child.assessments || []).forEach(a => {
@@ -2831,7 +3001,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const cd = JSON.parse(btn.getAttribute('data-child-json').replace(/&quot;/g, '"'));
                     setActiveChild(cd);
                     showToast('"' + cd.name + '" is now the active profile.');
-                    fetchChildFolders(searchInput ? searchInput.value : '');
+                    renderFilteredChildFolders(allLoadedChildFolders, (searchInput ? searchInput.value : '').trim());
                 });
             });
 
@@ -2868,7 +3038,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             if (resp.ok) {
                                 showToast('Child profile "' + name + '" deleted.');
                                 if (activeChild && activeChild.id == id) setActiveChild(null);
-                                fetchChildFolders(searchInput ? searchInput.value : '');
+                                fetchChildFolders((searchInput ? searchInput.value : '').trim(), true);
                             } else {
                                 showToast('Error: ' + (await resp.json()).error, true);
                             }
@@ -2967,7 +3137,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 });
             }
-        } catch (err) { console.error('Folder fetch error', err); }
     }
 
     // ── Modal ─────────────────────────────────────────────────

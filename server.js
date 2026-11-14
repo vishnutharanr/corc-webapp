@@ -742,12 +742,37 @@ app.get('/api/children', async (req, res) => {
         let params = [];
         let conditions = [];
 
-        if (search) {
-            params.push(`%${search}%`);
-            conditions.push(`(name ILIKE $${params.length} OR admission_no ILIKE $${params.length} OR mobile ILIKE $${params.length})`);
+        if (search && search.trim()) {
+            const cleanTerm = search.trim();
+            const cleanNum = cleanTerm.replace(/[^a-zA-Z0-9]/g, '');
+            params.push(`%${cleanTerm}%`);
+            const p1 = `$${params.length}`;
+            params.push(`%${cleanNum}%`);
+            const p2 = `$${params.length}`;
+
+            conditions.push(`(
+                name ILIKE ${p1}
+                OR admission_no ILIKE ${p1}
+                OR REGEXP_REPLACE(COALESCE(admission_no, ''), '[^a-zA-Z0-9]', '', 'g') ILIKE ${p2}
+                OR mobile ILIKE ${p1}
+                OR EXISTS (
+                    SELECT 1 FROM assessments a 
+                    WHERE a.child_id = children.id 
+                    AND (
+                        a.data->>'mobile' ILIKE ${p1}
+                        OR a.data->>'father_contact' ILIKE ${p1}
+                        OR a.data->>'mother_contact' ILIKE ${p1}
+                        OR a.data->>'other_contact' ILIKE ${p1}
+                        OR a.data->>'father_name' ILIKE ${p1}
+                        OR a.data->>'mother_name' ILIKE ${p1}
+                        OR a.data->>'child_name' ILIKE ${p1}
+                        OR a.data->>'diagnosis' ILIKE ${p1}
+                    )
+                )
+            )`);
         }
         if (isAutismReq) {
-            conditions.push(`is_autism = TRUE`);
+            conditions.push(`(is_autism = TRUE OR admission_no ILIKE 'ASD%')`);
         }
 
         if (conditions.length > 0) {
