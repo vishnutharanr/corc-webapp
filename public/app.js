@@ -4625,7 +4625,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('btn-print-attendance')?.addEventListener('click', () => {
-        window.print();
+        printAttendanceSheetDirect();
     });
 
         // ── Reports Tab Logic ──────────────────────────────────────────
@@ -5599,7 +5599,20 @@ async function fetchReports() {
     const btnPrint = document.getElementById('btn-print-receipt');
     if (btnPrint) {
         btnPrint.addEventListener('click', () => {
-            window.print();
+            const isConsolidated = document.getElementById('consolidated-view-area')?.style.display !== 'none' &&
+                                   document.getElementById('btn-view-consolidated')?.classList.contains('btn-primary');
+            if (isConsolidated) {
+                printConsolidatedPaymentReport();
+            } else {
+                printPaymentReceiptSlip();
+            }
+        });
+    }
+
+    const btnPrintConsolidated = document.getElementById('btn-print-consolidated-report');
+    if (btnPrintConsolidated) {
+        btnPrintConsolidated.addEventListener('click', () => {
+            printConsolidatedPaymentReport();
         });
     }
 
@@ -7453,28 +7466,48 @@ async function fetchReports() {
 </body>
 </html>`;
 
-        let printFrame = document.getElementById('schedule-print-hidden-frame');
+        printDocumentHtml(printHtml, 'Daily Therapy Schedule');
+    }
+
+    // Universal Direct Print Engine (Bypasses sandboxed blob PDF viewer to detect all hardware printers)
+    function printDocumentHtml(htmlContent, title = 'Document') {
+        let printFrame = document.getElementById('app-universal-print-frame');
         if (!printFrame) {
             printFrame = document.createElement('iframe');
-            printFrame.id = 'schedule-print-hidden-frame';
+            printFrame.id = 'app-universal-print-frame';
             printFrame.style.position = 'fixed';
             printFrame.style.right = '0';
             printFrame.style.bottom = '0';
-            printFrame.style.width = '0';
-            printFrame.style.height = '0';
+            printFrame.style.width = '1px';
+            printFrame.style.height = '1px';
             printFrame.style.border = '0';
-            printFrame.style.visibility = 'hidden';
+            printFrame.style.opacity = '0.01';
+            printFrame.style.pointerEvents = 'none';
             document.body.appendChild(printFrame);
         }
 
         const frameDoc = printFrame.contentWindow.document;
         frameDoc.open();
-        frameDoc.write(printHtml);
+        frameDoc.write(htmlContent);
         frameDoc.close();
 
         setTimeout(() => {
-            printFrame.contentWindow.focus();
-            printFrame.contentWindow.print();
+            try {
+                printFrame.contentWindow.focus();
+                printFrame.contentWindow.print();
+            } catch (err) {
+                console.warn('Iframe direct print failed, opening print popup', err);
+                const win = window.open('', '_blank', 'width=950,height=800');
+                if (win) {
+                    win.document.open();
+                    win.document.write(htmlContent);
+                    win.document.close();
+                    setTimeout(() => {
+                        win.focus();
+                        win.print();
+                    }, 300);
+                }
+            }
         }, 250);
     }
 
@@ -8941,6 +8974,12 @@ async function fetchReports() {
             .replace(/[^a-zA-Z0-9._-]/g, '');
 
         try {
+            if (typeof doc.autoPrint === 'function') {
+                doc.autoPrint({ variant: 'non-conform' });
+            }
+        } catch (e) {}
+
+        try {
             const blob = doc.output('blob');
             const blobUrl = URL.createObjectURL(blob);
 
@@ -8960,6 +8999,837 @@ async function fetchReports() {
         } catch (e) {
             console.warn('Fallback to standard doc.save', e);
             doc.save(cleanFilename);
+        }
+    }
+
+    // Direct In-App HTML Slip / Receipt Printing (Guarantees physical printer detection)
+    function printPaymentReceiptSlip() {
+        const data = window.currentReportData;
+        if (!data || !data.length) {
+            showToast('No report data available to print. Please generate a report first.', true);
+            return;
+        }
+
+        const formatSelect = document.getElementById('statement-pdf-format')?.value || 'auto';
+        let isA5 = formatSelect === 'a5' || (formatSelect === 'auto' && data.length <= 6);
+
+        const startDate = document.getElementById('report-start-date')?.value || '';
+        const endDate = document.getElementById('report-end-date')?.value || '';
+        const childSelect = document.getElementById('report-child-select');
+        const childName = childSelect && childSelect.selectedIndex > 0 ? childSelect.options[childSelect.selectedIndex].text : 'All Children';
+
+        let periodText = 'All Records';
+        if (startDate && endDate && startDate === endDate) {
+            periodText = `Date: ${formatDisplayDate(startDate)}`;
+        } else if (startDate && endDate) {
+            periodText = `Period: ${formatDisplayDate(startDate)} to ${formatDisplayDate(endDate)}`;
+        } else if (startDate) {
+            periodText = `From: ${formatDisplayDate(startDate)}`;
+        }
+
+        let totalFee = 0, totalConcession = 0, totalPaid = 0, totalBal = 0;
+        const rowsHtml = data.map((row, idx) => {
+            const fee = parseFloat(row.fee) || 0;
+            const concession = parseFloat(row.concession) || 0;
+            const paid = parseFloat(row.paid) || 0;
+            const bal = (row.balance !== undefined && row.balance !== null && row.balance !== '') 
+                ? (parseFloat(row.balance) || 0) 
+                : Math.max(0, fee - concession - paid);
+
+            totalFee += fee;
+            totalConcession += concession;
+            totalPaid += paid;
+            totalBal += bal;
+
+            const therapyText = row.therapy_type 
+                ? (escapeHtmlSafe(row.therapy_type) + (row.sub_therapy ? ` (${escapeHtmlSafe(row.sub_therapy)})` : '')) 
+                : '-';
+            const balColor = bal > 0 ? '#dc2626' : '#166534';
+
+            return `
+                <tr style="border-bottom: 1px solid #e2e8f0; ${idx % 2 === 1 ? 'background: #f8fafc;' : ''}">
+                    <td style="text-align: center; padding: 5px 4px; font-weight: 600; color: #64748b;">${idx + 1}</td>
+                    <td style="text-align: center; padding: 5px 6px; white-space: nowrap;">${row.date ? formatDisplayDate(row.date) : '-'}</td>
+                    <td style="padding: 5px 8px; font-weight: 600; color: #1e293b;">${escapeHtmlSafe(row.child_name || '-')}</td>
+                    <td style="text-align: center; padding: 5px 6px; white-space: nowrap; font-family: monospace; font-size: ${isA5 ? '8pt' : '8.5pt'};">${escapeHtmlSafe(row.time_slot || '-')}</td>
+                    <td style="padding: 5px 8px; color: #0369a1; font-weight: 500;">${therapyText}</td>
+                    <td style="padding: 5px 8px; color: #334155;">${escapeHtmlSafe(row.therapist_name || '-')}</td>
+                    <td style="text-align: right; padding: 5px 8px; font-weight: 600;">${fee > 0 ? 'Rs. ' + fee : '0'}</td>
+                    <td style="text-align: right; padding: 5px 8px; color: #64748b;">${concession > 0 ? 'Rs. ' + concession : '0'}</td>
+                    <td style="text-align: right; padding: 5px 8px; font-weight: 600; color: #166534;">${paid > 0 ? 'Rs. ' + paid : '0'}</td>
+                    <td style="text-align: center; padding: 5px 6px;">${escapeHtmlSafe(row.payment_mode || 'Cash')}</td>
+                    <td style="text-align: right; padding: 5px 8px; font-weight: 700; color: ${balColor};">${bal > 0 ? 'Rs. ' + bal : '0'}</td>
+                </tr>
+            `;
+        }).join('');
+
+        const slipHtml = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Payment Receipt Slip — ${escapeHtmlSafe(childName)}</title>
+    <style>
+        @page {
+            size: ${isA5 ? 'A5 portrait' : 'A4 portrait'};
+            margin: ${isA5 ? '6mm' : '10mm'};
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: #1e293b;
+            margin: 0;
+            padding: ${isA5 ? '4px' : '10px'};
+            background: #ffffff;
+            font-size: ${isA5 ? '8pt' : '9pt'};
+            line-height: 1.35;
+        }
+        .header-banner {
+            background: #1e3a8a !important;
+            color: #ffffff !important;
+            text-align: center;
+            padding: ${isA5 ? '10px 8px' : '14px 12px'};
+            border-radius: 4px;
+            margin-bottom: ${isA5 ? '8px' : '14px'};
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        .header-banner h1 {
+            margin: 0 0 4px 0;
+            font-size: ${isA5 ? '10pt' : '13pt'};
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+        .header-banner h2 {
+            margin: 0;
+            font-size: ${isA5 ? '7.5pt' : '9pt'};
+            font-weight: 400;
+            opacity: 0.95;
+        }
+        .meta-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: ${isA5 ? '8px' : '12px'};
+            padding: 0 2px;
+            font-size: ${isA5 ? '7.5pt' : '8.5pt'};
+        }
+        .meta-target {
+            font-weight: 700;
+            color: #0f172a;
+        }
+        .meta-sub {
+            color: #64748b;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: ${isA5 ? '10px' : '16px'};
+        }
+        th {
+            background: #1e3a8a !important;
+            color: #ffffff !important;
+            padding: ${isA5 ? '6px 5px' : '8px 6px'};
+            font-size: ${isA5 ? '7pt' : '8pt'};
+            font-weight: 700;
+            text-align: center;
+            border: 1px solid #1e3a8a;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        td {
+            border: 1px solid #e2e8f0;
+            font-size: ${isA5 ? '7.2pt' : '8.2pt'};
+        }
+        .totals-row td {
+            background: #e2e8f0 !important;
+            font-weight: 800;
+            padding: ${isA5 ? '6px 6px' : '8px 8px'};
+            border-top: 2px solid #94a3b8;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        .cards-grid {
+            display: flex;
+            gap: ${isA5 ? '6px' : '10px'};
+            margin-bottom: ${isA5 ? '14px' : '22px'};
+        }
+        .card {
+            flex: 1;
+            padding: ${isA5 ? '6px 4px' : '9px 6px'};
+            border-radius: 6px;
+            text-align: center;
+            border: 1px solid #cbd5e1;
+            background: #f8fafc !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        .card.paid {
+            background: #f0fdf4 !important;
+            border-color: #bbf7d0;
+        }
+        .card.due {
+            background: ${totalBal > 0 ? '#fef2f2 !important' : '#f0fdf4 !important'};
+            border-color: ${totalBal > 0 ? '#fecaca' : '#bbf7d0'};
+        }
+        .card-label {
+            font-size: ${isA5 ? '5.5pt' : '6.5pt'};
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+            margin-bottom: 2px;
+        }
+        .card-val {
+            font-size: ${isA5 ? '8.5pt' : '11pt'};
+            font-weight: 800;
+            color: #1e3a8a;
+        }
+        .card.paid .card-val { color: #166534; }
+        .card.due .card-val { color: ${totalBal > 0 ? '#dc2626' : '#166534'}; }
+        .sig-block {
+            display: flex;
+            justify-content: space-between;
+            margin-top: ${isA5 ? '16px' : '28px'};
+            padding: 0 8px;
+            font-size: ${isA5 ? '7pt' : '8pt'};
+            page-break-inside: avoid;
+        }
+        .sig-col {
+            width: ${isA5 ? '40%' : '35%'};
+            text-align: center;
+        }
+        .sig-line {
+            border-bottom: 1.5px solid #94a3b8;
+            margin-top: ${isA5 ? '25px' : '36px'};
+            margin-bottom: 4px;
+        }
+        .footer-note {
+            text-align: center;
+            margin-top: ${isA5 ? '12px' : '18px'};
+            font-size: ${isA5 ? '6pt' : '7pt'};
+            color: #94a3b8;
+        }
+    </style>
+</head>
+<body>
+    <div class="header-banner">
+        <h1>CHILD DEVELOPMENT & EARLY INTERVENTION CENTRE</h1>
+        <h2>Official Statement of Therapy Attendance & Account (${isA5 ? 'Slip' : 'Statement'})</h2>
+    </div>
+    <div class="meta-bar">
+        <div class="meta-target">Target: ${escapeHtmlSafe(childName)}</div>
+        <div class="meta-sub">${escapeHtmlSafe(periodText)} &nbsp;|&nbsp; Generated: ${new Date().toLocaleDateString('en-IN')}</div>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 25px;">#</th>
+                <th style="width: 72px;">Date</th>
+                <th>Child Name</th>
+                <th style="width: 80px;">Time Slot</th>
+                <th>Therapy</th>
+                <th>Therapist</th>
+                <th style="width: 65px; text-align: right;">Fee</th>
+                <th style="width: 55px; text-align: right;">Conc.</th>
+                <th style="width: 65px; text-align: right;">Paid</th>
+                <th style="width: 55px;">Mode</th>
+                <th style="width: 70px; text-align: right;">Balance</th>
+            </tr>
+        </thead>
+        <tbody>
+            ${rowsHtml}
+            <tr class="totals-row">
+                <td colspan="6" style="text-align: right; padding-right: 10px;">TOTALS:</td>
+                <td style="text-align: right; color: #1e3a8a;">Rs. ${totalFee}</td>
+                <td style="text-align: right; color: #64748b;">Rs. ${totalConcession}</td>
+                <td style="text-align: right; color: #166534;">Rs. ${totalPaid}</td>
+                <td></td>
+                <td style="text-align: right; color: ${totalBal > 0 ? '#dc2626' : '#166534'};">Rs. ${totalBal}</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="cards-grid">
+        <div class="card">
+            <div class="card-label">Total Billed</div>
+            <div class="card-val">Rs. ${totalFee}</div>
+        </div>
+        <div class="card">
+            <div class="card-label">Concessions</div>
+            <div class="card-val">Rs. ${totalConcession}</div>
+        </div>
+        <div class="card paid">
+            <div class="card-label">Total Paid</div>
+            <div class="card-val">Rs. ${totalPaid}</div>
+        </div>
+        <div class="card due">
+            <div class="card-label">Balance Due</div>
+            <div class="card-val">Rs. ${totalBal}</div>
+        </div>
+    </div>
+
+    <div class="sig-block">
+        <div class="sig-col">
+            <div style="color: #64748b; font-weight: 600;">Parent / Guardian Signature</div>
+            <div class="sig-line"></div>
+            <div style="font-size: ${isA5 ? '6.5pt' : '7.5pt'}; color: #94a3b8;">Acknowledgement & Verification</div>
+        </div>
+        <div class="sig-col">
+            <div style="color: #64748b; font-weight: 600;">For Child Development Centre</div>
+            <div class="sig-line"></div>
+            <div style="font-size: ${isA5 ? '6.5pt' : '7.5pt'}; color: #94a3b8;">Authorized Signatory & Seal</div>
+        </div>
+    </div>
+
+    <div class="footer-note">
+        Child Development & Early Intervention Centre — Computer Generated Therapy Attendance & Account Slip
+    </div>
+</body>
+</html>`;
+
+        printDocumentHtml(slipHtml, `Receipt_${escapeHtmlSafe(childName)}`);
+        showToast('Receipt slip sent to printer!');
+    }
+
+    // Direct In-App Consolidated Attendance & Payment Report Printing
+    function printConsolidatedPaymentReport() {
+        const consData = window.currentConsolidatedData;
+        if (!consData || !consData.length) {
+            showToast('No report data available to print. Please generate a report first.', true);
+            return;
+        }
+
+        const startDate = document.getElementById('report-start-date')?.value || '';
+        const endDate = document.getElementById('report-end-date')?.value || '';
+        const childSelect = document.getElementById('report-child-select');
+        const childName = childSelect && childSelect.selectedIndex > 0 ? childSelect.options[childSelect.selectedIndex].text : 'All Children';
+        const therapistSelect = document.getElementById('report-therapist-select');
+        const therapistName = therapistSelect && therapistSelect.selectedIndex > 0 ? therapistSelect.options[therapistSelect.selectedIndex].text : 'All Therapists';
+
+        let periodText = 'All Records';
+        if (startDate && endDate && startDate === endDate) {
+            periodText = formatDisplayDate(startDate);
+        } else if (startDate && endDate) {
+            periodText = `${formatDisplayDate(startDate)} to ${formatDisplayDate(endDate)}`;
+        } else if (startDate) {
+            periodText = `From ${formatDisplayDate(startDate)}`;
+        }
+
+        let totSessions = 0, totPresent = 0, totAbsent = 0, totFee = 0, totConc = 0, totPaid = 0, totBal = 0;
+        const sortedGroups = [...consData].sort((a, b) => (a.child_name || '').localeCompare(b.child_name || ''));
+
+        const rowsHtml = sortedGroups.map((group, idx) => {
+            totSessions += group.totalSessions;
+            totPresent += group.presentSessions;
+            totAbsent += group.absentSessions;
+            totFee += group.sumFee;
+            totConc += group.sumConcession;
+            totPaid += group.sumPaid;
+            totBal += group.sumBalance;
+
+            let catLabel = '8+ yrs (TH)';
+            if (group.child_is_autism) catLabel = 'Autism (ASD)';
+            else if (group.child_age !== null && group.child_age < 8) catLabel = 'Under 8 (EIC)';
+
+            const attPct = group.totalSessions > 0 ? Math.round((group.presentSessions / group.totalSessions) * 100) : 0;
+            const balColor = group.sumBalance > 0 ? '#dc2626' : '#166534';
+
+            let statusBadge = 'Pending';
+            if (group.sumBalance <= 0) statusBadge = 'Paid';
+            else if (group.sumPaid > 0) statusBadge = 'Partial';
+
+            return `
+                <tr style="border-bottom: 1px solid #e2e8f0; ${idx % 2 === 1 ? 'background: #f8fafc;' : ''}">
+                    <td style="text-align: center; padding: 5px 4px; font-weight: 600; color: #64748b;">${idx + 1}</td>
+                    <td style="text-align: center; padding: 5px 6px; font-weight: 700; color: #1e40af;">${escapeHtmlSafe(group.admission_no || '-')}</td>
+                    <td style="padding: 5px 8px; font-weight: 600; color: #1e293b;">${escapeHtmlSafe(group.child_name || '-')}</td>
+                    <td style="padding: 5px 6px; font-size: 7.5pt; color: #475569;">${escapeHtmlSafe(catLabel)}</td>
+                    <td style="text-align: center; padding: 5px 6px; font-weight: 600;">${group.totalSessions}</td>
+                    <td style="text-align: center; padding: 5px 6px; font-weight: 700; color: #15803d;">${group.presentSessions}</td>
+                    <td style="text-align: center; padding: 5px 6px; color: #dc2626;">${group.absentSessions}</td>
+                    <td style="text-align: center; padding: 5px 6px; font-weight: 600;">${attPct}%</td>
+                    <td style="text-align: right; padding: 5px 8px; font-weight: 600;">Rs. ${group.sumFee}</td>
+                    <td style="text-align: right; padding: 5px 8px; color: #64748b;">Rs. ${group.sumConcession}</td>
+                    <td style="text-align: right; padding: 5px 8px; font-weight: 600; color: #15803d;">Rs. ${group.sumPaid}</td>
+                    <td style="text-align: right; padding: 5px 8px; font-weight: 700; color: ${balColor};">Rs. ${group.sumBalance}</td>
+                    <td style="text-align: center; padding: 5px 6px; font-weight: 700; font-size: 7.5pt;">${statusBadge}</td>
+                </tr>
+            `;
+        }).join('');
+
+        const overallAttRate = totSessions > 0 ? Math.round((totPresent / totSessions) * 100) : 0;
+
+        const consHtml = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Consolidated Attendance & Payment Report</title>
+    <style>
+        @page {
+            size: A4 landscape;
+            margin: 8mm;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: #1e293b;
+            margin: 0;
+            padding: 4px;
+            background: #ffffff;
+            font-size: 8pt;
+            line-height: 1.35;
+        }
+        .header-banner {
+            background: #1e3a8a !important;
+            color: #ffffff !important;
+            text-align: center;
+            padding: 10px 12px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        .header-banner h1 {
+            margin: 0 0 3px 0;
+            font-size: 13pt;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .header-banner h2 {
+            margin: 0;
+            font-size: 9pt;
+            font-weight: 400;
+            opacity: 0.95;
+        }
+        .meta-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            font-size: 8pt;
+            color: #475569;
+        }
+        .cards-row {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+        .kpi-card {
+            border: 1px solid #cbd5e1;
+            border-radius: 4px;
+            padding: 6px 4px;
+            text-align: center;
+            background: #f8fafc !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        .kpi-label {
+            font-size: 6pt;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+            margin-bottom: 2px;
+        }
+        .kpi-val {
+            font-size: 9.5pt;
+            font-weight: 800;
+            color: #1e3a8a;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 16px;
+        }
+        th {
+            background: #1e3a8a !important;
+            color: #ffffff !important;
+            padding: 6px 5px;
+            font-size: 7.5pt;
+            font-weight: 700;
+            text-align: center;
+            border: 1px solid #1e3a8a;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        td {
+            border: 1px solid #e2e8f0;
+            font-size: 7.8pt;
+        }
+        .totals-row td {
+            background: #e2e8f0 !important;
+            font-weight: 800;
+            padding: 7px 6px;
+            border-top: 2px solid #94a3b8;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        .sig-block {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 22px;
+            padding: 0 20px;
+            font-size: 8pt;
+            page-break-inside: avoid;
+        }
+        .sig-col {
+            width: 30%;
+            text-align: center;
+        }
+        .sig-line {
+            border-bottom: 1.5px solid #94a3b8;
+            margin-top: 32px;
+            margin-bottom: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header-banner">
+        <h1>CHILD DEVELOPMENT & EARLY INTERVENTION CENTRE</h1>
+        <h2>CONSOLIDATED THERAPY ATTENDANCE & PAYMENT REPORT</h2>
+    </div>
+    <div class="meta-bar">
+        <div><strong>Period:</strong> ${escapeHtmlSafe(periodText)} &nbsp;|&nbsp; <strong>Scope:</strong> ${escapeHtmlSafe(childName)} &nbsp;|&nbsp; <strong>Therapist:</strong> ${escapeHtmlSafe(therapistName)}</div>
+        <div>Generated: ${new Date().toLocaleDateString('en-IN')} ${new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</div>
+    </div>
+    <div class="cards-row">
+        <div class="kpi-card">
+            <div class="kpi-label">Children</div>
+            <div class="kpi-val">${sortedGroups.length}</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Total Sessions</div>
+            <div class="kpi-val">${totSessions}</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Present</div>
+            <div class="kpi-val" style="color: #166534;">${totPresent}</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Att. Rate</div>
+            <div class="kpi-val">${overallAttRate}%</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Total Billed</div>
+            <div class="kpi-val">Rs. ${totFee}</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Concessions</div>
+            <div class="kpi-val" style="color: #64748b;">Rs. ${totConc}</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Total Paid</div>
+            <div class="kpi-val" style="color: #166534;">Rs. ${totPaid}</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Balance Due</div>
+            <div class="kpi-val" style="color: ${totBal > 0 ? '#dc2626' : '#166534'};">Rs. ${totBal}</div>
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 25px;">#</th>
+                <th style="width: 65px;">Adm No</th>
+                <th>Child Name</th>
+                <th style="width: 85px;">Category</th>
+                <th style="width: 55px;">Total</th>
+                <th style="width: 55px;">Present</th>
+                <th style="width: 55px;">Absent</th>
+                <th style="width: 50px;">Att %</th>
+                <th style="width: 75px; text-align: right;">Total Fee</th>
+                <th style="width: 65px; text-align: right;">Conc.</th>
+                <th style="width: 75px; text-align: right;">Total Paid</th>
+                <th style="width: 80px; text-align: right;">Balance</th>
+                <th style="width: 65px;">Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            ${rowsHtml}
+            <tr class="totals-row">
+                <td colspan="4" style="text-align: right; padding-right: 10px;">TOTALS:</td>
+                <td style="text-align: center;">${totSessions}</td>
+                <td style="text-align: center; color: #166534;">${totPresent}</td>
+                <td style="text-align: center; color: #dc2626;">${totAbsent}</td>
+                <td style="text-align: center;">${overallAttRate}%</td>
+                <td style="text-align: right; color: #1e3a8a;">Rs. ${totFee}</td>
+                <td style="text-align: right; color: #64748b;">Rs. ${totConc}</td>
+                <td style="text-align: right; color: #166534;">Rs. ${totPaid}</td>
+                <td style="text-align: right; color: ${totBal > 0 ? '#dc2626' : '#166534'};">Rs. ${totBal}</td>
+                <td style="text-align: center;">${totBal <= 0 ? 'Fully Paid' : 'Pending'}</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="sig-block">
+        <div class="sig-col">
+            <div style="color: #64748b; font-weight: 600;">Prepared By</div>
+            <div class="sig-line"></div>
+            <div style="font-size: 7.5pt; color: #94a3b8;">Clinical Administrator / Accounts Officer</div>
+        </div>
+        <div class="sig-col">
+            <div style="color: #64748b; font-weight: 600;">Verified & Approved By</div>
+            <div class="sig-line"></div>
+            <div style="font-size: 7.5pt; color: #94a3b8;">Centre Director / Management</div>
+        </div>
+    </div>
+</body>
+</html>`;
+
+        printDocumentHtml(consHtml, 'Consolidated_Report');
+        showToast('Consolidated report sent to printer!');
+    }
+
+    // Direct In-App Daily Attendance Sheet Printing
+    function printAttendanceSheetDirect() {
+        const isPresentView = document.getElementById('attendance-present-view-area')?.style.display !== 'none';
+        const dateInput = document.getElementById('attendance-date-picker');
+        const targetDate = dateInput ? dateInput.value : currentAttendanceDate;
+        const displayDate = targetDate ? formatDisplayDate(targetDate) : 'Today';
+
+        if (isPresentView) {
+            // Print Present Children Roll Sheet
+            const presentList = window.currentPresentChildren || [];
+            if (!presentList.length) {
+                showToast('No children marked present for this date to print.', true);
+                return;
+            }
+
+            const rowsHtml = presentList.map((group, idx) => {
+                const therapiesText = group.presentSessions.map(s => 
+                    `${escapeHtmlSafe(s.therapy_type)} (${s.time_slot || '-'})`
+                ).join(', ');
+                const therapistsText = [...new Set(group.presentSessions.map(s => s.therapist_name).filter(Boolean))].join(', ') || '—';
+
+                let catLabel = '8+ yrs (TH)';
+                if (group.child_is_autism) catLabel = 'Autism (ASD)';
+                else if (group.child_age !== null && group.child_age < 8) catLabel = 'Under 8 (EIC)';
+
+                return `
+                    <tr style="border-bottom: 1px solid #e2e8f0; ${idx % 2 === 1 ? 'background: #f8fafc;' : ''}">
+                        <td style="text-align: center; padding: 6px 4px; font-weight: 600; color: #64748b;">${idx + 1}</td>
+                        <td style="text-align: center; padding: 6px 8px; font-weight: 700; color: #1e40af;">${escapeHtmlSafe(group.child_admission_no || '-')}</td>
+                        <td style="padding: 6px 10px; font-weight: 600; color: #1e293b;">
+                            ${escapeHtmlSafe(group.child_name)}
+                            ${group.child_age ? `<span style="color: #64748b; font-size: 7.5pt; margin-left: 4px;">(${group.child_age} yrs)</span>` : ''}
+                        </td>
+                        <td style="padding: 6px 8px; font-size: 7.5pt; color: #475569;">${escapeHtmlSafe(catLabel)}</td>
+                        <td style="text-align: center; padding: 6px 8px; font-weight: 700; color: #15803d;">${group.presentCount} / ${group.totalSessions}</td>
+                        <td style="padding: 6px 10px; color: #0369a1; font-weight: 500;">${therapiesText}</td>
+                        <td style="padding: 6px 10px; color: #334155;">${escapeHtmlSafe(therapistsText)}</td>
+                        <td style="text-align: center; padding: 6px 8px; font-weight: 700; color: #16a34a;">✓ PRESENT</td>
+                    </tr>
+                `;
+            }).join('');
+
+            const html = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Daily Attendance — Present Children Roll Sheet</title>
+    <style>
+        @page { size: A4 portrait; margin: 10mm; }
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: #1e293b;
+            margin: 0;
+            padding: 6px;
+            font-size: 8.5pt;
+        }
+        .header {
+            background: #1e3a8a !important;
+            color: #ffffff !important;
+            text-align: center;
+            padding: 12px;
+            border-radius: 4px;
+            margin-bottom: 12px;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        .header h1 { margin: 0 0 3px 0; font-size: 13pt; text-transform: uppercase; font-weight: 800; }
+        .header h2 { margin: 0; font-size: 9pt; font-weight: 400; opacity: 0.95; }
+        .meta-bar {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            font-size: 8.5pt;
+            color: #475569;
+        }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        th {
+            background: #1e3a8a !important;
+            color: #ffffff !important;
+            padding: 7px 6px;
+            font-size: 8pt;
+            border: 1px solid #1e3a8a;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        td { border: 1px solid #e2e8f0; font-size: 8pt; }
+        .sig-block { display: flex; justify-content: space-between; margin-top: 35px; padding: 0 20px; }
+        .sig-col { width: 35%; text-align: center; font-size: 8pt; }
+        .sig-line { border-bottom: 1.5px solid #94a3b8; margin-top: 36px; margin-bottom: 4px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>CHILD DEVELOPMENT & EARLY INTERVENTION CENTRE</h1>
+        <h2>Daily Attendance — Present Children Roll Sheet</h2>
+    </div>
+    <div class="meta-bar">
+        <div><strong>Date:</strong> ${displayDate} &nbsp;|&nbsp; <strong>Children Present:</strong> ${presentList.length}</div>
+        <div>Generated: ${new Date().toLocaleDateString('en-IN')} ${new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</div>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 25px;">#</th>
+                <th style="width: 75px;">Adm No</th>
+                <th>Child Name</th>
+                <th style="width: 85px;">Category</th>
+                <th style="width: 75px;">Sessions</th>
+                <th>Present Therapies</th>
+                <th>Therapists</th>
+                <th style="width: 75px;">Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            ${rowsHtml}
+        </tbody>
+    </table>
+    <div class="sig-block">
+        <div class="sig-col">
+            <div style="font-weight: 600; color: #64748b;">Duty Incharge / Therapist Signature</div>
+            <div class="sig-line"></div>
+            <div style="font-size: 7.5pt; color: #94a3b8;">Roll Call Verification</div>
+        </div>
+        <div class="sig-col">
+            <div style="font-weight: 600; color: #64748b;">Centre Incharge / Administrator</div>
+            <div class="sig-line"></div>
+            <div style="font-size: 7.5pt; color: #94a3b8;">Authorized Signatory</div>
+        </div>
+    </div>
+</body>
+</html>`;
+            printDocumentHtml(html, `Attendance_Present_${displayDate}`);
+            showToast('Present roll call sheet sent to printer!');
+        } else {
+            // Print All Scheduled Sessions Sheet
+            const list = window.currentAttendanceFilteredList || currentAttendanceList || [];
+            if (!list.length) {
+                showToast('No attendance records for this date to print.', true);
+                return;
+            }
+
+            const rowsHtml = list.map((item, idx) => {
+                const statusColor = item.computed_status === 'Present' ? '#166534' : (item.computed_status === 'Absent' ? '#dc2626' : '#854d0e');
+                return `
+                    <tr style="border-bottom: 1px solid #e2e8f0; ${idx % 2 === 1 ? 'background: #f8fafc;' : ''}">
+                        <td style="text-align: center; padding: 5px 4px; font-weight: 600; color: #64748b;">${idx + 1}</td>
+                        <td style="text-align: center; padding: 5px 6px; font-weight: 700; color: #1e40af;">${escapeHtmlSafe(item.child_admission_no || '-')}</td>
+                        <td style="padding: 5px 8px; font-weight: 600; color: #1e293b;">${escapeHtmlSafe(item.child_name || '-')}</td>
+                        <td style="text-align: center; padding: 5px 6px; font-family: monospace;">${escapeHtmlSafe(item.time_slot || '-')}</td>
+                        <td style="padding: 5px 8px; color: #0369a1; font-weight: 500;">${escapeHtmlSafe(item.therapy_type || '-')}</td>
+                        <td style="padding: 5px 8px; color: #334155;">${escapeHtmlSafe(item.therapist_name || '-')}</td>
+                        <td style="text-align: center; padding: 5px 6px; font-weight: 700; color: ${statusColor};">${escapeHtmlSafe(item.computed_status || 'Pending')}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            const html = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Daily Attendance & Therapy Sessions Sheet</title>
+    <style>
+        @page { size: A4 portrait; margin: 10mm; }
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: #1e293b;
+            margin: 0;
+            padding: 6px;
+            font-size: 8.5pt;
+        }
+        .header {
+            background: #1e3a8a !important;
+            color: #ffffff !important;
+            text-align: center;
+            padding: 12px;
+            border-radius: 4px;
+            margin-bottom: 12px;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        .header h1 { margin: 0 0 3px 0; font-size: 13pt; text-transform: uppercase; font-weight: 800; }
+        .header h2 { margin: 0; font-size: 9pt; font-weight: 400; opacity: 0.95; }
+        .meta-bar {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            font-size: 8.5pt;
+            color: #475569;
+        }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        th {
+            background: #1e3a8a !important;
+            color: #ffffff !important;
+            padding: 7px 6px;
+            font-size: 8pt;
+            border: 1px solid #1e3a8a;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        td { border: 1px solid #e2e8f0; font-size: 8pt; }
+        .sig-block { display: flex; justify-content: space-between; margin-top: 35px; padding: 0 20px; }
+        .sig-col { width: 35%; text-align: center; font-size: 8pt; }
+        .sig-line { border-bottom: 1.5px solid #94a3b8; margin-top: 36px; margin-bottom: 4px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>CHILD DEVELOPMENT & EARLY INTERVENTION CENTRE</h1>
+        <h2>Daily Therapy Attendance Session Sheet</h2>
+    </div>
+    <div class="meta-bar">
+        <div><strong>Date:</strong> ${displayDate} &nbsp;|&nbsp; <strong>Total Sessions:</strong> ${list.length}</div>
+        <div>Generated: ${new Date().toLocaleDateString('en-IN')} ${new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</div>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 25px;">#</th>
+                <th style="width: 75px;">Adm No</th>
+                <th>Child Name</th>
+                <th style="width: 80px;">Time Slot</th>
+                <th>Therapy</th>
+                <th>Therapist</th>
+                <th style="width: 75px;">Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            ${rowsHtml}
+        </tbody>
+    </table>
+    <div class="sig-block">
+        <div class="sig-col">
+            <div style="font-weight: 600; color: #64748b;">Duty Incharge / Therapist Signature</div>
+            <div class="sig-line"></div>
+            <div style="font-size: 7.5pt; color: #94a3b8;">Roll Call Verification</div>
+        </div>
+        <div class="sig-col">
+            <div style="font-weight: 600; color: #64748b;">Centre Incharge / Administrator</div>
+            <div class="sig-line"></div>
+            <div style="font-size: 7.5pt; color: #94a3b8;">Authorized Signatory</div>
+        </div>
+    </div>
+</body>
+</html>`;
+            printDocumentHtml(html, `Attendance_Sheet_${displayDate}`);
+            showToast('Daily attendance sheet sent to printer!');
         }
     }
 

@@ -1810,6 +1810,46 @@ button {
         overflow: visible !important;
     }
 
+    #reports.active {
+        display: block !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+    }
+    #reports > .tab-header,
+    #reports > .records-toolbar,
+    #reports > .view-toggle,
+    #reports > .report-kpis,
+    #report-filters {
+        display: none !important;
+    }
+    #consolidated-view-area,
+    #print-area {
+        display: block !important;
+        width: 100% !important;
+        overflow: visible !important;
+    }
+
+    #attendance.active {
+        display: block !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100% !important;
+    }
+    #attendance > .tab-header,
+    #attendance > .records-toolbar,
+    #attendance > .att-metrics-dashboard,
+    #attendance > .att-view-toggle,
+    #attendance > .att-date-controls {
+        display: none !important;
+    }
+    #attendance-print-area,
+    #attendance-present-area {
+        display: block !important;
+        width: 100% !important;
+        overflow: visible !important;
+    }
+
     /* Print Header for Schedule Table */
     .schedule-print-header {
         display: block !important;
