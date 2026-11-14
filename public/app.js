@@ -4328,6 +4328,24 @@ document.addEventListener('DOMContentLoaded', () => {
     // Set defaults on startup
     initReportDatesDefault();
 
+    function setActiveReportPreset(activeBtnId) {
+        ['btn-report-preset-today', 'btn-report-preset-yesterday', 'btn-report-preset-month', 'btn-report-preset-last-month', 'btn-report-toggle-custom'].forEach(id => {
+            const btn = document.getElementById(id);
+            if (!btn) return;
+            if (id === activeBtnId) {
+                btn.className = 'btn-sm btn-primary';
+                btn.style.background = '';
+                btn.style.color = '#fff';
+                btn.style.fontWeight = '700';
+            } else {
+                btn.className = 'btn-sm btn-secondary';
+                btn.style.background = '#fff';
+                btn.style.color = '#334155';
+                btn.style.fontWeight = '600';
+            }
+        });
+    }
+
     // Preset button: Today
     document.getElementById('btn-report-preset-today')?.addEventListener('click', () => {
         const today = getLocalTodayDateString();
@@ -4341,6 +4359,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('report-single-date-group').style.display = 'block';
         document.getElementById('report-start-date-group').style.display = 'none';
         document.getElementById('report-end-date-group').style.display = 'none';
+        setActiveReportPreset('btn-report-preset-today');
         fetchReports();
     });
 
@@ -4359,6 +4378,51 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('report-single-date-group').style.display = 'block';
         document.getElementById('report-start-date-group').style.display = 'none';
         document.getElementById('report-end-date-group').style.display = 'none';
+        setActiveReportPreset('btn-report-preset-yesterday');
+        fetchReports();
+    });
+
+    // Preset button: This Month
+    document.getElementById('btn-report-preset-month')?.addEventListener('click', () => {
+        const d = new Date();
+        const y = d.getFullYear();
+        const m = d.getMonth() + 1;
+        const startDateVal = `${y}-${String(m).padStart(2, '0')}-01`;
+        const lastDay = new Date(y, m, 0).getDate();
+        const endDateVal = `${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+
+        const startDate = document.getElementById('report-start-date');
+        const endDate = document.getElementById('report-end-date');
+        if (startDate) startDate.value = startDateVal;
+        if (endDate) endDate.value = endDateVal;
+
+        document.getElementById('report-single-date-group').style.display = 'none';
+        document.getElementById('report-start-date-group').style.display = 'block';
+        document.getElementById('report-end-date-group').style.display = 'block';
+        setActiveReportPreset('btn-report-preset-month');
+        fetchReports();
+    });
+
+    // Preset button: Last Month
+    document.getElementById('btn-report-preset-last-month')?.addEventListener('click', () => {
+        const d = new Date();
+        d.setDate(1);
+        d.setMonth(d.getMonth() - 1);
+        const y = d.getFullYear();
+        const m = d.getMonth() + 1;
+        const startDateVal = `${y}-${String(m).padStart(2, '0')}-01`;
+        const lastDay = new Date(y, m, 0).getDate();
+        const endDateVal = `${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+
+        const startDate = document.getElementById('report-start-date');
+        const endDate = document.getElementById('report-end-date');
+        if (startDate) startDate.value = startDateVal;
+        if (endDate) endDate.value = endDateVal;
+
+        document.getElementById('report-single-date-group').style.display = 'none';
+        document.getElementById('report-start-date-group').style.display = 'block';
+        document.getElementById('report-end-date-group').style.display = 'block';
+        setActiveReportPreset('btn-report-preset-last-month');
         fetchReports();
     });
 
@@ -4372,10 +4436,12 @@ document.addEventListener('DOMContentLoaded', () => {
             startGrp.style.display = 'block';
             endGrp.style.display = 'block';
             singleGrp.style.display = 'none';
+            setActiveReportPreset('btn-report-toggle-custom');
         } else {
             startGrp.style.display = 'none';
             endGrp.style.display = 'none';
             singleGrp.style.display = 'block';
+            setActiveReportPreset('btn-report-preset-today');
         }
     });
 
@@ -4394,11 +4460,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function fetchReports() {
         const tbody = document.getElementById('reports-table-body');
+        const consBody = document.getElementById('consolidated-table-body');
+        const consFoot = document.getElementById('consolidated-table-foot');
         if (!tbody) return;
         
-        const startDate = document.getElementById('report-start-date').value;
-        const endDate = document.getElementById('report-end-date').value;
-        const childId = document.getElementById('report-child-select').value;
+        const startDate = document.getElementById('report-start-date')?.value || '';
+        const endDate = document.getElementById('report-end-date')?.value || '';
+        const childId = document.getElementById('report-child-select')?.value || '';
 
         let query = [];
         if (startDate) query.push('start_date=' + encodeURIComponent(startDate));
@@ -4409,17 +4477,21 @@ async function fetchReports() {
         const url = '/api/reports/attendance' + (query.length ? '?' + query.join('&') : '');
 
         try {
-            tbody.innerHTML = '<tr><td colspan="10" style="text-align: center;">Loading...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="12" style="text-align: center;">Loading therapy records...</td></tr>';
+            if (consBody) consBody.innerHTML = '<tr><td colspan="13" style="text-align: center; padding: 20px;">Loading consolidated report...</td></tr>';
+            if (consFoot) consFoot.innerHTML = '';
+
             const resp = await fetch(url);
             const data = await resp.json();
             
-            if (data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="11" style="text-align: center;">No therapy records found for this period.</td></tr>';
+            if (!data || data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="12" style="text-align: center;">No therapy records found for this period.</td></tr>';
+                if (consBody) consBody.innerHTML = '<tr><td colspan="13" style="text-align: center; padding: 25px; color: #64748b;">No therapy records found for this period.</td></tr>';
                 resetDashboardMetrics();
                 return;
             }
             
-            // Client-side filtering for Therapist and Pending Balance
+            // Client-side filtering for Therapist, Pending Balance, and Category
             const therapistFilter = document.getElementById('report-therapist-select')?.value;
             const pendingBalanceOnly = document.getElementById('report-pending-balance')?.checked;
             const ageFilter = document.getElementById('report-age-filter')?.value || 'all';
@@ -4429,7 +4501,7 @@ async function fetchReports() {
                 if (therapistFilter && row.therapist_name !== therapistFilter) match = false;
                 if (pendingBalanceOnly && (parseFloat(row.balance) || 0) <= 0) match = false;
                 
-                if (userRole === 'staff' || userRole === 'staff8' || userRole === 'autism' || userRole === 'asd' || userRole === 'asd' || (userRole === 'admin' && ageFilter !== 'all')) {
+                if (userRole === 'staff' || userRole === 'staff8' || userRole === 'autism' || userRole === 'asd' || (userRole === 'admin' && ageFilter !== 'all')) {
                     if (!matchesAgeFilter(row, ageFilter)) match = false;
                 }
                 
@@ -4437,7 +4509,8 @@ async function fetchReports() {
             });
 
             if (filteredData.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="11" style="text-align: center;">No matching records found.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="12" style="text-align: center;">No matching records found.</td></tr>';
+                if (consBody) consBody.innerHTML = '<tr><td colspan="13" style="text-align: center; padding: 25px; color: #64748b;">No matching records found for this period.</td></tr>';
                 resetDashboardMetrics();
                 return;
             }
@@ -4452,32 +4525,62 @@ async function fetchReports() {
             filteredData.forEach(row => {
                 if (!grouped[row.child_id]) {
                     grouped[row.child_id] = { 
-                        name: row.child_name, 
-                        admission_no: row.child_admission_no,
+                        id: row.child_id,
+                        name: row.child_name || 'Unknown Child', 
+                        admission_no: row.child_admission_no || '-',
+                        dob: row.child_dob,
+                        age: row.child_age,
                         rows: [], 
-                        sumFee: 0, sumConcession: 0, sumPaid: 0, sumBalance: 0 
+                        totalSessions: 0,
+                        presentCount: 0,
+                        absentCount: 0,
+                        sumFee: 0, 
+                        sumConcession: 0, 
+                        sumPaid: 0, 
+                        sumBalance: 0 
                     };
                 }
-                grouped[row.child_id].rows.push(row);
-                grouped[row.child_id].sumFee += row.fee || 0;
-                grouped[row.child_id].sumConcession += row.concession || 0;
-                grouped[row.child_id].sumPaid += row.paid || 0;
-                grouped[row.child_id].sumBalance += row.balance || 0;
-                
-                if (row.status === 'Present') presentCount++;
+                const g = grouped[row.child_id];
+                g.rows.push(row);
+                g.totalSessions++;
+
+                const s = row.status || 'Present';
+                if (s === 'Present') {
+                    g.presentCount++;
+                    presentCount++;
+                } else {
+                    g.absentCount++;
+                }
+
+                const fee = parseFloat(row.fee) || 0;
+                const concession = parseFloat(row.concession) || 0;
+                const paid = parseFloat(row.paid) || 0;
+                const balance = (row.balance !== undefined && row.balance !== null && row.balance !== '')
+                    ? (parseFloat(row.balance) || 0)
+                    : Math.max(0, fee - concession - paid);
+
+                g.sumFee += fee;
+                g.sumConcession += concession;
+                g.sumPaid += paid;
+                g.sumBalance += balance;
             });
 
-            Object.values(grouped).forEach((group, index) => {
+            const sortedGroups = Object.values(grouped).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+            let consHtml = '';
+            sortedGroups.forEach((group, index) => {
                 sumFee += group.sumFee;
                 sumConcession += group.sumConcession;
                 sumPaid += group.sumPaid;
                 sumBalance += group.sumBalance;
                 
-                const admBadge = group.admission_no ? `<span class="adm-badge" style="display:inline-block; font-size:0.75rem; background:#1e40af; color:#ffffff; border-radius:4px; padding:2px 7px; margin-right:8px; font-weight:700;">${group.admission_no}</span>` : '';
+                const admBadge = (group.admission_no && group.admission_no !== '-') 
+                    ? `<span class="adm-badge" style="display:inline-block; font-size:0.75rem; background:#1e40af; color:#ffffff; border-radius:4px; padding:2px 7px; margin-right:8px; font-weight:700;">${group.admission_no}</span>` 
+                    : '';
 
-                // Header row
+                // 1. DETAILED ACCORDION VIEW ROWS
                 html += `<tr class="accordion-header" data-child-index="${index}" style="cursor: pointer; background: #f8fafc;">
-                    <td colspan="6"><strong><span class="toggle-icon">▼</span> ${admBadge}${group.name}</strong> <span style="color: #64748b; font-size: 0.9em; margin-left: 10px;">(${group.rows.length} session${group.rows.length > 1 ? 's' : ''})</span></td>
+                    <td colspan="6"><strong><span class="toggle-icon">▼</span> ${admBadge}${escapeHtml(group.name)}</strong> <span style="color: #64748b; font-size: 0.9em; margin-left: 10px;">(${group.rows.length} session${group.rows.length > 1 ? 's' : ''})</span></td>
                     <td class="header-fee"><strong>${group.sumFee}</strong></td>
                     <td class="header-concession"><strong>${group.sumConcession}</strong></td>
                     <td class="header-paid"><strong>${group.sumPaid}</strong></td>
@@ -4544,9 +4647,84 @@ async function fetchReports() {
                     <td class="footer-balance" style="${group.sumBalance > 0 ? 'color: var(--danger);' : ''}">${group.sumBalance}</td>
                     <td></td>
                 </tr>`;
+
+                // 2. CONSOLIDATED SUMMARY TABLE ROWS
+                const rate = group.totalSessions > 0 ? Math.round((group.presentCount / group.totalSessions) * 100) : 0;
+                const rateColor = rate >= 80 ? '#166534' : (rate >= 50 ? '#854d0e' : '#991b1b');
+                const rateBg = rate >= 80 ? '#dcfce7' : (rate >= 50 ? '#fef08a' : '#fee2e2');
+
+                let statusBadge = '';
+                if (group.sumBalance <= 0) {
+                    statusBadge = '<span style="background: #dcfce7; color: #166534; font-weight: 700; padding: 3px 8px; border-radius: 12px; font-size: 0.78rem;">Paid</span>';
+                } else if (group.sumPaid > 0) {
+                    statusBadge = '<span style="background: #fef08a; color: #854d0e; font-weight: 700; padding: 3px 8px; border-radius: 12px; font-size: 0.78rem;">Partial</span>';
+                } else {
+                    statusBadge = '<span style="background: #fee2e2; color: #991b1b; font-weight: 700; padding: 3px 8px; border-radius: 12px; font-size: 0.78rem;">Pending</span>';
+                }
+
+                consHtml += `
+                    <tr style="border-bottom: 1px solid #e2e8f0; transition: background 0.15s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background=''">
+                        <td style="text-align: center; font-weight: 600; color: #64748b; padding: 9px 6px;">${index + 1}</td>
+                        <td style="padding: 9px 8px;">${admBadge || '<span style="color:#94a3b8;">-</span>'}</td>
+                        <td style="padding: 9px 12px;"><strong>${escapeHtml(group.name)}</strong></td>
+                        <td style="text-align: center; font-weight: 700; padding: 9px 6px;">${group.totalSessions}</td>
+                        <td style="text-align: center; padding: 9px 6px;"><span style="background: #dcfce7; color: #166534; font-weight: 700; padding: 2px 8px; border-radius: 10px; font-size: 0.82rem;">${group.presentCount}</span></td>
+                        <td style="text-align: center; padding: 9px 6px;"><span style="background: ${group.absentCount > 0 ? '#fee2e2' : '#f1f5f9'}; color: ${group.absentCount > 0 ? '#991b1b' : '#64748b'}; font-weight: 600; padding: 2px 8px; border-radius: 10px; font-size: 0.82rem;">${group.absentCount}</span></td>
+                        <td style="text-align: center; padding: 9px 6px;"><span style="background: ${rateBg}; color: ${rateColor}; font-weight: 700; padding: 2px 7px; border-radius: 6px; font-size: 0.82rem;">${rate}%</span></td>
+                        <td style="text-align: right; font-weight: 600; padding: 9px 10px;">₹${group.sumFee.toLocaleString('en-IN')}</td>
+                        <td style="text-align: right; color: #854d0e; padding: 9px 10px;">₹${group.sumConcession.toLocaleString('en-IN')}</td>
+                        <td style="text-align: right; font-weight: 700; color: #166534; padding: 9px 10px;">₹${group.sumPaid.toLocaleString('en-IN')}</td>
+                        <td style="text-align: right; font-weight: 700; color: ${group.sumBalance > 0 ? '#dc2626' : '#64748b'}; padding: 9px 10px;">₹${group.sumBalance.toLocaleString('en-IN')}</td>
+                        <td style="text-align: center; padding: 9px 8px;">${statusBadge}</td>
+                        <td style="text-align: center; white-space: nowrap; padding: 9px 6px;">
+                            <button type="button" class="btn-goto-child-sessions btn-sm btn-secondary" data-child-index="${index}" style="padding: 3px 8px; font-size: 0.78rem; cursor: pointer; border-radius: 4px;" title="View detailed session records for this child">📂 Sessions</button>
+                        </td>
+                    </tr>
+                `;
             });
 
             tbody.innerHTML = html;
+
+            if (consBody) consBody.innerHTML = consHtml;
+
+            if (consFoot) {
+                const grandAttRate = totalSessions > 0 ? Math.round((presentCount / totalSessions) * 100) : 0;
+                const grandRateColor = grandAttRate >= 80 ? '#166534' : (grandAttRate >= 50 ? '#854d0e' : '#991b1b');
+                const totalAbsent = totalSessions - presentCount;
+
+                consFoot.innerHTML = `
+                    <tr style="background: #f8fafc; font-weight: bold; border-top: 2px solid #cbd5e1; font-size: 0.92rem;">
+                        <td colspan="3" style="padding: 11px 12px; text-align: left;">GRAND TOTALS (${sortedGroups.length} Children):</td>
+                        <td style="text-align: center; color: var(--primary); padding: 11px 6px;">${totalSessions}</td>
+                        <td style="text-align: center; color: #166534; padding: 11px 6px;">${presentCount}</td>
+                        <td style="text-align: center; color: ${totalAbsent > 0 ? '#991b1b' : '#64748b'}; padding: 11px 6px;">${totalAbsent}</td>
+                        <td style="text-align: center; color: ${grandRateColor}; padding: 11px 6px;">${grandAttRate}%</td>
+                        <td style="text-align: right; padding: 11px 10px;">₹${sumFee.toLocaleString('en-IN')}</td>
+                        <td style="text-align: right; color: #854d0e; padding: 11px 10px;">₹${sumConcession.toLocaleString('en-IN')}</td>
+                        <td style="text-align: right; color: #166534; padding: 11px 10px;">₹${sumPaid.toLocaleString('en-IN')}</td>
+                        <td style="text-align: right; color: ${sumBalance > 0 ? '#dc2626' : '#64748b'}; padding: 11px 10px;">₹${sumBalance.toLocaleString('en-IN')}</td>
+                        <td style="text-align: center; padding: 11px 8px;">${sumBalance <= 0 ? '<span style="color:#166534;">All Settled</span>' : '<span style="color:#dc2626;">Pending Due</span>'}</td>
+                        <td></td>
+                    </tr>
+                `;
+            }
+
+            // Drill-down button listener in consolidated table
+            document.querySelectorAll('.btn-goto-child-sessions').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const idx = btn.getAttribute('data-child-index');
+                    switchReportView('table');
+                    const header = tbody.querySelector(`.accordion-header[data-child-index="${idx}"]`);
+                    if (header) {
+                        const rows = tbody.querySelectorAll(`.accordion-child-${idx}`);
+                        const icon = header.querySelector('.toggle-icon');
+                        rows.forEach(r => r.style.display = 'table-row');
+                        if (icon) icon.textContent = '▲';
+                        header.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                });
+            });
 
             // Add click listeners to toggle accordions
             tbody.querySelectorAll('.accordion-header').forEach(header => {
@@ -4565,8 +4743,6 @@ async function fetchReports() {
                     }
                 });
             });
-
-
 
             // Single Receipt PDF generation listener
             tbody.querySelectorAll('.btn-receipt-attendance').forEach(btn => {
@@ -4589,6 +4765,9 @@ async function fetchReports() {
             updateAttendanceGraph(filteredData);
             
             // Update Dashboard Metrics
+            const totChildrenEl = document.getElementById('metric-total-children');
+            if (totChildrenEl) totChildrenEl.textContent = sortedGroups.length;
+
             const totSessEl = document.getElementById('metric-total-sessions');
             if (totSessEl) totSessEl.textContent = totalSessions;
 
@@ -4600,24 +4779,28 @@ async function fetchReports() {
             }
 
             const concEl = document.getElementById('metric-concessions');
-            if (concEl) concEl.textContent = '₹' + sumConcession;
+            if (concEl) concEl.textContent = '₹' + sumConcession.toLocaleString('en-IN');
 
             const revEl = document.getElementById('metric-revenue');
-            if (revEl) revEl.textContent = '₹' + sumPaid;
+            if (revEl) revEl.textContent = '₹' + sumPaid.toLocaleString('en-IN');
 
             const balEl = document.getElementById('metric-balance');
-            if (balEl) balEl.textContent = '₹' + sumBalance;
+            if (balEl) balEl.textContent = '₹' + sumBalance.toLocaleString('en-IN');
 
-            window.currentReportData = filteredData; // Store for CSV export
+            window.currentReportData = filteredData; // Store detailed records
+            window.currentConsolidatedData = sortedGroups; // Store consolidated child records
 
         } catch (err) {
             console.error('Error fetching/rendering reports:', err);
-            tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; color: red;">Failed to load reports.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="12" style="text-align: center; color: red;">Failed to load reports.</td></tr>';
+            if (consBody) consBody.innerHTML = '<tr><td colspan="13" style="text-align: center; color: red; padding: 25px;">Failed to load consolidated reports.</td></tr>';
             resetDashboardMetrics();
         }
     }
     
     function resetDashboardMetrics() {
+        const totChildrenEl = document.getElementById('metric-total-children');
+        if (totChildrenEl) totChildrenEl.textContent = '0';
         const totSessEl = document.getElementById('metric-total-sessions');
         if (totSessEl) totSessEl.textContent = '0';
         const attRateEl = document.getElementById('metric-attendance-rate');
@@ -4629,28 +4812,76 @@ async function fetchReports() {
         const balEl = document.getElementById('metric-balance');
         if (balEl) balEl.textContent = '₹0';
         window.currentReportData = [];
+        window.currentConsolidatedData = [];
+        const consBody = document.getElementById('consolidated-table-body');
+        if (consBody) consBody.innerHTML = '<tr><td colspan="13" style="text-align: center; padding: 25px; color: #64748b;">Click "Generate Report" to view consolidated attendance & payment summary.</td></tr>';
+        const consFoot = document.getElementById('consolidated-table-foot');
+        if (consFoot) consFoot.innerHTML = '';
     }
 
-    // View Toggles
+    // View Toggles: Consolidated vs Detailed Sessions vs Graph
+    const btnViewConsolidated = document.getElementById('btn-view-consolidated');
     const btnViewTable = document.getElementById('btn-view-table');
     const btnViewGraph = document.getElementById('btn-view-graph');
+    const consolidatedArea = document.getElementById('consolidated-view-area');
     const printArea = document.getElementById('print-area');
     const graphArea = document.getElementById('graph-area');
 
-    if (btnViewTable && btnViewGraph) {
-        btnViewTable.addEventListener('click', () => {
-            btnViewTable.className = 'btn-primary';
-            btnViewGraph.className = 'btn-secondary';
-            printArea.style.display = 'block';
-            graphArea.style.display = 'none';
-        });
-        btnViewGraph.addEventListener('click', () => {
-            btnViewGraph.className = 'btn-primary';
-            btnViewTable.className = 'btn-secondary';
-            printArea.style.display = 'none';
-            graphArea.style.display = 'block';
-        });
+    function switchReportView(mode) {
+        if (mode === 'consolidated') {
+            if (btnViewConsolidated) {
+                btnViewConsolidated.className = 'btn-primary';
+                btnViewConsolidated.style.fontWeight = '700';
+            }
+            if (btnViewTable) {
+                btnViewTable.className = 'btn-secondary';
+                btnViewTable.style.fontWeight = '600';
+            }
+            if (btnViewGraph) {
+                btnViewGraph.className = 'btn-secondary';
+                btnViewGraph.style.fontWeight = '600';
+            }
+            if (consolidatedArea) consolidatedArea.style.display = 'block';
+            if (printArea) printArea.style.display = 'none';
+            if (graphArea) graphArea.style.display = 'none';
+        } else if (mode === 'table') {
+            if (btnViewTable) {
+                btnViewTable.className = 'btn-primary';
+                btnViewTable.style.fontWeight = '700';
+            }
+            if (btnViewConsolidated) {
+                btnViewConsolidated.className = 'btn-secondary';
+                btnViewConsolidated.style.fontWeight = '600';
+            }
+            if (btnViewGraph) {
+                btnViewGraph.className = 'btn-secondary';
+                btnViewGraph.style.fontWeight = '600';
+            }
+            if (consolidatedArea) consolidatedArea.style.display = 'none';
+            if (printArea) printArea.style.display = 'block';
+            if (graphArea) graphArea.style.display = 'none';
+        } else if (mode === 'graph') {
+            if (btnViewGraph) {
+                btnViewGraph.className = 'btn-primary';
+                btnViewGraph.style.fontWeight = '700';
+            }
+            if (btnViewConsolidated) {
+                btnViewConsolidated.className = 'btn-secondary';
+                btnViewConsolidated.style.fontWeight = '600';
+            }
+            if (btnViewTable) {
+                btnViewTable.className = 'btn-secondary';
+                btnViewTable.style.fontWeight = '600';
+            }
+            if (consolidatedArea) consolidatedArea.style.display = 'none';
+            if (printArea) printArea.style.display = 'none';
+            if (graphArea) graphArea.style.display = 'block';
+        }
     }
+
+    btnViewConsolidated?.addEventListener('click', () => switchReportView('consolidated'));
+    btnViewTable?.addEventListener('click', () => switchReportView('table'));
+    btnViewGraph?.addEventListener('click', () => switchReportView('graph'));
 
     let attendanceChartInstance = null;
     let statusPieChartInstance = null;
@@ -4821,6 +5052,11 @@ async function fetchReports() {
         });
     }
 
+    const btnExportConsolidatedPdf = document.getElementById('btn-export-consolidated-pdf');
+    if (btnExportConsolidatedPdf) {
+        btnExportConsolidatedPdf.addEventListener('click', generateConsolidatedReportPdf);
+    }
+
     const btnExportStatementPdf = document.getElementById('btn-export-statement-pdf');
     if (btnExportStatementPdf) {
         btnExportStatementPdf.addEventListener('click', generateStatementPdf);
@@ -4829,37 +5065,100 @@ async function fetchReports() {
     const btnExportCSV = document.getElementById('btn-export-csv');
     if (btnExportCSV) {
         btnExportCSV.addEventListener('click', () => {
-            if (!window.currentReportData || window.currentReportData.length === 0) {
-                showToast('No data to export', true);
-                return;
+            const isConsolidated = document.getElementById('consolidated-view-area')?.style.display !== 'none';
+            const startDate = document.getElementById('report-start-date')?.value || '';
+            const endDate = document.getElementById('report-end-date')?.value || '';
+
+            if (isConsolidated) {
+                const consData = window.currentConsolidatedData;
+                if (!consData || consData.length === 0) {
+                    showToast('No consolidated data to export. Please generate a report first.', true);
+                    return;
+                }
+                let csvContent = "\uFEFF#,Admission No,Child Name,Total Sessions,Attended (Present),Absent / Cancelled,Attendance Rate %,Billed Amount (INR),Concession (INR),Paid Amount (INR),Pending Balance (INR),Payment Status\n";
+                
+                const sortedGroups = [...consData].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+                let sumFee = 0, sumConc = 0, sumPaid = 0, sumBal = 0, totSess = 0, totPres = 0, totAbs = 0;
+
+                sortedGroups.forEach((g, idx) => {
+                    const rate = g.totalSessions > 0 ? Math.round((g.presentCount / g.totalSessions) * 100) : 0;
+                    let status = 'Paid';
+                    if (g.sumBalance > 0) status = g.sumPaid > 0 ? 'Partial' : 'Pending';
+
+                    totSess += (g.totalSessions || 0);
+                    totPres += (g.presentCount || 0);
+                    totAbs += (g.absentCount || 0);
+                    sumFee += (g.sumFee || 0);
+                    sumConc += (g.sumConcession || 0);
+                    sumPaid += (g.sumPaid || 0);
+                    sumBal += (g.sumBalance || 0);
+
+                    const arr = [
+                        idx + 1,
+                        `"${(g.admission_no || '').replace(/"/g, '""')}"`,
+                        `"${(g.name || '').replace(/"/g, '""')}"`,
+                        g.totalSessions || 0,
+                        g.presentCount || 0,
+                        g.absentCount || 0,
+                        `"${rate}%"`,
+                        g.sumFee || 0,
+                        g.sumConcession || 0,
+                        g.sumPaid || 0,
+                        g.sumBalance || 0,
+                        `"${status}"`
+                    ];
+                    csvContent += arr.join(",") + "\n";
+                });
+
+                // Grand Totals row
+                const grandRate = totSess > 0 ? Math.round((totPres / totSess) * 100) : 0;
+                csvContent += `,"","GRAND TOTALS (${sortedGroups.length} Children)",${totSess},${totPres},${totAbs},"${grandRate}%",${sumFee},${sumConc},${sumPaid},${sumBal},"${sumBal <= 0 ? 'All Settled' : 'Pending Due'}"\n`;
+
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.setAttribute("href", url);
+                const filename = `Consolidated_Report_${startDate || 'All'}_to_${endDate || 'All'}.csv`;
+                link.setAttribute("download", filename);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
+                showToast('Consolidated CSV summary exported!');
+            } else {
+                if (!window.currentReportData || window.currentReportData.length === 0) {
+                    showToast('No report data to export. Please generate a report first.', true);
+                    return;
+                }
+                let csvContent = "\uFEFFDate,Admission No,Child Name,Time Slot,Therapy,Therapist,Status,Fee,Concession,Paid,Payment Mode,Balance\n";
+                window.currentReportData.forEach(row => {
+                    const arr = [
+                        row.date || '',
+                        `"${(row.child_admission_no || '').replace(/"/g, '""')}"`,
+                        `"${(row.child_name || '').replace(/"/g, '""')}"`,
+                        row.time_slot || '',
+                        `"${(row.therapy_type || '').replace(/"/g, '""')}"`,
+                        `"${(row.therapist_name || '').replace(/"/g, '""')}"`,
+                        row.status || 'Present',
+                        row.fee || 0,
+                        row.concession || 0,
+                        row.paid || 0,
+                        `"${(row.payment_mode || '').replace(/"/g, '""')}"`,
+                        row.balance || 0
+                    ];
+                    csvContent += arr.join(",") + "\n";
+                });
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.setAttribute("href", url);
+                link.setAttribute("download", `therapy_sessions_${startDate || 'Start'}_to_${endDate || 'End'}.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
+                showToast('Detailed Sessions CSV exported!');
             }
-            let csvContent = "\uFEFFDate,Admission No,Child Name,Time Slot,Therapy,Therapist,Status,Fee,Concession,Paid,Payment Mode,Balance\n";
-            window.currentReportData.forEach(row => {
-                const arr = [
-                    row.date || '',
-                    `"${(row.child_admission_no || '').replace(/"/g, '""')}"`,
-                    `"${(row.child_name || '').replace(/"/g, '""')}"`,
-                    row.time_slot || '',
-                    `"${(row.therapy_type || '').replace(/"/g, '""')}"`,
-                    `"${(row.therapist_name || '').replace(/"/g, '""')}"`,
-                    row.status || 'Present',
-                    row.fee || 0,
-                    row.concession || 0,
-                    row.paid || 0,
-                    `"${(row.payment_mode || '').replace(/"/g, '""')}"`,
-                    row.balance || 0
-                ];
-                csvContent += arr.join(",") + "\n";
-            });
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.setAttribute("href", url);
-            link.setAttribute("download", `therapy_report_${getLocalTodayDateString()}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            setTimeout(() => URL.revokeObjectURL(url), 1000);
         });
     }
 
@@ -7711,6 +8010,292 @@ async function fetchReports() {
         } catch (err) {
             console.error('Statement PDF error:', err);
             showToast('Error generating Statement PDF', true);
+        }
+    }
+
+    // ── PDF Generation: Consolidated Attendance & Payment Report ───
+    function generateConsolidatedReportPdf() {
+        const consData = window.currentConsolidatedData;
+        if (!consData || !consData.length) {
+            showToast('No report data available to export. Please generate a report first.', true);
+            return;
+        }
+        if (!window.jspdf || !window.jspdf.jsPDF) {
+            showToast('PDF generator library is still loading, please retry in a moment', true);
+            return;
+        }
+
+        try {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({
+                orientation: 'landscape',
+                unit: 'mm',
+                format: 'a4'
+            });
+
+            const pageWidth = doc.internal.pageSize.getWidth(); // 297mm
+            const pageHeight = doc.internal.pageSize.getHeight(); // 210mm
+            const margin = 8;
+            const availableWidth = pageWidth - (margin * 2); // 281mm
+
+            // 1. Deep Navy Header Banner
+            const bannerHeight = 22;
+            doc.setFillColor(30, 58, 138);
+            doc.rect(0, 0, pageWidth, bannerHeight, 'F');
+
+            doc.setTextColor(255, 255, 255);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(13);
+            doc.text('CHILD DEVELOPMENT & EARLY INTERVENTION CENTRE', pageWidth / 2, 9, { align: 'center' });
+
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(9);
+            doc.text('CONSOLIDATED THERAPY ATTENDANCE & PAYMENT REPORT', pageWidth / 2, 16, { align: 'center' });
+
+            // 2. Metadata Sub-bar
+            const startDate = document.getElementById('report-start-date')?.value || '';
+            const endDate = document.getElementById('report-end-date')?.value || '';
+            const childSelect = document.getElementById('report-child-select');
+            const childName = childSelect && childSelect.selectedIndex > 0 ? childSelect.options[childSelect.selectedIndex].text : 'All Children';
+            const therapistSelect = document.getElementById('report-therapist-select');
+            const therapistName = therapistSelect && therapistSelect.selectedIndex > 0 ? therapistSelect.options[therapistSelect.selectedIndex].text : 'All Therapists';
+
+            let periodText = 'All Records';
+            if (startDate && endDate && startDate === endDate) {
+                periodText = formatDisplayDate(startDate);
+            } else if (startDate && endDate) {
+                periodText = `${formatDisplayDate(startDate)} to ${formatDisplayDate(endDate)}`;
+            } else if (startDate) {
+                periodText = `From ${formatDisplayDate(startDate)}`;
+            }
+
+            doc.setFontSize(8);
+            doc.setTextColor(30, 41, 59);
+            doc.setFont('helvetica', 'bold');
+            doc.text(`Period: ${periodText}    |    Scope: ${childName}    |    Therapist: ${therapistName}`, margin, 28);
+
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(100, 116, 139);
+            doc.text(`Generated: ${new Date().toLocaleDateString('en-IN')} ${new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}`, pageWidth - margin, 28, { align: 'right' });
+
+            // Calculate Grand Totals
+            let grandTotalSessions = 0;
+            let grandTotalPresent = 0;
+            let grandTotalAbsent = 0;
+            let grandTotalFee = 0;
+            let grandTotalConcession = 0;
+            let grandTotalPaid = 0;
+            let grandTotalBal = 0;
+
+            const sortedGroups = [...consData].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+            sortedGroups.forEach(g => {
+                grandTotalSessions += (g.totalSessions || 0);
+                grandTotalPresent += (g.presentCount || 0);
+                grandTotalAbsent += (g.absentCount || 0);
+                grandTotalFee += (g.sumFee || 0);
+                grandTotalConcession += (g.sumConcession || 0);
+                grandTotalPaid += (g.sumPaid || 0);
+                grandTotalBal += (g.sumBalance || 0);
+            });
+
+            const overallAttRate = grandTotalSessions > 0 ? Math.round((grandTotalPresent / grandTotalSessions) * 100) : 0;
+
+            // 3. Top Executive KPI Metric Summary Boxes
+            const cardGap = 3.5;
+            const cardCount = 6;
+            const cardW = (availableWidth - ((cardCount - 1) * cardGap)) / cardCount;
+            const cardH = 14;
+            const cardY = 32;
+
+            const kpiCards = [
+                { label: 'TOTAL CHILDREN', val: String(sortedGroups.length), bg: [248, 250, 252], border: [203, 213, 225], textCol: [30, 58, 138] },
+                { label: 'TOTAL SESSIONS', val: `${grandTotalSessions} (${grandTotalPresent} Pres)`, bg: [248, 250, 252], border: [203, 213, 225], textCol: [30, 58, 138] },
+                { label: 'ATTENDANCE RATE', val: `${overallAttRate}%`, bg: [240, 253, 244], border: [187, 247, 208], textCol: [22, 101, 52] },
+                { label: 'TOTAL BILLED', val: `Rs. ${grandTotalFee.toLocaleString('en-IN')}`, bg: [248, 250, 252], border: [203, 213, 225], textCol: [30, 41, 59] },
+                { label: 'REVENUE COLLECTED', val: `Rs. ${grandTotalPaid.toLocaleString('en-IN')}`, bg: [240, 253, 244], border: [187, 247, 208], textCol: [22, 101, 52] },
+                { label: 'PENDING BALANCES', val: `Rs. ${grandTotalBal.toLocaleString('en-IN')}`, bg: grandTotalBal > 0 ? [254, 242, 242] : [240, 253, 244], border: grandTotalBal > 0 ? [254, 202, 202] : [187, 247, 208], textCol: grandTotalBal > 0 ? [220, 38, 38] : [22, 101, 52] }
+            ];
+
+            kpiCards.forEach((c, i) => {
+                const cx = margin + i * (cardW + cardGap);
+                doc.setFillColor(...c.bg);
+                doc.setDrawColor(...c.border);
+                doc.setLineWidth(0.3);
+                doc.roundedRect(cx, cardY, cardW, cardH, 1.5, 1.5, 'FD');
+
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(5.5);
+                doc.setTextColor(100, 116, 139);
+                doc.text(c.label, cx + cardW / 2, cardY + 4.5, { align: 'center' });
+
+                doc.setFontSize(8.5);
+                doc.setTextColor(...c.textCol);
+                doc.text(c.val, cx + cardW / 2, cardY + 10.5, { align: 'center' });
+            });
+
+            // 4. Consolidated Summary Table
+            const tableBody = sortedGroups.map((g, idx) => {
+                const rate = g.totalSessions > 0 ? Math.round((g.presentCount / g.totalSessions) * 100) : 0;
+                let statusText = 'Paid';
+                if (g.sumBalance > 0) {
+                    statusText = g.sumPaid > 0 ? 'Partial' : 'Pending';
+                }
+
+                return [
+                    idx + 1,
+                    (g.admission_no && g.admission_no !== '-') ? g.admission_no : '-',
+                    g.name || '-',
+                    g.totalSessions,
+                    g.presentCount,
+                    g.absentCount,
+                    rate + '%',
+                    'Rs. ' + (g.sumFee || 0).toLocaleString('en-IN'),
+                    'Rs. ' + (g.sumConcession || 0).toLocaleString('en-IN'),
+                    'Rs. ' + (g.sumPaid || 0).toLocaleString('en-IN'),
+                    'Rs. ' + (g.sumBalance || 0).toLocaleString('en-IN'),
+                    statusText
+                ];
+            });
+
+            // Grand Totals row
+            tableBody.push([
+                '', '', `GRAND TOTALS (${sortedGroups.length} Children):`,
+                grandTotalSessions,
+                grandTotalPresent,
+                grandTotalAbsent,
+                overallAttRate + '%',
+                'Rs. ' + grandTotalFee.toLocaleString('en-IN'),
+                'Rs. ' + grandTotalConcession.toLocaleString('en-IN'),
+                'Rs. ' + grandTotalPaid.toLocaleString('en-IN'),
+                'Rs. ' + grandTotalBal.toLocaleString('en-IN'),
+                grandTotalBal <= 0 ? 'All Settled' : 'Pending Due'
+            ]);
+
+            const colStyles = {
+                0:  { cellWidth: 8,  halign: 'center' }, // #
+                1:  { cellWidth: 20, halign: 'center' }, // Adm No
+                2:  { cellWidth: 48, halign: 'left' },   // Child Name
+                3:  { cellWidth: 18, halign: 'center' }, // Sessions
+                4:  { cellWidth: 18, halign: 'center' }, // Attended
+                5:  { cellWidth: 18, halign: 'center' }, // Absent
+                6:  { cellWidth: 18, halign: 'center' }, // Att Rate
+                7:  { cellWidth: 26, halign: 'right' },  // Fee
+                8:  { cellWidth: 26, halign: 'right' },  // Concession
+                9:  { cellWidth: 26, halign: 'right' },  // Paid
+                10: { cellWidth: 26, halign: 'right' },  // Balance
+                11: { cellWidth: 29, halign: 'center' }  // Status
+            };
+
+            doc.autoTable({
+                startY: cardY + cardH + 5,
+                tableWidth: availableWidth,
+                margin: { left: margin, right: margin },
+                head: [[
+                    '#', 'Adm No', 'Child Name', 'Sessions', 'Attended', 'Absent', 'Att. Rate',
+                    'Billed (INR)', 'Concession (INR)', 'Paid (INR)', 'Balance (INR)', 'Status'
+                ]],
+                body: tableBody,
+                theme: 'grid',
+                styles: {
+                    fontSize: 7.5,
+                    cellPadding: 2,
+                    textColor: [30, 41, 59],
+                    overflow: 'linebreak',
+                    lineColor: [226, 232, 240],
+                    lineWidth: 0.2
+                },
+                headStyles: {
+                    fillColor: [30, 58, 138],
+                    textColor: [255, 255, 255],
+                    fontStyle: 'bold',
+                    halign: 'center',
+                    fontSize: 8,
+                    cellPadding: 2.5
+                },
+                alternateRowStyles: {
+                    fillColor: [248, 250, 252]
+                },
+                columnStyles: colStyles,
+                didParseCell: (hookData) => {
+                    // Style last row (Grand totals)
+                    if (hookData.row.index === tableBody.length - 1) {
+                        hookData.cell.styles.fontStyle = 'bold';
+                        hookData.cell.styles.fillColor = [241, 245, 249];
+                        if (hookData.column.index === 10) {
+                            hookData.cell.styles.textColor = grandTotalBal > 0 ? [220, 38, 38] : [22, 101, 52];
+                        }
+                        if (hookData.column.index === 9) {
+                            hookData.cell.styles.textColor = [22, 101, 52];
+                        }
+                    } else if (hookData.section === 'body') {
+                        if (hookData.column.index === 10) {
+                            const rowObj = sortedGroups[hookData.row.index];
+                            if (rowObj && rowObj.sumBalance > 0) {
+                                hookData.cell.styles.textColor = [220, 38, 38];
+                                hookData.cell.styles.fontStyle = 'bold';
+                            }
+                        }
+                        if (hookData.column.index === 4) {
+                            hookData.cell.styles.textColor = [22, 101, 52];
+                            hookData.cell.styles.fontStyle = 'bold';
+                        }
+                        if (hookData.column.index === 11) {
+                            const val = hookData.cell.raw;
+                            if (val === 'Paid' || val === 'Fully Paid') {
+                                hookData.cell.styles.textColor = [22, 101, 52];
+                                hookData.cell.styles.fontStyle = 'bold';
+                            } else if (val === 'Partial') {
+                                hookData.cell.styles.textColor = [180, 83, 9];
+                                hookData.cell.styles.fontStyle = 'bold';
+                            } else if (val === 'Pending') {
+                                hookData.cell.styles.textColor = [220, 38, 38];
+                                hookData.cell.styles.fontStyle = 'bold';
+                            }
+                        }
+                    }
+                },
+                didDrawPage: (pageData) => {
+                    doc.setFontSize(7.5);
+                    doc.setTextColor(148, 163, 184);
+                    doc.text(`Page ${pageData.pageNumber}`, pageWidth - margin, pageHeight - 6, { align: 'right' });
+                    doc.text('Child Development & Early Intervention Centre — Official Consolidated Summary Report', margin, pageHeight - 6);
+                }
+            });
+
+            // 5. Official Verification & Signatures Block
+            let sigY = doc.lastAutoTable.finalY + 12;
+            if (sigY + 25 > pageHeight - 12) {
+                doc.addPage();
+                sigY = 20;
+            }
+
+            const sigLineWidth = 60;
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(7.5);
+            doc.setTextColor(100, 116, 139);
+
+            // Left Signature: Prepared By
+            doc.text('Prepared By:', margin, sigY);
+            doc.setDrawColor(148, 163, 184);
+            doc.setLineWidth(0.3);
+            doc.line(margin, sigY + 9, margin + sigLineWidth, sigY + 9);
+            doc.text('Clinical Administrator / Accounts Officer', margin, sigY + 13);
+
+            // Right Signature: Verified & Approved
+            const rightSigX = pageWidth - margin - sigLineWidth;
+            doc.text('Verified & Approved By:', rightSigX, sigY);
+            doc.line(rightSigX, sigY + 9, pageWidth - margin, sigY + 9);
+            doc.text('Centre Director / Authorized Management', rightSigX, sigY + 13);
+
+            const safeStart = (startDate || 'All').replace(/[^a-zA-Z0-9]/g, '_');
+            const safeEnd = (endDate || 'All').replace(/[^a-zA-Z0-9]/g, '_');
+            const filename = `Consolidated_Report_${safeStart}_to_${safeEnd}.pdf`;
+            saveAndOpenPdf(doc, filename);
+            showToast('Consolidated Report PDF opened & downloaded!');
+        } catch (err) {
+            console.error('Consolidated Report PDF error:', err);
+            showToast('Error generating Consolidated Report PDF', true);
         }
     }
 

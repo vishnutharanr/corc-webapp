@@ -16,7 +16,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="styles.css?v=52">
+    <link rel="stylesheet" href="styles.css?v=53">
 </head>
 
 <body>
@@ -4542,12 +4542,26 @@
 
                 <!-- Dashboard Metrics -->
                 <div class="metrics-dashboard"
-                    style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                    style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                    <div class="metric-card"
+                        style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center;">
+                        <h4 style="margin: 0; color: var(--text-light); font-size: 0.9rem;">Total Children</h4>
+                        <div id="metric-total-children"
+                            style="font-size: 1.8rem; font-weight: bold; color: #0284c7; margin-top: 5px;">0
+                        </div>
+                    </div>
                     <div class="metric-card"
                         style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center;">
                         <h4 style="margin: 0; color: var(--text-light); font-size: 0.9rem;">Total Sessions</h4>
                         <div id="metric-total-sessions"
                             style="font-size: 1.8rem; font-weight: bold; color: var(--primary); margin-top: 5px;">0
+                        </div>
+                    </div>
+                    <div class="metric-card"
+                        style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center;">
+                        <h4 style="margin: 0; color: var(--text-light); font-size: 0.9rem;">Attendance Rate</h4>
+                        <div id="metric-attendance-rate"
+                            style="font-size: 1.8rem; font-weight: bold; color: #16a34a; margin-top: 5px;">0%
                         </div>
                     </div>
                     <div class="metric-card"
@@ -4561,7 +4575,7 @@
                         style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center;">
                         <h4 style="margin: 0; color: var(--text-light); font-size: 0.9rem;">Revenue Collected</h4>
                         <div id="metric-revenue"
-                            style="font-size: 1.8rem; font-weight: bold; color: var(--text-dark); margin-top: 5px;">₹0
+                            style="font-size: 1.8rem; font-weight: bold; color: #166534; margin-top: 5px;">₹0
                         </div>
                     </div>
                     <div class="metric-card"
@@ -4574,10 +4588,12 @@
                 </div>
 
                 <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; background: #f8fafc; border: 1px solid #e2e8f0; padding: 10px 14px; border-radius: 8px;">
-                    <span style="font-weight: 700; color: #334155; font-size: 0.88rem;">📅 View Therapy Date:</span>
+                    <span style="font-weight: 700; color: #334155; font-size: 0.88rem;">📅 Quick Date Range:</span>
                     <button type="button" id="btn-report-preset-today" class="btn-sm btn-primary" style="padding: 5px 14px; font-weight: 700; border-radius: 6px; cursor: pointer;">Today</button>
                     <button type="button" id="btn-report-preset-yesterday" class="btn-sm btn-secondary" style="padding: 5px 14px; font-weight: 600; border-radius: 6px; background: #fff; cursor: pointer;">Yesterday</button>
-                    <button type="button" id="btn-report-toggle-custom" class="btn-sm btn-secondary" style="padding: 5px 14px; font-weight: 600; border-radius: 6px; background: #fff; cursor: pointer;">Date Range ▾</button>
+                    <button type="button" id="btn-report-preset-month" class="btn-sm btn-secondary" style="padding: 5px 14px; font-weight: 600; border-radius: 6px; background: #fff; cursor: pointer;">This Month</button>
+                    <button type="button" id="btn-report-preset-last-month" class="btn-sm btn-secondary" style="padding: 5px 14px; font-weight: 600; border-radius: 6px; background: #fff; cursor: pointer;">Last Month</button>
+                    <button type="button" id="btn-report-toggle-custom" class="btn-sm btn-secondary" style="padding: 5px 14px; font-weight: 600; border-radius: 6px; background: #fff; cursor: pointer;">Custom Range ▾</button>
                 </div>
 
                 <div class="reports-toolbar"
@@ -4587,12 +4603,12 @@
                         <input type="date" id="report-single-date" style="font-weight: 600;">
                     </div>
                     <div class="input-group" id="report-start-date-group" style="margin-bottom: 0; display: none;">
-                        <label for="report-start-date">Start Date</label>
-                        <input type="date" id="report-start-date">
+                        <label for="report-start-date">From Date (Start)</label>
+                        <input type="date" id="report-start-date" style="font-weight: 600;">
                     </div>
                     <div class="input-group" id="report-end-date-group" style="margin-bottom: 0; display: none;">
-                        <label for="report-end-date">End Date</label>
-                        <input type="date" id="report-end-date">
+                        <label for="report-end-date">To Date (End)</label>
+                        <input type="date" id="report-end-date" style="font-weight: 600;">
                     </div>
                     <div class="input-group" style="margin-bottom: 0; min-width: 150px;">
                         <label>Child</label>
@@ -4622,7 +4638,8 @@
                         <label for="report-pending-balance"
                             style="margin: 0; font-size: 0.9rem; cursor: pointer;">Pending Balances</label>
                     </div>
-                    <button id="btn-generate-report" class="btn-primary">Generate Report</button>
+                    <button id="btn-generate-report" class="btn-primary" style="font-weight: 700;">Generate Report</button>
+                    <button id="btn-export-consolidated-pdf" class="btn-primary" style="background: #1e3a8a; border-color: #1e3a8a; color: #fff; font-weight: 600;" title="Export Executive Consolidated PDF Summary">📊 Consolidated PDF</button>
                     <div style="display: inline-flex; align-items: center; gap: 4px;">
                         <button id="btn-export-statement-pdf" class="btn-secondary" title="Export Statement PDF">📄 Statement PDF</button>
                         <select id="statement-pdf-format" style="padding: 6px 8px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.8rem; font-weight: 500; background: white; color: #334155; cursor: pointer; height: 38px;" title="Statement Document Format">
@@ -4635,10 +4652,43 @@
                     <button id="btn-print-receipt" class="btn-secondary">🖨 Print</button>
                 </div>
 
+                <div class="view-toggle" style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; align-items: center;">
+                    <span style="font-weight: 700; color: #334155; font-size: 0.88rem; margin-right: 4px;">📑 View Mode:</span>
+                    <button id="btn-view-consolidated" class="btn-primary" style="font-weight: 700; padding: 7px 16px;">📊 Consolidated Summary</button>
+                    <button id="btn-view-table" class="btn-secondary" style="font-weight: 600; padding: 7px 16px;">📋 Detailed Sessions</button>
+                    <button id="btn-view-graph" class="btn-secondary" style="font-weight: 600; padding: 7px 16px;">📈 Graphical Analytics</button>
+                </div>
 
-                <div class="view-toggle" style="display: flex; gap: 10px; margin-bottom: 15px;">
-                    <button id="btn-view-table" class="btn-primary">Table View</button>
-                    <button id="btn-view-graph" class="btn-secondary">Graphical View</button>
+                <!-- Consolidated Summary View Area -->
+                <div id="consolidated-view-area" style="margin-bottom: 25px;">
+                    <div style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; overflow-x: auto; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                        <table class="records-table" style="width: 100%; font-size: 0.9rem; border-collapse: collapse;">
+                            <thead>
+                                <tr style="background: #1e3a8a; color: white;">
+                                    <th style="padding: 10px 8px; text-align: center; width: 42px;">#</th>
+                                    <th style="padding: 10px 10px; text-align: left; width: 100px;">Adm No</th>
+                                    <th style="padding: 10px 12px; text-align: left;">Child Name</th>
+                                    <th style="padding: 10px 8px; text-align: center; width: 85px;">Sessions</th>
+                                    <th style="padding: 10px 8px; text-align: center; width: 85px;">Attended</th>
+                                    <th style="padding: 10px 8px; text-align: center; width: 85px;">Absent</th>
+                                    <th style="padding: 10px 8px; text-align: center; width: 90px;">Att. Rate</th>
+                                    <th style="padding: 10px 10px; text-align: right; width: 100px;">Billed (₹)</th>
+                                    <th style="padding: 10px 10px; text-align: right; width: 100px;">Concession (₹)</th>
+                                    <th style="padding: 10px 10px; text-align: right; width: 100px;">Paid (₹)</th>
+                                    <th style="padding: 10px 10px; text-align: right; width: 110px;">Balance (₹)</th>
+                                    <th style="padding: 10px 10px; text-align: center; width: 100px;">Status</th>
+                                    <th style="padding: 10px 8px; text-align: center; width: 90px;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="consolidated-table-body">
+                                <tr>
+                                    <td colspan="13" style="text-align: center; padding: 25px; color: #64748b;">Click "Generate Report" to view consolidated attendance & payment summary.</td>
+                                </tr>
+                            </tbody>
+                            <tfoot id="consolidated-table-foot" style="background: #f8fafc; font-weight: 700; border-top: 2px solid #cbd5e1;">
+                            </tfoot>
+                        </table>
+                    </div>
                 </div>
 
                 <div id="graph-area" style="display: none; margin-bottom: 20px;">
@@ -4662,7 +4712,8 @@
                     </div>
                 </div>
 
-                <div id="print-area">
+                <!-- Detailed Session-by-Session View Area -->
+                <div id="print-area" style="display: none;">
                     <table class="records-table" style="width: 100%; font-size: 0.9rem;">
                         <thead>
                             <tr>
@@ -5527,7 +5578,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="app.js?v=52"></script>
+    <script src="app.js?v=53"></script>
 </body>
 
 </html>

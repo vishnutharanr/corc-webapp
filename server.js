@@ -211,7 +211,7 @@ async function seedDefaultTherapyFees() {
             SELECT DISTINCT therapy_type, fee FROM therapists 
             WHERE therapy_type IS NOT NULL AND therapy_type != ''
             ON CONFLICT (therapy_type) DO NOTHING
-        `).catch(() => {});
+        `).catch(() => { });
         console.log('Default therapy fees checked/seeded successfully.');
     } catch (e) {
         console.error('Error seeding default therapy fees:', e.message);
@@ -335,7 +335,7 @@ function getUserRoleFromReq(req) {
             try {
                 const decoded = jwt.verify(token, JWT_SECRET);
                 role = decoded?.role;
-            } catch (e) {}
+            } catch (e) { }
         }
     }
     if (role === 'asd') return 'autism';
@@ -381,9 +381,9 @@ app.post('/api/login', async (req, res) => {
                 (u === 'asd' && (password === 'asd' || password === 'autism'))) {
                 const hash = await bcrypt.hash(password, 10);
                 const role = (u === 'asd' || u === 'autism') ? 'autism' : u;
-                const name = u === 'admin' ? 'Administrator' : 
-                    (u === 'staff' ? 'Staff (Under 8)' : 
-                    (u === 'staff8' ? 'Staff (8 & Above)' : 'Staff (Autism / ASD)'));
+                const name = u === 'admin' ? 'Administrator' :
+                    (u === 'staff' ? 'Staff (Under 8)' :
+                        (u === 'staff8' ? 'Staff (8 & Above)' : 'Staff (Autism / ASD)'));
                 const inserted = await pool.query(
                     `INSERT INTO users (username, password_hash, role, full_name) VALUES ($1, $2, $3, $4) RETURNING *`,
                     [u, hash, role, name]
@@ -837,7 +837,7 @@ app.post('/api/assessments', async (req, res) => {
     try {
         const parsedData = typeof data === 'string' ? JSON.parse(data) : data;
         const staticAge = (parsedData && parsedData.age_at_creation && String(parsedData.age_at_creation).trim()) ? String(parsedData.age_at_creation).trim() :
-                         (parsedData && parsedData.age && String(parsedData.age).trim()) ? String(parsedData.age).trim() : null;
+            (parsedData && parsedData.age && String(parsedData.age).trim()) ? String(parsedData.age).trim() : null;
         if (parsedData && staticAge) {
             parsedData.age_at_creation = staticAge;
             parsedData.age = staticAge;
@@ -948,7 +948,7 @@ app.put('/api/assessments/:id', async (req, res) => {
     try {
         const parsedData = typeof data === 'string' ? JSON.parse(data) : data;
         const staticAge = (parsedData && parsedData.age_at_creation && String(parsedData.age_at_creation).trim()) ? String(parsedData.age_at_creation).trim() :
-                         (parsedData && parsedData.age && String(parsedData.age).trim()) ? String(parsedData.age).trim() : null;
+            (parsedData && parsedData.age && String(parsedData.age).trim()) ? String(parsedData.age).trim() : null;
         if (parsedData && staticAge) {
             parsedData.age_at_creation = staticAge;
             parsedData.age = staticAge;
