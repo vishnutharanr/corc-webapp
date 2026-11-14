@@ -201,20 +201,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 li[data-target="therapies-settings"], li[data-target="therapists-settings"], li[data-target="user-management"] {
                     display: none !important;
                 }
-                .edit-attendance {
-                    pointer-events: none !important;
-                    border: none !important;
-                    background: transparent !important;
-                    -moz-appearance: textfield;
-                }
-                .edit-attendance::-webkit-outer-spin-button,
-                .edit-attendance::-webkit-inner-spin-button {
-                    -webkit-appearance: none;
-                    margin: 0;
-                }
-                .btn-delete-attendance {
-                    display: none !important;
-                }
             `;
             if (isAsd) {
                 // In ASD login, hide conduct buttons for non-ASD forms in summaries
@@ -4181,25 +4167,38 @@ document.addEventListener('DOMContentLoaded', () => {
                 const id = tr.getAttribute('data-attendance-id');
                 if (!id) return;
 
-                const fee = parseFloat(tr.querySelector('[data-field="fee"]').value) || 0;
-                const concession = parseFloat(tr.querySelector('[data-field="concession"]').value) || 0;
-                const paid = parseFloat(tr.querySelector('[data-field="paid"]').value) || 0;
-                let balance = parseFloat(tr.querySelector('[data-field="balance"]').value) || 0;
+                const fee = parseFloat(tr.querySelector('[data-field="fee"]')?.value) || 0;
+                const concession = parseFloat(tr.querySelector('[data-field="concession"]')?.value) || 0;
+                const paid = parseFloat(tr.querySelector('[data-field="paid"]')?.value) || 0;
+                let balance = parseFloat(tr.querySelector('[data-field="balance"]')?.value) || 0;
+                const payment_mode = tr.querySelector('[data-field="payment_mode"]')?.value || 'Cash';
+                const status = tr.querySelector('[data-field="status"]')?.value || 'Present';
 
-                if (e.target.dataset.field !== 'balance') {
-                    balance = fee - concession - paid;
+                if (e.target.dataset.field === 'status') {
+                    const statusSel = tr.querySelector('[data-field="status"]');
+                    if (statusSel) {
+                        const sVal = statusSel.value;
+                        statusSel.style.color = sVal === 'Present' ? '#166534' : (sVal && sVal.includes('Cancelled') ? '#854d0e' : '#991b1b');
+                        statusSel.style.background = sVal === 'Present' ? '#dcfce7' : (sVal && sVal.includes('Cancelled') ? '#fef08a' : '#fee2e2');
+                    }
+                }
+
+                if (e.target.dataset.field !== 'balance' && e.target.dataset.field !== 'payment_mode' && e.target.dataset.field !== 'status') {
+                    balance = Math.max(0, fee - concession - paid);
                     const balInput = tr.querySelector('[data-field="balance"]');
-                    balInput.value = balance;
-                    if (balance > 0) {
-                        balInput.style.borderColor = 'var(--danger)';
-                        balInput.style.color = 'var(--danger)';
-                        balInput.style.fontWeight = 'bold';
-                        balInput.style.background = '#fef2f2';
-                    } else {
-                        balInput.style.borderColor = '#ccc';
-                        balInput.style.color = '';
-                        balInput.style.fontWeight = '';
-                        balInput.style.background = '';
+                    if (balInput) {
+                        balInput.value = balance;
+                        if (balance > 0) {
+                            balInput.style.borderColor = 'var(--danger)';
+                            balInput.style.color = 'var(--danger)';
+                            balInput.style.fontWeight = 'bold';
+                            balInput.style.background = '#fef2f2';
+                        } else {
+                            balInput.style.borderColor = '#ccc';
+                            balInput.style.color = '';
+                            balInput.style.fontWeight = '';
+                            balInput.style.background = '';
+                        }
                     }
                 }
 
@@ -4210,10 +4209,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     const allRows = reportsTableBody.querySelectorAll(`.${childClass}[data-attendance-id]`);
                     let sumF = 0, sumC = 0, sumP = 0, sumB = 0;
                     allRows.forEach(r => {
-                        sumF += parseFloat(r.querySelector('[data-field="fee"]').value) || 0;
-                        sumC += parseFloat(r.querySelector('[data-field="concession"]').value) || 0;
-                        sumP += parseFloat(r.querySelector('[data-field="paid"]').value) || 0;
-                        sumB += parseFloat(r.querySelector('[data-field="balance"]').value) || 0;
+                        sumF += parseFloat(r.querySelector('[data-field="fee"]')?.value) || 0;
+                        sumC += parseFloat(r.querySelector('[data-field="concession"]')?.value) || 0;
+                        sumP += parseFloat(r.querySelector('[data-field="paid"]')?.value) || 0;
+                        sumB += parseFloat(r.querySelector('[data-field="balance"]')?.value) || 0;
                     });
                     
                     const headerRow = reportsTableBody.querySelector(`.accordion-header[data-child-index="${idx}"]`);
@@ -4222,8 +4221,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         headerRow.querySelector('.header-concession').innerHTML = `<strong>${sumC}</strong>`;
                         headerRow.querySelector('.header-paid').innerHTML = `<strong>${sumP}</strong>`;
                         const hBal = headerRow.querySelector('.header-balance');
-                        hBal.innerHTML = `<strong>${sumB}</strong>`;
-                        hBal.style.color = sumB > 0 ? 'var(--danger)' : '';
+                        if (hBal) {
+                            hBal.innerHTML = `<strong>₹${sumB}</strong>`;
+                            hBal.style.color = sumB > 0 ? 'var(--danger)' : '';
+                        }
                     }
 
                     const footerRow = reportsTableBody.querySelector(`.${childClass}.footer-row`);
@@ -4232,8 +4233,24 @@ document.addEventListener('DOMContentLoaded', () => {
                         footerRow.querySelector('.footer-concession').textContent = sumC;
                         footerRow.querySelector('.footer-paid').textContent = sumP;
                         const fBal = footerRow.querySelector('.footer-balance');
-                        fBal.textContent = sumB;
-                        fBal.style.color = sumB > 0 ? 'var(--danger)' : '';
+                        if (fBal) {
+                            fBal.textContent = sumB;
+                            fBal.style.color = sumB > 0 ? 'var(--danger)' : '';
+                        }
+                    }
+                }
+
+                // Update row in currentReportData cache for instant CSV & PDF export consistency
+                if (window.currentReportData) {
+                    const rowObj = window.currentReportData.find(r => String(r.id) === String(id));
+                    if (rowObj) {
+                        rowObj.fee = fee;
+                        rowObj.concession = concession;
+                        rowObj.paid = paid;
+                        rowObj.balance = balance;
+                        rowObj.to_be_paid = Math.max(0, fee - concession);
+                        rowObj.payment_mode = payment_mode;
+                        rowObj.status = status;
                     }
                 }
 
@@ -4241,7 +4258,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     const res = await fetch(`/api/reports/attendance/${id}`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ fee, concession, paid, balance, to_be_paid: Math.max(0, fee - concession) })
+                        body: JSON.stringify({ 
+                            fee, 
+                            concession, 
+                            paid, 
+                            balance, 
+                            to_be_paid: Math.max(0, fee - concession),
+                            payment_mode,
+                            status
+                        })
                     });
                     if (res.ok) {
                         showToast('Record updated successfully');
@@ -4469,6 +4494,17 @@ async function fetchReports() {
                         ? `${row.therapy_type}<br><small style="color:gray;">${row.sub_therapy}</small>`
                         : row.therapy_type;
 
+                    const sVal = row.status || 'Present';
+                    const sColor = sVal === 'Present' ? '#166534' : (sVal.includes('Cancelled') ? '#854d0e' : '#991b1b');
+                    const sBg = sVal === 'Present' ? '#dcfce7' : (sVal.includes('Cancelled') ? '#fef08a' : '#fee2e2');
+
+                    const pMode = row.payment_mode || 'Cash';
+                    const standardModes = ['Cash', 'GPay', 'PhonePe', 'Paytm', 'UPI', 'Card', 'Bank Transfer', 'Cheque', 'Other'];
+                    let modeOptions = standardModes.map(m => `<option value="${m}" ${pMode === m ? 'selected' : ''}>${m}</option>`).join('');
+                    if (!standardModes.includes(pMode) && pMode !== '-') {
+                        modeOptions += `<option value="${escapeHtml(pMode)}" selected>${escapeHtml(pMode)}</option>`;
+                    }
+
                     html += `<tr class="accordion-content accordion-child-${index}" style="display: none; background: #fff;" data-attendance-id="${row.id}">
                         <td>${formatDisplayDate(row.date)}</td>
                         <td style="color: #cbd5e1; text-align: center;">&#8627;</td>
@@ -4476,14 +4512,20 @@ async function fetchReports() {
                         <td>${therapyDisplay}</td>
                         <td>${row.therapist_name || '-'}</td>
                         <td>
-                            <span style="display:inline-block; padding:2px 6px; border-radius:4px; font-size:0.8rem; background:${row.status==='Present'?'#dcfce7':row.status.includes('Cancelled')?'#fef08a':'#fee2e2'}; color:${row.status==='Present'?'#166534':row.status.includes('Cancelled')?'#854d0e':'#991b1b'};">
-                                ${row.status || 'Present'}
-                            </span>
+                            <select class="edit-attendance" data-field="status" style="padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; font-weight: 600; cursor: pointer; border: 1px solid #cbd5e1; background: ${sBg}; color: ${sColor};">
+                                <option value="Present" ${sVal === 'Present' ? 'selected' : ''}>Present</option>
+                                <option value="Absent" ${sVal === 'Absent' ? 'selected' : ''}>Absent</option>
+                                <option value="Cancelled" ${sVal.includes('Cancelled') ? 'selected' : ''}>Cancelled</option>
+                            </select>
                         </td>
                         <td><input type="number" class="edit-attendance" data-field="fee" value="${row.fee || 0}" style="width: 70px; padding: 2px 5px; border: 1px solid #ccc; border-radius: 4px;"></td>
                         <td><input type="number" class="edit-attendance" data-field="concession" value="${row.concession || 0}" style="width: 70px; padding: 2px 5px; border: 1px solid #ccc; border-radius: 4px;"></td>
                         <td><input type="number" class="edit-attendance" data-field="paid" value="${row.paid || 0}" style="width: 70px; padding: 2px 5px; border: 1px solid #ccc; border-radius: 4px;"></td>
-                        <td>${row.payment_mode || '-'}</td>
+                        <td>
+                            <select class="edit-attendance" data-field="payment_mode" style="padding: 2px 5px; border-radius: 4px; font-size: 0.82rem; border: 1px solid #ccc; background: #fff; cursor: pointer; max-width: 110px;">
+                                ${modeOptions}
+                            </select>
+                        </td>
                         <td><input type="number" class="edit-attendance" data-field="balance" value="${row.balance || 0}" style="width: 70px; padding: 2px 5px; border: 1px solid #ccc; border-radius: 4px; ${row.balance > 0 ? 'border-color:var(--danger);color:var(--danger);font-weight:bold;background:#fef2f2;' : ''}"></td>
                         <td style="text-align: center; white-space: nowrap;">
                             <button type="button" class="btn-receipt-attendance" data-row-json="${encodeURIComponent(JSON.stringify(row))}" style="background: none; border: none; color: #2563eb; cursor: pointer; font-size: 1.05rem; margin-right: 4px;" title="Print Session Receipt PDF">🧾</button>
@@ -4530,7 +4572,16 @@ async function fetchReports() {
             tbody.querySelectorAll('.btn-receipt-attendance').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     e.stopPropagation();
+                    const tr = btn.closest('tr');
                     const rowData = JSON.parse(decodeURIComponent(btn.getAttribute('data-row-json')));
+                    if (tr) {
+                        rowData.fee = parseFloat(tr.querySelector('[data-field="fee"]')?.value) || rowData.fee;
+                        rowData.concession = parseFloat(tr.querySelector('[data-field="concession"]')?.value) || rowData.concession;
+                        rowData.paid = parseFloat(tr.querySelector('[data-field="paid"]')?.value) || rowData.paid;
+                        rowData.balance = parseFloat(tr.querySelector('[data-field="balance"]')?.value) || rowData.balance;
+                        rowData.payment_mode = tr.querySelector('[data-field="payment_mode"]')?.value || rowData.payment_mode;
+                        rowData.status = tr.querySelector('[data-field="status"]')?.value || rowData.status;
+                    }
                     generateSingleReceiptPdf(rowData);
                 });
             });

@@ -1087,7 +1087,7 @@ app.get('/api/reports/attendance', async (req, res) => {
 });
 
 app.put('/api/reports/attendance/:id', async (req, res) => {
-    const { fee, concession, paid, balance, to_be_paid } = req.body;
+    const { fee, concession, paid, balance, to_be_paid, payment_mode, status } = req.body;
     try {
         const numFee = parseFloat(fee) || 0;
         const numConcession = parseFloat(concession) || 0;
@@ -1095,10 +1095,23 @@ app.put('/api/reports/attendance/:id', async (req, res) => {
         const numPaid = parseFloat(paid) || 0;
         const numBalance = balance !== undefined && balance !== '' ? (parseFloat(balance) || 0) : (numToBePaid - numPaid);
 
-        const result = await pool.query(
-            `UPDATE therapy_attendance SET fee = $1, concession = $2, to_be_paid = $3, paid = $4, balance = $5 WHERE id = $6`,
-            [numFee, numConcession, numToBePaid, numPaid, numBalance, req.params.id]
-        );
+        let query = `UPDATE therapy_attendance SET fee = $1, concession = $2, to_be_paid = $3, paid = $4, balance = $5`;
+        const params = [numFee, numConcession, numToBePaid, numPaid, numBalance];
+        let pIdx = 6;
+
+        if (payment_mode !== undefined) {
+            query += `, payment_mode = $${pIdx++}`;
+            params.push(payment_mode);
+        }
+        if (status !== undefined) {
+            query += `, status = $${pIdx++}`;
+            params.push(status);
+        }
+
+        query += ` WHERE id = $${pIdx}`;
+        params.push(req.params.id);
+
+        const result = await pool.query(query, params);
         if (result.rowCount === 0) return res.status(404).json({ error: 'Record not found' });
         res.json({ success: true, changes: result.rowCount });
     } catch (err) {
