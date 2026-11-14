@@ -16,7 +16,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="styles.css?v=53">
+    <link rel="stylesheet" href="styles.css?v=54">
 </head>
 
 <body>
@@ -4441,18 +4441,22 @@
                 </div>
 
                 <!-- Attendance Dashboard Metrics -->
-                <div class="metrics-dashboard" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                <div class="metrics-dashboard" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 20px;">
                     <div class="metric-card" style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center;">
-                        <h4 style="margin: 0; color: var(--text-light); font-size: 0.9rem;">Total Scheduled</h4>
+                        <h4 style="margin: 0; color: var(--text-light); font-size: 0.9rem;">Scheduled Children</h4>
+                        <div id="att-metric-children-total" style="font-size: 1.8rem; font-weight: bold; color: #0284c7; margin-top: 5px;">0</div>
+                    </div>
+                    <div class="metric-card" style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center;">
+                        <h4 style="margin: 0; color: var(--text-light); font-size: 0.9rem;">Children Present</h4>
+                        <div id="att-metric-children-present" style="font-size: 1.8rem; font-weight: bold; color: #16a34a; margin-top: 5px;">0</div>
+                    </div>
+                    <div class="metric-card" style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center;">
+                        <h4 style="margin: 0; color: var(--text-light); font-size: 0.9rem;">Total Sessions</h4>
                         <div id="att-metric-total" style="font-size: 1.8rem; font-weight: bold; color: var(--primary); margin-top: 5px;">0</div>
                     </div>
                     <div class="metric-card" style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center;">
-                        <h4 style="margin: 0; color: var(--text-light); font-size: 0.9rem;">Present / Attended</h4>
+                        <h4 style="margin: 0; color: var(--text-light); font-size: 0.9rem;">Present Sessions</h4>
                         <div id="att-metric-present" style="font-size: 1.8rem; font-weight: bold; color: #16a34a; margin-top: 5px;">0</div>
-                    </div>
-                    <div class="metric-card" style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center;">
-                        <h4 style="margin: 0; color: var(--text-light); font-size: 0.9rem;">Absent</h4>
-                        <div id="att-metric-absent" style="font-size: 1.8rem; font-weight: bold; color: #dc2626; margin-top: 5px;">0</div>
                     </div>
                     <div class="metric-card" style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center;">
                         <h4 style="margin: 0; color: var(--text-light); font-size: 0.9rem;">Attendance Rate</h4>
@@ -4513,6 +4517,16 @@
                     <button type="button" id="btn-print-attendance" class="btn-secondary">🖨 Print Sheet</button>
                 </div>
 
+                <div class="view-toggle" style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; align-items: center;">
+                    <span style="font-weight: 700; color: #334155; font-size: 0.88rem; margin-right: 4px;">📑 Attendance View:</span>
+                    <button type="button" id="btn-att-view-all" class="btn-primary" style="font-weight: 700; padding: 7px 16px;">
+                        📋 All Scheduled Sessions
+                    </button>
+                    <button type="button" id="btn-att-view-present" class="btn-secondary" style="font-weight: 600; padding: 7px 16px;">
+                        🟢 Children Present <span id="att-present-children-count" style="margin-left: 6px; background: #16a34a; color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.78rem; font-weight: 700;">0</span>
+                    </button>
+                </div>
+
                 <!-- Clean Clinical Attendance Table with Child Folder / Accordion Rows -->
                 <div id="attendance-print-area">
                     <table class="records-table" style="width: 100%; font-size: 0.9rem;">
@@ -4530,6 +4544,41 @@
                             <!-- Populated dynamically with expandable child folders -->
                         </tbody>
                     </table>
+                </div>
+
+                <!-- Children Present Tab Area -->
+                <div id="attendance-present-area" style="display: none; margin-bottom: 25px;">
+                    <div style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; overflow-x: auto; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                        <div style="padding: 12px 16px; background: #f0fdf4; border-bottom: 1px solid #bbf7d0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                            <div>
+                                <strong style="color: #166534; font-size: 1rem;">🟢 Daily Present Children Roster</strong>
+                                <span style="color: #15803d; font-size: 0.85rem; margin-left: 10px;">(A child is marked Present even if only one session is present)</span>
+                            </div>
+                            <button type="button" id="btn-export-present-pdf" class="btn-sm btn-primary" style="background: #166534; border-color: #166534; color: #fff; font-weight: 600; padding: 5px 12px; border-radius: 6px; cursor: pointer;">
+                                📄 Present Roster PDF
+                            </button>
+                        </div>
+                        <table class="records-table" style="width: 100%; font-size: 0.9rem; border-collapse: collapse;">
+                            <thead>
+                                <tr style="background: #166534; color: white;">
+                                    <th style="padding: 10px 8px; text-align: center; width: 45px;">#</th>
+                                    <th style="padding: 10px 10px; text-align: left; width: 110px;">Adm No</th>
+                                    <th style="padding: 10px 12px; text-align: left;">Child Name</th>
+                                    <th style="padding: 10px 10px; text-align: left; width: 130px;">Category</th>
+                                    <th style="padding: 10px 8px; text-align: center; width: 140px;">Sessions Attended</th>
+                                    <th style="padding: 10px 12px; text-align: left;">Therapies Attended</th>
+                                    <th style="padding: 10px 12px; text-align: left; width: 160px;">Therapist(s)</th>
+                                    <th style="padding: 10px 10px; text-align: center; width: 120px;">Daily Attendance</th>
+                                    <th style="padding: 10px 8px; text-align: center; width: 90px;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="attendance-present-table-body">
+                                <tr>
+                                    <td colspan="9" style="text-align: center; padding: 30px; color: #64748b;">Loading present children...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </section>
 
@@ -5578,7 +5627,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="app.js?v=53"></script>
+    <script src="app.js?v=54"></script>
 </body>
 
 </html>

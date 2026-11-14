@@ -3680,6 +3680,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function fetchAttendanceDailyData() {
         const tbody = document.getElementById('attendance-table-body');
+        const tbodyPresent = document.getElementById('attendance-present-table-body');
         if (!tbody) return;
 
         const dateInput = document.getElementById('attendance-date-picker');
@@ -3692,6 +3693,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 25px; color: var(--text-light);">Loading attendance records...</td></tr>';
+        if (tbodyPresent) {
+            tbodyPresent.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 25px; color: var(--text-light);">Loading present children...</td></tr>';
+        }
 
         try {
             const url = `/api/schedules?date=${encodeURIComponent(targetDate)}` + ((userRole === 'autism' || userRole === 'asd') ? '&autism=true' : '');
@@ -3702,6 +3706,9 @@ document.addEventListener('DOMContentLoaded', () => {
             renderAttendanceDailyTable();
         } catch (err) {
             tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--danger); padding: 25px;">Failed to load attendance records.</td></tr>';
+            if (tbodyPresent) {
+                tbodyPresent.innerHTML = '<tr><td colspan="9" style="text-align: center; color: var(--danger); padding: 25px;">Failed to load present children.</td></tr>';
+            }
         }
     }
 
@@ -3710,6 +3717,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderAttendanceDailyTable() {
         const tbody = document.getElementById('attendance-table-body');
+        const tbodyPresent = document.getElementById('attendance-present-table-body');
         if (!tbody) return;
 
         const childFilter = document.getElementById('att-child-select')?.value;
@@ -3725,17 +3733,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const isAuto = (attStatus === 'Absent') && (!item.attendance_status || (item.attendance_notes && item.attendance_notes.includes('Auto-marked')));
             return { ...item, computed_status: attStatus, is_auto: isAuto };
         });
-
-        // Overall Daily Metrics
-        const totalScheduled = list.length;
-        const totalPresent = list.filter(i => i.computed_status === 'Present').length;
-        const totalAbsent = list.filter(i => i.computed_status === 'Absent').length;
-        const attRate = totalScheduled > 0 ? Math.round((totalPresent / totalScheduled) * 100) : 0;
-
-        document.getElementById('att-metric-total').textContent = totalScheduled;
-        document.getElementById('att-metric-present').textContent = totalPresent;
-        document.getElementById('att-metric-absent').textContent = totalAbsent;
-        document.getElementById('att-metric-rate').textContent = `${attRate}%`;
 
         // Apply dropdown filters
         if (childFilter) {
@@ -3756,11 +3753,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        if (list.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-light); padding: 35px; font-size: 0.95rem;">No attendance sessions found for this date.</td></tr>';
-            return;
-        }
-
         // Group sessions by child (Folder / Accordion structure)
         const childMap = new Map();
         list.forEach(item => {
@@ -3772,11 +3764,140 @@ document.addEventListener('DOMContentLoaded', () => {
                     child_admission_no: item.child_admission_no || '',
                     child_is_autism: item.child_is_autism,
                     child_age: item.child_age,
+                    child_dob: item.child_dob,
                     sessions: []
                 });
             }
             childMap.get(cid).sessions.push(item);
         });
+
+        // Calculate Present Children: A child is marked present even if only one session is present
+        const presentChildren = [];
+        childMap.forEach((group) => {
+            const presentSessions = group.sessions.filter(s => s.computed_status === 'Present');
+            if (presentSessions.length > 0) {
+                presentChildren.push({
+                    ...group,
+                    presentSessions: presentSessions,
+                    presentCount: presentSessions.length,
+                    totalSessions: group.sessions.length
+                });
+            }
+        });
+
+        // Overall Daily Metrics
+        const totalScheduled = list.length;
+        const totalPresent = list.filter(i => i.computed_status === 'Present').length;
+        const totalAbsent = list.filter(i => i.computed_status === 'Absent').length;
+        const attRate = totalScheduled > 0 ? Math.round((totalPresent / totalScheduled) * 100) : 0;
+
+        const totChildren = childMap.size;
+        const presChildren = presentChildren.length;
+
+        const metTotChildren = document.getElementById('att-metric-children-total');
+        if (metTotChildren) metTotChildren.textContent = totChildren;
+
+        const metPresChildren = document.getElementById('att-metric-children-present');
+        if (metPresChildren) metPresChildren.textContent = `${presChildren} / ${totChildren}`;
+
+        document.getElementById('att-metric-total').textContent = totalScheduled;
+        document.getElementById('att-metric-present').textContent = totalPresent;
+        document.getElementById('att-metric-absent').textContent = totalAbsent;
+        document.getElementById('att-metric-rate').textContent = `${attRate}%`;
+
+        // Update badge on "Children Present" tab
+        const badgeCount = document.getElementById('att-present-children-count');
+        if (badgeCount) badgeCount.textContent = presChildren;
+
+        window.currentPresentChildren = presentChildren;
+        window.currentAttendanceFilteredList = list;
+
+        // Populate Children Present Table
+        if (tbodyPresent) {
+            if (presentChildren.length === 0) {
+                tbodyPresent.innerHTML = '<tr><td colspan="9" style="text-align: center; color: var(--text-light); padding: 35px; font-size: 0.95rem;">No children marked present yet for this date.<br><small style="color: #94a3b8;">A child appears here as soon as at least one of their scheduled sessions is marked Present.</small></td></tr>';
+            } else {
+                let presHtml = '';
+                const sortedPresent = [...presentChildren].sort((a, b) => (a.child_name || '').localeCompare(b.child_name || ''));
+                
+                sortedPresent.forEach((group, idx) => {
+                    const admBadge = group.child_admission_no 
+                        ? `<span style="display:inline-block; font-size:0.78rem; background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe; border-radius:4px; padding:2px 8px; font-weight:700;">${group.child_admission_no}</span>`
+                        : '<span style="color:#94a3b8;">—</span>';
+
+                    let catBadge = '';
+                    if (group.child_is_autism) {
+                        catBadge = '<span style="background:#f3e8ff; color:#6b21a8; font-weight:700; padding:2px 8px; border-radius:4px; font-size:0.75rem;">Autism (ASD)</span>';
+                    } else if (group.child_age !== null && group.child_age < 8) {
+                        catBadge = '<span style="background:#eff6ff; color:#1e40af; font-weight:700; padding:2px 8px; border-radius:4px; font-size:0.75rem;">Under 8 (EIC)</span>';
+                    } else {
+                        catBadge = '<span style="background:#fef3c7; color:#92400e; font-weight:700; padding:2px 8px; border-radius:4px; font-size:0.75rem;">8 &amp; Above (TH)</span>';
+                    }
+
+                    const sessBadge = group.presentCount === group.totalSessions
+                        ? `<span style="display:inline-block; font-size:0.8rem; font-weight:700; color:#15803d; background:#dcfce7; border:1px solid #86efac; padding:3px 9px; border-radius:12px;">🟢 ${group.presentCount}/${group.totalSessions} All Present</span>`
+                        : `<span style="display:inline-block; font-size:0.8rem; font-weight:700; color:#854d0e; background:#fef9c3; border:1px solid #fde047; padding:3px 9px; border-radius:12px;">🟡 ${group.presentCount}/${group.totalSessions} Present (${group.totalSessions - group.presentCount} Absent)</span>`;
+
+                    const therapiesHtml = group.presentSessions.map(s => `
+                        <div style="margin-bottom: 3px;">
+                            <strong style="color: #0369a1; font-size: 0.88rem;">${escapeHtml(s.therapy_type)}</strong>
+                            <span style="font-family: monospace; font-size: 0.76rem; font-weight: 600; color: #475569; background: #f1f5f9; padding: 1px 6px; border-radius: 3px; margin-left: 4px;">${s.time_slot || '-'}</span>
+                        </div>
+                    `).join('');
+
+                    const therapistsText = [...new Set(group.presentSessions.map(s => s.therapist_name).filter(Boolean))].join(', ') || '—';
+
+                    presHtml += `
+                        <tr style="border-bottom: 1px solid #e2e8f0; transition: background 0.15s ease;" onmouseover="this.style.background='#f0fdf4'" onmouseout="this.style.background=''">
+                            <td style="text-align: center; font-weight: 600; color: #64748b; padding: 10px 8px;">${idx + 1}</td>
+                            <td style="padding: 10px 10px;">${admBadge}</td>
+                            <td style="padding: 10px 12px;">
+                                <strong style="color: #1e293b; font-size: 0.95rem;">${escapeHtml(group.child_name)}</strong>
+                                ${group.child_age ? `<span style="color: #64748b; font-size: 0.8rem; margin-left: 6px;">(${group.child_age} yrs)</span>` : ''}
+                            </td>
+                            <td style="padding: 10px 10px;">${catBadge}</td>
+                            <td style="text-align: center; padding: 10px 8px;">${sessBadge}</td>
+                            <td style="padding: 10px 12px;">${therapiesHtml}</td>
+                            <td style="padding: 10px 12px; color: #334155; font-size: 0.85rem;">${escapeHtml(therapistsText)}</td>
+                            <td style="text-align: center; padding: 10px 10px;">
+                                <span style="background: #16a34a; color: #ffffff; font-weight: 700; padding: 4px 11px; border-radius: 12px; font-size: 0.8rem; display: inline-block; box-shadow: 0 1px 2px rgba(22,163,74,0.2);">
+                                    ✓ PRESENT
+                                </span>
+                            </td>
+                            <td style="text-align: center; padding: 10px 8px; white-space: nowrap;">
+                                <button type="button" class="btn-goto-att-child btn-sm btn-secondary" data-child-id="${group.child_id}" style="padding: 4px 10px; font-size: 0.78rem; cursor: pointer; border-radius: 4px;" title="View all session details for this child">
+                                    📂 Sessions
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                tbodyPresent.innerHTML = presHtml;
+
+                // Wire up drilldown buttons
+                tbodyPresent.querySelectorAll('.btn-goto-att-child').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const cid = btn.getAttribute('data-child-id');
+                        switchAttendanceView('all');
+                        attCollapsedChildIds.delete(String(cid));
+                        const header = tbody.querySelector(`.att-folder-header[data-child-id="${cid}"]`);
+                        if (header) {
+                            const rows = tbody.querySelectorAll(`.att-detail-${cid}`);
+                            rows.forEach(r => r.style.display = 'table-row');
+                            const icon = header.querySelector('.att-toggle-icon');
+                            if (icon) icon.textContent = '▼';
+                            header.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                    });
+                });
+            }
+        }
+
+        if (list.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-light); padding: 35px; font-size: 0.95rem;">No attendance sessions found for this date.</td></tr>';
+            return;
+        }
 
         let html = '';
         childMap.forEach((group) => {
@@ -4059,18 +4180,261 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // Attendance View Toggles (All Scheduled Sessions vs Children Present)
+    const btnAttViewAll = document.getElementById('btn-att-view-all');
+    const btnAttViewPresent = document.getElementById('btn-att-view-present');
+    const attPrintArea = document.getElementById('attendance-print-area');
+    const attPresentArea = document.getElementById('attendance-present-area');
+
+    function switchAttendanceView(mode) {
+        if (mode === 'present') {
+            if (btnAttViewPresent) {
+                btnAttViewPresent.className = 'btn-primary';
+                btnAttViewPresent.style.fontWeight = '700';
+            }
+            if (btnAttViewAll) {
+                btnAttViewAll.className = 'btn-secondary';
+                btnAttViewAll.style.fontWeight = '600';
+            }
+            if (attPresentArea) attPresentArea.style.display = 'block';
+            if (attPrintArea) attPrintArea.style.display = 'none';
+        } else {
+            if (btnAttViewAll) {
+                btnAttViewAll.className = 'btn-primary';
+                btnAttViewAll.style.fontWeight = '700';
+            }
+            if (btnAttViewPresent) {
+                btnAttViewPresent.className = 'btn-secondary';
+                btnAttViewPresent.style.fontWeight = '600';
+            }
+            if (attPresentArea) attPresentArea.style.display = 'none';
+            if (attPrintArea) attPrintArea.style.display = 'block';
+        }
+    }
+
+    btnAttViewAll?.addEventListener('click', () => switchAttendanceView('all'));
+    btnAttViewPresent?.addEventListener('click', () => switchAttendanceView('present'));
+
+    // Export PDF: Daily Present Children Roster
+    document.getElementById('btn-export-present-pdf')?.addEventListener('click', generatePresentChildrenRosterPdf);
+
+    function generatePresentChildrenRosterPdf() {
+        const presentList = window.currentPresentChildren;
+        if (!presentList || presentList.length === 0) {
+            showToast('No children marked present for this date to export.', true);
+            return;
+        }
+        if (!window.jspdf || !window.jspdf.jsPDF) {
+            showToast('PDF generator library is still loading, please retry in a moment', true);
+            return;
+        }
+
+        try {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({
+                orientation: 'portrait',
+                unit: 'mm',
+                format: 'a4'
+            });
+
+            const pageWidth = doc.internal.pageSize.getWidth(); // 210mm
+            const pageHeight = doc.internal.pageSize.getHeight(); // 297mm
+            const margin = 8;
+            const availableWidth = pageWidth - (margin * 2); // 194mm
+
+            // Forest Green Header Banner
+            const bannerHeight = 22;
+            doc.setFillColor(22, 101, 52);
+            doc.rect(0, 0, pageWidth, bannerHeight, 'F');
+
+            doc.setTextColor(255, 255, 255);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(12);
+            doc.text('CHILD DEVELOPMENT & EARLY INTERVENTION CENTRE', pageWidth / 2, 9, { align: 'center' });
+
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8.5);
+            doc.text('OFFICIAL DAILY ATTENDANCE ROSTER — CHILDREN PRESENT', pageWidth / 2, 16, { align: 'center' });
+
+            // Metadata Sub-strip
+            const dateStr = formatDisplayDate(currentAttendanceDate);
+            doc.setFontSize(8.5);
+            doc.setTextColor(30, 41, 59);
+            doc.setFont('helvetica', 'bold');
+            doc.text(`Attendance Date: ${dateStr}    |    Total Present: ${presentList.length} Children`, margin, 29);
+
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(8);
+            doc.setTextColor(100, 116, 139);
+            doc.text(`Generated: ${new Date().toLocaleDateString('en-IN')} ${new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}`, pageWidth - margin, 29, { align: 'right' });
+
+            // Table Data
+            const sortedPresent = [...presentList].sort((a, b) => (a.child_name || '').localeCompare(b.child_name || ''));
+            const tableBody = sortedPresent.map((g, idx) => {
+                const therapies = g.presentSessions.map(s => `${s.therapy_type} (${s.time_slot || '-'})`).join(', ');
+                const therapists = [...new Set(g.presentSessions.map(s => s.therapist_name).filter(Boolean))].join(', ') || '-';
+                let cat = 'General';
+                if (g.child_is_autism) cat = 'Autism (ASD)';
+                else if (g.child_age !== null && g.child_age < 8) cat = 'Under 8 (EIC)';
+                else if (g.child_age !== null && g.child_age >= 8) cat = '8+ (TH)';
+
+                return [
+                    idx + 1,
+                    g.child_admission_no || '-',
+                    g.child_name || '-',
+                    cat,
+                    `${g.presentCount}/${g.totalSessions}`,
+                    therapies,
+                    therapists,
+                    'PRESENT'
+                ];
+            });
+
+            // Grand Total Row
+            tableBody.push([
+                '', '', `TOTAL CHILDREN PRESENT: ${sortedPresent.length}`,
+                '', '', '', '', 'ALL VERIFIED'
+            ]);
+
+            const colStyles = {
+                0: { cellWidth: 8,  halign: 'center' }, // #
+                1: { cellWidth: 20, halign: 'center' }, // Adm No
+                2: { cellWidth: 38, halign: 'left' },   // Name
+                3: { cellWidth: 22, halign: 'center' }, // Category
+                4: { cellWidth: 16, halign: 'center' }, // Sessions
+                5: { cellWidth: 44, halign: 'left' },   // Therapies
+                6: { cellWidth: 28, halign: 'left' },   // Therapists
+                7: { cellWidth: 18, halign: 'center' }  // Status
+            };
+
+            doc.autoTable({
+                startY: 33,
+                tableWidth: availableWidth,
+                margin: { left: margin, right: margin },
+                head: [[
+                    '#', 'Adm No', 'Child Name', 'Category', 'Sessions', 'Therapies Attended', 'Therapist(s)', 'Status'
+                ]],
+                body: tableBody,
+                theme: 'grid',
+                styles: {
+                    fontSize: 7.5,
+                    cellPadding: 2,
+                    textColor: [30, 41, 59],
+                    overflow: 'linebreak',
+                    lineColor: [226, 232, 240],
+                    lineWidth: 0.2
+                },
+                headStyles: {
+                    fillColor: [22, 101, 52],
+                    textColor: [255, 255, 255],
+                    fontStyle: 'bold',
+                    halign: 'center',
+                    fontSize: 8,
+                    cellPadding: 2.5
+                },
+                alternateRowStyles: {
+                    fillColor: [248, 250, 252]
+                },
+                columnStyles: colStyles,
+                didParseCell: (hookData) => {
+                    if (hookData.row.index === tableBody.length - 1) {
+                        hookData.cell.styles.fontStyle = 'bold';
+                        hookData.cell.styles.fillColor = [240, 253, 244];
+                        hookData.cell.styles.textColor = [22, 101, 52];
+                    } else if (hookData.section === 'body') {
+                        if (hookData.column.index === 7) {
+                            hookData.cell.styles.textColor = [22, 101, 52];
+                            hookData.cell.styles.fontStyle = 'bold';
+                        }
+                    }
+                },
+                didDrawPage: (pageData) => {
+                    doc.setFontSize(7);
+                    doc.setTextColor(148, 163, 184);
+                    doc.text(`Page ${pageData.pageNumber}`, pageWidth - margin, pageHeight - 6, { align: 'right' });
+                    doc.text('Child Development & Early Intervention Centre — Daily Attendance Roster', margin, pageHeight - 6);
+                }
+            });
+
+            // Signatures block
+            let sigY = doc.lastAutoTable.finalY + 12;
+            if (sigY + 25 > pageHeight - 12) {
+                doc.addPage();
+                sigY = 20;
+            }
+
+            const sigLineWidth = 50;
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(7.5);
+            doc.setTextColor(100, 116, 139);
+
+            // Left
+            doc.text('Duty Attendance In-charge:', margin, sigY);
+            doc.setDrawColor(148, 163, 184);
+            doc.setLineWidth(0.3);
+            doc.line(margin, sigY + 9, margin + sigLineWidth, sigY + 9);
+            doc.text('Verification & Roll Call Staff', margin, sigY + 13);
+
+            // Right
+            const rightSigX = pageWidth - margin - sigLineWidth;
+            doc.text('Authorized Signatory:', rightSigX, sigY);
+            doc.line(rightSigX, sigY + 9, pageWidth - margin, sigY + 9);
+            doc.text('Centre In-charge / Director', rightSigX, sigY + 13);
+
+            const filename = `Children_Present_${currentAttendanceDate}.pdf`;
+            saveAndOpenPdf(doc, filename);
+            showToast('Children Present Roster PDF opened & downloaded!');
+        } catch (err) {
+            console.error('Children Present PDF error:', err);
+            showToast('Error generating Children Present PDF', true);
+        }
+    }
+
     document.getElementById('btn-export-att-csv')?.addEventListener('click', () => {
-        if (!currentAttendanceList.length) return showToast('No attendance records to export', true);
-        let csv = 'Admission No,Child Name,Date,Time Slot,Therapy,Therapist,Status\n';
-        currentAttendanceList.forEach(item => {
-            const status = item.attendance_status || (isScheduleCutoffPassed(currentAttendanceDate) ? 'Absent' : 'Pending');
-            csv += `"${item.child_admission_no || ''}","${item.child_name || ''}","${currentAttendanceDate}","${item.time_slot || ''}","${item.therapy_type || ''}","${item.therapist_name || ''}","${status}"\n`;
-        });
-        const blob = new Blob([csv], { type: 'text/csv' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = `CORC_Attendance_${currentAttendanceDate}.csv`;
-        a.click();
+        const isPresentArea = document.getElementById('attendance-present-area')?.style.display !== 'none';
+
+        if (isPresentArea) {
+            const presentList = window.currentPresentChildren;
+            if (!presentList || presentList.length === 0) return showToast('No present children to export', true);
+            let csv = '\uFEFF#,Admission No,Child Name,Category,Total Scheduled Sessions,Sessions Present,Attended Therapies,Therapists,Daily Attendance Status\n';
+            const sortedPresent = [...presentList].sort((a, b) => (a.child_name || '').localeCompare(b.child_name || ''));
+            sortedPresent.forEach((g, idx) => {
+                const therapies = g.presentSessions.map(s => `${s.therapy_type} (${s.time_slot || '-'})`).join('; ');
+                const therapists = [...new Set(g.presentSessions.map(s => s.therapist_name).filter(Boolean))].join(', ') || '-';
+                let cat = 'General';
+                if (g.child_is_autism) cat = 'Autism (ASD)';
+                else if (g.child_age !== null && g.child_age < 8) cat = 'Under 8 (EIC)';
+                else if (g.child_age !== null && g.child_age >= 8) cat = '8+ (TH)';
+
+                csv += `${idx + 1},"${(g.child_admission_no || '').replace(/"/g, '""')}","${(g.child_name || '').replace(/"/g, '""')}","${cat}",${g.totalSessions},${g.presentCount},"${therapies.replace(/"/g, '""')}","${therapists.replace(/"/g, '""')}","PRESENT"\n`;
+            });
+            csv += `,"","TOTAL CHILDREN PRESENT: ${sortedPresent.length}","","","","","","VERIFIED"\n`;
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `CORC_Children_Present_${currentAttendanceDate}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+            showToast('Children Present CSV exported!');
+        } else {
+            if (!currentAttendanceList.length) return showToast('No attendance records to export', true);
+            let csv = '\uFEFFAdmission No,Child Name,Date,Time Slot,Therapy,Therapist,Status\n';
+            currentAttendanceList.forEach(item => {
+                const status = item.attendance_status || (isScheduleCutoffPassed(currentAttendanceDate) ? 'Absent' : 'Pending');
+                csv += `"${item.child_admission_no || ''}","${item.child_name || ''}","${currentAttendanceDate}","${item.time_slot || ''}","${item.therapy_type || ''}","${item.therapist_name || ''}","${status}"\n`;
+            });
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `CORC_Attendance_${currentAttendanceDate}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+            showToast('Attendance sessions CSV exported!');
+        }
     });
 
     document.getElementById('btn-print-attendance')?.addEventListener('click', () => {
