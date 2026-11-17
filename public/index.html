@@ -16,7 +16,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="styles.css?v=57">
+    <link rel="stylesheet" href="styles.css?v=58">
 </head>
 
 <body>
@@ -4529,6 +4529,9 @@
                     <button type="button" id="btn-att-view-present" class="btn-secondary" style="font-weight: 600; padding: 7px 16px;">
                         🟢 Children Present <span id="att-present-children-count" style="margin-left: 6px; background: #16a34a; color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.78rem; font-weight: 700;">0</span>
                     </button>
+                    <button type="button" id="btn-att-view-consolidated" class="btn-secondary" style="font-weight: 600; padding: 7px 16px;">
+                        📊 Consolidated Attendance Report
+                    </button>
                 </div>
 
                 <!-- Clean Clinical Attendance Table with Child Folder / Accordion Rows -->
@@ -4581,6 +4584,122 @@
                                     <td colspan="9" style="text-align: center; padding: 30px; color: #64748b;">Loading present children...</td>
                                 </tr>
                             </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Consolidated Attendance Report Area -->
+                <div id="attendance-consolidated-area" style="display: none; margin-bottom: 25px;">
+                    <!-- Date Range & Filters Header -->
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px 18px; margin-bottom: 16px;">
+                        <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap;">
+                            <span style="font-weight: 700; color: #1e3a8a; font-size: 0.92rem;">📅 Date Range Presets:</span>
+                            <button type="button" id="btn-att-cons-today" class="btn-sm btn-secondary" style="padding: 5px 12px; font-weight: 600; background: #fff; cursor: pointer;">Today</button>
+                            <button type="button" id="btn-att-cons-week" class="btn-sm btn-secondary" style="padding: 5px 12px; font-weight: 600; background: #fff; cursor: pointer;">This Week</button>
+                            <button type="button" id="btn-att-cons-month" class="btn-sm btn-primary" style="padding: 5px 12px; font-weight: 700; cursor: pointer;">This Month</button>
+                            <button type="button" id="btn-att-cons-last-month" class="btn-sm btn-secondary" style="padding: 5px 12px; font-weight: 600; background: #fff; cursor: pointer;">Last Month</button>
+                            <button type="button" id="btn-att-cons-ytd" class="btn-sm btn-secondary" style="padding: 5px 12px; font-weight: 600; background: #fff; cursor: pointer;">Year to Date</button>
+                        </div>
+                        <div style="display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap;">
+                            <div class="input-group" style="margin-bottom: 0;">
+                                <label for="att-cons-start-date" style="font-weight: 600; font-size: 0.85rem; color: #334155;">From Date (Start)</label>
+                                <input type="date" id="att-cons-start-date" style="font-weight: 600; padding: 6px 10px; border-radius: 6px; border: 1px solid #cbd5e1; height: 38px;">
+                            </div>
+                            <div class="input-group" style="margin-bottom: 0;">
+                                <label for="att-cons-end-date" style="font-weight: 600; font-size: 0.85rem; color: #334155;">To Date (End)</label>
+                                <input type="date" id="att-cons-end-date" style="font-weight: 600; padding: 6px 10px; border-radius: 6px; border: 1px solid #cbd5e1; height: 38px;">
+                            </div>
+                            <div class="input-group" style="margin-bottom: 0; min-width: 160px;">
+                                <label for="att-cons-child-select" style="font-weight: 600; font-size: 0.85rem; color: #334155;">Child</label>
+                                <select id="att-cons-child-select" style="padding: 6px 10px; border-radius: 6px; border: 1px solid #cbd5e1; height: 38px;">
+                                    <option value="">All Children</option>
+                                </select>
+                            </div>
+                            <div class="input-group admin-only-filter" style="display: none; margin-bottom: 0; min-width: 140px;">
+                                <label for="att-cons-age-filter" style="font-weight: 600; font-size: 0.85rem; color: #334155;">Category</label>
+                                <select id="att-cons-age-filter" style="padding: 6px 10px; border-radius: 6px; border: 1px solid #cbd5e1; height: 38px;">
+                                    <option value="all">All Children</option>
+                                    <option value="under8">Less than 8 (EIC)</option>
+                                    <option value="8plus">8 &amp; Above (TH)</option>
+                                    <option value="autism">Autism (ASD - All Ages)</option>
+                                </select>
+                            </div>
+                            <div class="input-group" style="margin-bottom: 0; min-width: 150px;">
+                                <label for="att-cons-therapist-select" style="font-weight: 600; font-size: 0.85rem; color: #334155;">Therapist</label>
+                                <select id="att-cons-therapist-select" style="padding: 6px 10px; border-radius: 6px; border: 1px solid #cbd5e1; height: 38px;">
+                                    <option value="">All Therapists</option>
+                                </select>
+                            </div>
+                            <button type="button" id="btn-generate-att-cons" class="btn-primary" style="font-weight: 700; height: 38px; padding: 0 18px;">
+                                🔍 Generate Report
+                            </button>
+                            <button type="button" id="btn-export-att-cons-pdf" class="btn-primary" style="background: #1e3a8a; border-color: #1e3a8a; color: #fff; font-weight: 600; height: 38px; padding: 0 16px;" title="Export Official Attendance Report PDF">
+                                📊 Export PDF
+                            </button>
+                            <button type="button" id="btn-export-att-cons-csv" class="btn-secondary" style="height: 38px; padding: 0 14px; margin-left: auto;">
+                                📥 Export CSV
+                            </button>
+                            <button type="button" id="btn-print-att-cons-report" class="btn-secondary" style="font-weight: 700; color: #1e3a8a; border-color: #93c5fd; background: #eff6ff; height: 38px; padding: 0 14px;">
+                                🖨️ Direct Print
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Consolidated Attendance KPI Cards -->
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 18px;">
+                        <div class="metric-card" style="background: white; padding: 12px 14px; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center;">
+                            <h4 style="margin: 0; color: #64748b; font-size: 0.82rem;">Period Duration</h4>
+                            <div id="att-cons-kpi-period" style="font-size: 1.05rem; font-weight: 800; color: #1e3a8a; margin-top: 4px;">—</div>
+                        </div>
+                        <div class="metric-card" style="background: white; padding: 12px 14px; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center;">
+                            <h4 style="margin: 0; color: #64748b; font-size: 0.82rem;">Enrolled Children</h4>
+                            <div id="att-cons-kpi-children" style="font-size: 1.5rem; font-weight: 800; color: #0284c7; margin-top: 4px;">0</div>
+                        </div>
+                        <div class="metric-card" style="background: white; padding: 12px 14px; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center;">
+                            <h4 style="margin: 0; color: #64748b; font-size: 0.82rem;">Total Sessions</h4>
+                            <div id="att-cons-kpi-sessions" style="font-size: 1.5rem; font-weight: 800; color: #334155; margin-top: 4px;">0</div>
+                        </div>
+                        <div class="metric-card" style="background: white; padding: 12px 14px; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center;">
+                            <h4 style="margin: 0; color: #64748b; font-size: 0.82rem;">Present Sessions</h4>
+                            <div id="att-cons-kpi-present" style="font-size: 1.5rem; font-weight: 800; color: #16a34a; margin-top: 4px;">0</div>
+                        </div>
+                        <div class="metric-card" style="background: white; padding: 12px 14px; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center;">
+                            <h4 style="margin: 0; color: #64748b; font-size: 0.82rem;">Absent Sessions</h4>
+                            <div id="att-cons-kpi-absent" style="font-size: 1.5rem; font-weight: 800; color: #dc2626; margin-top: 4px;">0</div>
+                        </div>
+                        <div class="metric-card" style="background: white; padding: 12px 14px; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center;">
+                            <h4 style="margin: 0; color: #64748b; font-size: 0.82rem;">Overall Attendance Rate</h4>
+                            <div id="att-cons-kpi-rate" style="font-size: 1.5rem; font-weight: 800; color: #0284c7; margin-top: 4px;">0%</div>
+                        </div>
+                    </div>
+
+                    <!-- Consolidated Attendance Table -->
+                    <div style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; overflow-x: auto; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                        <table class="records-table" style="width: 100%; font-size: 0.9rem; border-collapse: collapse;">
+                            <thead>
+                                <tr style="background: #1e3a8a; color: white;">
+                                    <th style="padding: 10px 8px; text-align: center; width: 42px;">#</th>
+                                    <th style="padding: 10px 10px; text-align: left; width: 105px;">Adm No</th>
+                                    <th style="padding: 10px 12px; text-align: left;">Child Name</th>
+                                    <th style="padding: 10px 10px; text-align: left; width: 120px;">Category</th>
+                                    <th style="padding: 10px 8px; text-align: center; width: 120px;">Days Attended</th>
+                                    <th style="padding: 10px 8px; text-align: center; width: 90px;">Total Sess.</th>
+                                    <th style="padding: 10px 8px; text-align: center; width: 85px;">Present</th>
+                                    <th style="padding: 10px 8px; text-align: center; width: 85px;">Absent</th>
+                                    <th style="padding: 10px 8px; text-align: center; width: 100px;">Att. Rate</th>
+                                    <th style="padding: 10px 12px; text-align: left;">Therapies Attended</th>
+                                    <th style="padding: 10px 10px; text-align: center; width: 115px;">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="att-cons-table-body">
+                                <tr>
+                                    <td colspan="11" style="text-align: center; padding: 30px; color: #64748b;">
+                                        Select date range and click "Generate Report" to view consolidated attendance.
+                                    </td>
+                                </tr>
+                            </tbody>
+                            <tfoot id="att-cons-table-foot">
+                            </tfoot>
                         </table>
                     </div>
                 </div>
@@ -4692,7 +4811,8 @@
                             style="margin: 0; font-size: 0.9rem; cursor: pointer;">Pending Balances</label>
                     </div>
                     <button id="btn-generate-report" class="btn-primary" style="font-weight: 700;">Generate Report</button>
-                    <button id="btn-export-consolidated-pdf" class="btn-primary" style="background: #1e3a8a; border-color: #1e3a8a; color: #fff; font-weight: 600;" title="Export Executive Consolidated PDF Summary">📊 Consolidated PDF</button>
+                    <button id="btn-export-consolidated-pdf" class="btn-primary" style="background: #1e3a8a; border-color: #1e3a8a; color: #fff; font-weight: 600;" title="Export Executive Consolidated Financial & Attendance PDF Summary">📊 Consolidated PDF</button>
+                    <button id="btn-export-att-summary-pdf" class="btn-primary" style="background: #15803d; border-color: #15803d; color: #fff; font-weight: 600;" title="Export Attendance Consolidated PDF (Without Billing Amounts)">📋 Attendance PDF</button>
                     <div style="display: inline-flex; align-items: center; gap: 4px;">
                         <button id="btn-export-statement-pdf" class="btn-secondary" title="Export Statement PDF">📄 Statement PDF</button>
                         <select id="statement-pdf-format" style="padding: 6px 8px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.8rem; font-weight: 500; background: white; color: #334155; cursor: pointer; height: 38px;" title="Statement Document Format">
@@ -5632,7 +5752,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="app.js?v=57"></script>
+    <script src="app.js?v=58"></script>
 </body>
 
 </html>

@@ -1070,8 +1070,24 @@ app.post('/api/attendance', async (req, res) => {
     }
 });
 
+function normalizeToISODate(dStr) {
+    if (!dStr) return null;
+    dStr = String(dStr).trim();
+    const dmy = dStr.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    if (dmy) {
+        return `${dmy[3]}-${dmy[2].padStart(2, '0')}-${dmy[1].padStart(2, '0')}`;
+    }
+    const ymd = dStr.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+    if (ymd) {
+        return `${ymd[1]}-${ymd[2].padStart(2, '0')}-${ymd[3].padStart(2, '0')}`;
+    }
+    return dStr;
+}
+
 app.get('/api/reports/attendance', async (req, res) => {
-    const { start_date, end_date, child_id, autism } = req.query;
+    let { start_date, end_date, child_id, autism } = req.query;
+    start_date = normalizeToISODate(start_date);
+    end_date = normalizeToISODate(end_date);
     try {
         const reqRole = getUserRoleFromReq(req);
         const isAutismReq = autism === 'true' || reqRole === 'autism' || reqRole === 'asd';

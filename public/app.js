@@ -3834,6 +3834,15 @@ document.addEventListener('DOMContentLoaded', () => {
             ).join('');
             childSelect.value = curChild || '';
 
+            const consChildSelect = document.getElementById('att-cons-child-select');
+            if (consChildSelect) {
+                const curC = consChildSelect.value;
+                consChildSelect.innerHTML = '<option value="">All Children</option>' + children.map(c => 
+                    `<option value="${c.id}">${c.admission_no ? '[' + c.admission_no + '] ' : ''}${c.name}</option>`
+                ).join('');
+                consChildSelect.value = curC || '';
+            }
+
             if (therapistSelect) {
                 const curTherapist = therapistSelect.value;
                 const therapists = await (await fetch('/api/therapists')).json();
@@ -3841,6 +3850,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     `<option value="${t.name}">${t.name}</option>`
                 ).join('');
                 therapistSelect.value = curTherapist || '';
+
+                const consTherapistSelect = document.getElementById('att-cons-therapist-select');
+                if (consTherapistSelect) {
+                    const curT = consTherapistSelect.value;
+                    consTherapistSelect.innerHTML = '<option value="">All Therapists</option>' + therapists.map(t => 
+                        `<option value="${t.name}">${t.name}</option>`
+                    ).join('');
+                    consTherapistSelect.value = curT || '';
+                }
             }
         } catch (e) {
             console.error('Error populating attendance filters:', e);
@@ -4367,14 +4385,47 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Attendance View Toggles (All Scheduled Sessions vs Children Present)
+    // Attendance View Toggles (All Scheduled Sessions vs Children Present vs Consolidated Attendance Report)
     const btnAttViewAll = document.getElementById('btn-att-view-all');
     const btnAttViewPresent = document.getElementById('btn-att-view-present');
+    const btnAttViewConsolidated = document.getElementById('btn-att-view-consolidated');
     const attPrintArea = document.getElementById('attendance-print-area');
     const attPresentArea = document.getElementById('attendance-present-area');
+    const attConsArea = document.getElementById('attendance-consolidated-area');
 
     function switchAttendanceView(mode) {
-        if (mode === 'present') {
+        if (mode === 'consolidated') {
+            if (btnAttViewConsolidated) {
+                btnAttViewConsolidated.className = 'btn-primary';
+                btnAttViewConsolidated.style.fontWeight = '700';
+            }
+            if (btnAttViewAll) {
+                btnAttViewAll.className = 'btn-secondary';
+                btnAttViewAll.style.fontWeight = '600';
+            }
+            if (btnAttViewPresent) {
+                btnAttViewPresent.className = 'btn-secondary';
+                btnAttViewPresent.style.fontWeight = '600';
+            }
+            if (attConsArea) attConsArea.style.display = 'block';
+            if (attPrintArea) attPrintArea.style.display = 'none';
+            if (attPresentArea) attPresentArea.style.display = 'none';
+
+            // Initialize default date range if empty (e.g. 1st of month to today)
+            const startDateInput = document.getElementById('att-cons-start-date');
+            const endDateInput = document.getElementById('att-cons-end-date');
+            if (startDateInput && !startDateInput.value) {
+                const d = new Date();
+                const y = d.getFullYear();
+                const m = String(d.getMonth() + 1).padStart(2, '0');
+                startDateInput.value = `${y}-${m}-01`;
+            }
+            if (endDateInput && !endDateInput.value) {
+                endDateInput.value = getLocalTodayDateString();
+            }
+            populateAttendanceFilters();
+            fetchConsolidatedAttendanceData();
+        } else if (mode === 'present') {
             if (btnAttViewPresent) {
                 btnAttViewPresent.className = 'btn-primary';
                 btnAttViewPresent.style.fontWeight = '700';
@@ -4383,8 +4434,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 btnAttViewAll.className = 'btn-secondary';
                 btnAttViewAll.style.fontWeight = '600';
             }
+            if (btnAttViewConsolidated) {
+                btnAttViewConsolidated.className = 'btn-secondary';
+                btnAttViewConsolidated.style.fontWeight = '600';
+            }
             if (attPresentArea) attPresentArea.style.display = 'block';
             if (attPrintArea) attPrintArea.style.display = 'none';
+            if (attConsArea) attConsArea.style.display = 'none';
         } else {
             if (btnAttViewAll) {
                 btnAttViewAll.className = 'btn-primary';
@@ -4394,13 +4450,92 @@ document.addEventListener('DOMContentLoaded', () => {
                 btnAttViewPresent.className = 'btn-secondary';
                 btnAttViewPresent.style.fontWeight = '600';
             }
-            if (attPresentArea) attPresentArea.style.display = 'none';
+            if (btnAttViewConsolidated) {
+                btnAttViewConsolidated.className = 'btn-secondary';
+                btnAttViewConsolidated.style.fontWeight = '600';
+            }
             if (attPrintArea) attPrintArea.style.display = 'block';
+            if (attPresentArea) attPresentArea.style.display = 'none';
+            if (attConsArea) attConsArea.style.display = 'none';
         }
     }
 
     btnAttViewAll?.addEventListener('click', () => switchAttendanceView('all'));
     btnAttViewPresent?.addEventListener('click', () => switchAttendanceView('present'));
+    btnAttViewConsolidated?.addEventListener('click', () => switchAttendanceView('consolidated'));
+
+    // Attendance Consolidated Preset Buttons
+    document.getElementById('btn-att-cons-today')?.addEventListener('click', () => {
+        const today = getLocalTodayDateString();
+        const s = document.getElementById('att-cons-start-date');
+        const e = document.getElementById('att-cons-end-date');
+        if (s) s.value = today;
+        if (e) e.value = today;
+        fetchConsolidatedAttendanceData();
+    });
+
+    document.getElementById('btn-att-cons-week')?.addEventListener('click', () => {
+        const d = new Date();
+        const day = d.getDay();
+        const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+        const monday = new Date(d.setDate(diff));
+        const monStr = `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`;
+        const today = getLocalTodayDateString();
+        const s = document.getElementById('att-cons-start-date');
+        const e = document.getElementById('att-cons-end-date');
+        if (s) s.value = monStr;
+        if (e) e.value = today;
+        fetchConsolidatedAttendanceData();
+    });
+
+    document.getElementById('btn-att-cons-month')?.addEventListener('click', () => {
+        const d = new Date();
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const s = document.getElementById('att-cons-start-date');
+        const e = document.getElementById('att-cons-end-date');
+        if (s) s.value = `${y}-${m}-01`;
+        if (e) e.value = getLocalTodayDateString();
+        fetchConsolidatedAttendanceData();
+    });
+
+    document.getElementById('btn-att-cons-last-month')?.addEventListener('click', () => {
+        const d = new Date();
+        d.setDate(1);
+        d.setMonth(d.getMonth() - 1);
+        const y = d.getFullYear();
+        const m = d.getMonth() + 1;
+        const startVal = `${y}-${String(m).padStart(2, '0')}-01`;
+        const lastDay = new Date(y, m, 0).getDate();
+        const endVal = `${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+        const s = document.getElementById('att-cons-start-date');
+        const e = document.getElementById('att-cons-end-date');
+        if (s) s.value = startVal;
+        if (e) e.value = endVal;
+        fetchConsolidatedAttendanceData();
+    });
+
+    document.getElementById('btn-att-cons-ytd')?.addEventListener('click', () => {
+        const d = new Date();
+        const y = d.getFullYear();
+        const s = document.getElementById('att-cons-start-date');
+        const e = document.getElementById('att-cons-end-date');
+        if (s) s.value = `${y}-01-01`;
+        if (e) e.value = getLocalTodayDateString();
+        fetchConsolidatedAttendanceData();
+    });
+
+    document.getElementById('btn-generate-att-cons')?.addEventListener('click', fetchConsolidatedAttendanceData);
+    document.getElementById('att-cons-start-date')?.addEventListener('change', fetchConsolidatedAttendanceData);
+    document.getElementById('att-cons-end-date')?.addEventListener('change', fetchConsolidatedAttendanceData);
+    document.getElementById('att-cons-child-select')?.addEventListener('change', fetchConsolidatedAttendanceData);
+    document.getElementById('att-cons-therapist-select')?.addEventListener('change', fetchConsolidatedAttendanceData);
+    document.getElementById('att-cons-age-filter')?.addEventListener('change', fetchConsolidatedAttendanceData);
+
+    document.getElementById('btn-export-att-cons-pdf')?.addEventListener('click', generateConsolidatedAttendancePdf);
+    document.getElementById('btn-export-att-cons-csv')?.addEventListener('click', exportConsolidatedAttendanceCsv);
+    document.getElementById('btn-print-att-cons-report')?.addEventListener('click', printConsolidatedAttendanceDirect);
+    document.getElementById('btn-export-att-summary-pdf')?.addEventListener('click', generateConsolidatedAttendancePdf);
 
     // Export PDF: Daily Present Children Roster
     document.getElementById('btn-export-present-pdf')?.addEventListener('click', generatePresentChildrenRosterPdf);
@@ -9580,6 +9715,694 @@ async function fetchReports() {
 
         printDocumentHtml(consHtml, 'Consolidated_Report');
         showToast('Consolidated report sent to printer!');
+    }
+
+    // ── Consolidated Attendance Report Functions (Date Range) ────────
+    async function fetchConsolidatedAttendanceData() {
+        const tbody = document.getElementById('att-cons-table-body');
+        const tfoot = document.getElementById('att-cons-table-foot');
+        if (!tbody) return;
+
+        const startDateInput = document.getElementById('att-cons-start-date');
+        const endDateInput = document.getElementById('att-cons-end-date');
+        const startDate = startDateInput ? startDateInput.value : '';
+        const endDate = endDateInput ? endDateInput.value : '';
+        const childId = document.getElementById('att-cons-child-select')?.value || '';
+        const therapistFilter = document.getElementById('att-cons-therapist-select')?.value || '';
+        const ageFilter = document.getElementById('att-cons-age-filter')?.value || 'all';
+
+        let query = [];
+        if (startDate) query.push('start_date=' + encodeURIComponent(startDate));
+        if (endDate) query.push('end_date=' + encodeURIComponent(endDate));
+        if (childId) query.push('child_id=' + encodeURIComponent(childId));
+        if (userRole === 'autism' || userRole === 'asd') query.push('autism=true');
+
+        const url = '/api/reports/attendance' + (query.length ? '?' + query.join('&') : '');
+
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; padding: 25px; color: var(--text-light);">Loading consolidated attendance records...</td></tr>';
+        if (tfoot) tfoot.innerHTML = '';
+
+        try {
+            const resp = await fetch(url);
+            const data = await resp.json();
+
+            if (!data || !Array.isArray(data) || data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; padding: 30px; color: #64748b;">No attendance records found for this date range.</td></tr>';
+                updateConsolidatedAttKPIs([], startDate, endDate);
+                return;
+            }
+
+            // Client-side filtering
+            const filteredData = data.filter(row => {
+                if (therapistFilter && row.therapist_name !== therapistFilter) return false;
+                if (!matchesAgeFilter(row, ageFilter)) return false;
+                return true;
+            });
+
+            if (filteredData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; padding: 30px; color: #64748b;">No matching attendance records found for selected filters.</td></tr>';
+                updateConsolidatedAttKPIs([], startDate, endDate);
+                return;
+            }
+
+            // Group by child
+            const childMap = new Map();
+            filteredData.forEach(row => {
+                const cid = String(row.child_id);
+                if (!childMap.has(cid)) {
+                    childMap.set(cid, {
+                        child_id: row.child_id,
+                        name: row.child_name || 'Child',
+                        admission_no: row.child_admission_no || '-',
+                        dob: row.child_dob,
+                        age: row.child_age,
+                        is_autism: row.child_is_autism,
+                        sessions: [],
+                        scheduledDates: new Set(),
+                        presentDates: new Set(),
+                        therapies: new Set(),
+                        therapists: new Set()
+                    });
+                }
+                const g = childMap.get(cid);
+                g.sessions.push(row);
+                if (row.date) {
+                    g.scheduledDates.add(row.date);
+                    if (row.status === 'Present') {
+                        g.presentDates.add(row.date);
+                    }
+                }
+                if (row.therapy_type) g.therapies.add(row.therapy_type);
+                if (row.therapist_name) g.therapists.add(row.therapist_name);
+            });
+
+            const sortedGroups = Array.from(childMap.values()).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+            let totSessionsAll = 0;
+            let totPresentAll = 0;
+            let totAbsentAll = 0;
+
+            let html = '';
+            sortedGroups.forEach((group, idx) => {
+                const totSessions = group.sessions.length;
+                const presSessions = group.sessions.filter(s => s.status === 'Present').length;
+                const absSessions = totSessions - presSessions;
+                const attRate = totSessions > 0 ? Math.round((presSessions / totSessions) * 100) : 0;
+
+                totSessionsAll += totSessions;
+                totPresentAll += presSessions;
+                totAbsentAll += absSessions;
+
+                const daysSched = group.scheduledDates.size;
+                const daysPres = group.presentDates.size;
+                const dayRate = daysSched > 0 ? Math.round((daysPres / daysSched) * 100) : 0;
+
+                let catLabel = '8+ yrs (TH)';
+                let catBadge = '<span style="background:#fef3c7; color:#92400e; font-weight:700; padding:2px 8px; border-radius:4px; font-size:0.75rem;">8+ (TH)</span>';
+                if (group.is_autism) {
+                    catLabel = 'Autism (ASD)';
+                    catBadge = '<span style="background:#f3e8ff; color:#6b21a8; font-weight:700; padding:2px 8px; border-radius:4px; font-size:0.75rem;">Autism (ASD)</span>';
+                } else if (group.age !== null && group.age < 8) {
+                    catLabel = 'Under 8 (EIC)';
+                    catBadge = '<span style="background:#eff6ff; color:#1e40af; font-weight:700; padding:2px 8px; border-radius:4px; font-size:0.75rem;">Under 8 (EIC)</span>';
+                }
+
+                const admBadge = (group.admission_no && group.admission_no !== '-') 
+                    ? `<span style="display:inline-block; font-size:0.78rem; background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe; border-radius:4px; padding:2px 8px; font-weight:700;">${group.admission_no}</span>`
+                    : '<span style="color:#94a3b8;">—</span>';
+
+                let ratePill = '';
+                if (attRate >= 80) {
+                    ratePill = `<span style="background:#dcfce7; color:#15803d; border:1px solid #86efac; font-weight:700; padding:3px 9px; border-radius:12px; font-size:0.8rem;">🟢 ${attRate}%</span>`;
+                } else if (attRate >= 50) {
+                    ratePill = `<span style="background:#fef9c3; color:#854d0e; border:1px solid #fde047; font-weight:700; padding:3px 9px; border-radius:12px; font-size:0.8rem;">🟡 ${attRate}%</span>`;
+                } else {
+                    ratePill = `<span style="background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5; font-weight:700; padding:3px 9px; border-radius:12px; font-size:0.8rem;">🔴 ${attRate}%</span>`;
+                }
+
+                let consistency = 'Regular';
+                let consistencyPill = '<span style="color:#16a34a; font-weight:700; font-size:0.82rem;">✓ Regular</span>';
+                if (attRate < 50) {
+                    consistency = 'Low Attendance';
+                    consistencyPill = '<span style="color:#dc2626; font-weight:700; font-size:0.82rem;">⚠️ Low (Follow-up)</span>';
+                } else if (attRate < 80) {
+                    consistency = 'Moderate';
+                    consistencyPill = '<span style="color:#d97706; font-weight:700; font-size:0.82rem;">⚡ Moderate</span>';
+                }
+
+                const therapiesText = Array.from(group.therapies).join(', ') || '—';
+
+                // Save properties for exports
+                group.totSessions = totSessions;
+                group.presSessions = presSessions;
+                group.absSessions = absSessions;
+                group.attRate = attRate;
+                group.daysSched = daysSched;
+                group.daysPres = daysPres;
+                group.dayRate = dayRate;
+                group.catLabel = catLabel;
+                group.consistency = consistency;
+
+                html += `
+                    <tr style="border-bottom: 1px solid #e2e8f0; transition: background 0.15s ease;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background=''">
+                        <td style="text-align: center; font-weight: 600; color: #64748b; padding: 10px 8px;">${idx + 1}</td>
+                        <td style="padding: 10px 10px;">${admBadge}</td>
+                        <td style="padding: 10px 12px;">
+                            <strong style="color: #1e293b; font-size: 0.95rem;">${escapeHtmlSafe(group.name)}</strong>
+                            ${group.age ? `<span style="color: #64748b; font-size: 0.8rem; margin-left: 6px;">(${group.age} yrs)</span>` : ''}
+                        </td>
+                        <td style="padding: 10px 10px;">${catBadge}</td>
+                        <td style="text-align: center; padding: 10px 8px;">
+                            <span style="font-weight: 700; color: #0284c7;">${daysPres}</span> / <span style="color: #64748b;">${daysSched} days</span>
+                            <span style="font-size: 0.76rem; color: #64748b; margin-left: 4px;">(${dayRate}%)</span>
+                        </td>
+                        <td style="text-align: center; font-weight: 700; padding: 10px 8px;">${totSessions}</td>
+                        <td style="text-align: center; font-weight: 700; color: #16a34a; padding: 10px 8px;">${presSessions}</td>
+                        <td style="text-align: center; font-weight: 600; color: ${absSessions > 0 ? '#dc2626' : '#64748b'}; padding: 10px 8px;">${absSessions}</td>
+                        <td style="text-align: center; padding: 10px 8px;">${ratePill}</td>
+                        <td style="padding: 10px 12px; color: #0369a1; font-size: 0.85rem; font-weight: 500;">${escapeHtmlSafe(therapiesText)}</td>
+                        <td style="text-align: center; padding: 10px 10px;">${consistencyPill}</td>
+                    </tr>
+                `;
+            });
+
+            tbody.innerHTML = html;
+
+            const overallRate = totSessionsAll > 0 ? Math.round((totPresentAll / totSessionsAll) * 100) : 0;
+            if (tfoot) {
+                tfoot.innerHTML = `
+                    <tr style="border-top: 2px solid #94a3b8; background: #f1f5f9; font-weight: 800; font-size: 0.9rem;">
+                        <td colspan="4" style="text-align: right; padding: 10px 12px;">OVERALL TOTALS:</td>
+                        <td style="text-align: center; padding: 10px 8px; color: #1e3a8a;">${sortedGroups.length} Children</td>
+                        <td style="text-align: center; padding: 10px 8px; color: #1e3a8a;">${totSessionsAll}</td>
+                        <td style="text-align: center; padding: 10px 8px; color: #16a34a;">${totPresentAll}</td>
+                        <td style="text-align: center; padding: 10px 8px; color: #dc2626;">${totAbsentAll}</td>
+                        <td style="text-align: center; padding: 10px 8px; color: #0284c7;">${overallRate}%</td>
+                        <td colspan="2" style="text-align: center; padding: 10px 10px; color: #475569;">Attendance Rate Across All Children</td>
+                    </tr>
+                `;
+            }
+
+            window.currentConsolidatedAttendanceData = {
+                groups: sortedGroups,
+                totalChildren: sortedGroups.length,
+                totalSessions: totSessionsAll,
+                presentSessions: totPresentAll,
+                absentSessions: totAbsentAll,
+                overallRate: overallRate,
+                startDate: startDate,
+                endDate: endDate
+            };
+
+            updateConsolidatedAttKPIs(sortedGroups, startDate, endDate, totSessionsAll, totPresentAll, totAbsentAll, overallRate);
+        } catch (err) {
+            console.error('Error fetching consolidated attendance:', err);
+            tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; color: var(--danger); padding: 25px;">Failed to load consolidated attendance report.</td></tr>';
+        }
+    }
+
+    function updateConsolidatedAttKPIs(groups, start, end, totSess = 0, presSess = 0, absSess = 0, rate = 0) {
+        const kpiPeriod = document.getElementById('att-cons-kpi-period');
+        const kpiChildren = document.getElementById('att-cons-kpi-children');
+        const kpiSessions = document.getElementById('att-cons-kpi-sessions');
+        const kpiPresent = document.getElementById('att-cons-kpi-present');
+        const kpiAbsent = document.getElementById('att-cons-kpi-absent');
+        const kpiRate = document.getElementById('att-cons-kpi-rate');
+
+        let periodText = 'All Records';
+        if (start && end && start === end) {
+            periodText = formatDisplayDate(start);
+        } else if (start && end) {
+            periodText = `${formatDisplayDate(start)} to ${formatDisplayDate(end)}`;
+        } else if (start) {
+            periodText = `From ${formatDisplayDate(start)}`;
+        } else if (end) {
+            periodText = `Until ${formatDisplayDate(end)}`;
+        }
+
+        if (kpiPeriod) kpiPeriod.textContent = periodText;
+        if (kpiChildren) kpiChildren.textContent = groups ? groups.length : 0;
+        if (kpiSessions) kpiSessions.textContent = totSess;
+        if (kpiPresent) kpiPresent.textContent = presSess;
+        if (kpiAbsent) kpiAbsent.textContent = absSess;
+        if (kpiRate) kpiRate.textContent = `${rate}%`;
+    }
+
+    function generateConsolidatedAttendancePdf() {
+        const data = window.currentConsolidatedAttendanceData;
+        if (!data || !data.groups || data.groups.length === 0) {
+            showToast('No consolidated attendance data available. Please generate a report first.', true);
+            return;
+        }
+        if (!window.jspdf || !window.jspdf.jsPDF) {
+            showToast('PDF generator library is still loading, please retry in a moment', true);
+            return;
+        }
+
+        try {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({
+                orientation: 'landscape',
+                unit: 'mm',
+                format: 'a4'
+            });
+
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const pageHeight = doc.internal.pageSize.getHeight();
+            const margin = 8;
+            const availableWidth = pageWidth - (margin * 2);
+
+            // Navy Header Banner
+            const bannerHeight = 22;
+            doc.setFillColor(30, 58, 138);
+            doc.rect(0, 0, pageWidth, bannerHeight, 'F');
+
+            doc.setTextColor(255, 255, 255);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(13);
+            doc.text('CHILD DEVELOPMENT & EARLY INTERVENTION CENTRE', pageWidth / 2, 9, { align: 'center' });
+
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(9);
+            doc.text('OFFICIAL CONSOLIDATED THERAPY ATTENDANCE REPORT', pageWidth / 2, 16, { align: 'center' });
+
+            // Metadata Sub-bar
+            let periodText = 'All Records';
+            if (data.startDate && data.endDate && data.startDate === data.endDate) {
+                periodText = formatDisplayDate(data.startDate);
+            } else if (data.startDate && data.endDate) {
+                periodText = `${formatDisplayDate(data.startDate)} to ${formatDisplayDate(data.endDate)}`;
+            } else if (data.startDate) {
+                periodText = `From ${formatDisplayDate(data.startDate)}`;
+            }
+
+            const childSelect = document.getElementById('att-cons-child-select');
+            const childName = childSelect && childSelect.selectedIndex > 0 ? childSelect.options[childSelect.selectedIndex].text : 'All Children';
+            const therapistSelect = document.getElementById('att-cons-therapist-select');
+            const therapistName = therapistSelect && therapistSelect.selectedIndex > 0 ? therapistSelect.options[therapistSelect.selectedIndex].text : 'All Therapists';
+
+            doc.setFontSize(8);
+            doc.setTextColor(30, 41, 59);
+            doc.setFont('helvetica', 'bold');
+            doc.text(`Period: ${periodText}    |    Scope: ${childName}    |    Therapist: ${therapistName}`, margin, 28);
+
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(100, 116, 139);
+            doc.text(`Generated: ${new Date().toLocaleDateString('en-IN')} ${new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}`, pageWidth - margin, 28, { align: 'right' });
+
+            // 6 KPI Summary Cards
+            const cardY = 32;
+            const cardH = 12;
+            const cardGap = 4;
+            const cardW = (availableWidth - (5 * cardGap)) / 6;
+
+            const cards = [
+                { label: 'CHILDREN', val: String(data.totalChildren), textCol: [30, 58, 138] },
+                { label: 'TOTAL SESSIONS', val: String(data.totalSessions), textCol: [30, 41, 59] },
+                { label: 'PRESENT SESSIONS', val: String(data.presentSessions), textCol: [22, 101, 52] },
+                { label: 'ABSENT SESSIONS', val: String(data.absentSessions), textCol: [220, 38, 38] },
+                { label: 'ATTENDANCE RATE', val: `${data.overallRate}%`, textCol: [2, 132, 199] },
+                { label: 'REPORT STATUS', val: 'OFFICIAL', textCol: [30, 58, 138] }
+            ];
+
+            cards.forEach((c, i) => {
+                const cx = margin + i * (cardW + cardGap);
+                doc.setFillColor(248, 250, 252);
+                doc.setDrawColor(203, 213, 225);
+                doc.setLineWidth(0.3);
+                doc.roundedRect(cx, cardY, cardW, cardH, 1.5, 1.5, 'FD');
+
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(5.5);
+                doc.setTextColor(100, 116, 139);
+                doc.text(c.label, cx + cardW / 2, cardY + 4, { align: 'center' });
+
+                doc.setFontSize(8.5);
+                doc.setTextColor(...c.textCol);
+                doc.text(c.val, cx + cardW / 2, cardY + 9.5, { align: 'center' });
+            });
+
+            // Table Data
+            const tableBody = data.groups.map((g, idx) => {
+                const therapiesText = Array.from(g.therapies).join(', ') || '-';
+                return [
+                    idx + 1,
+                    g.admission_no || '-',
+                    g.name || '-',
+                    g.catLabel || '-',
+                    `${g.daysPres} / ${g.daysSched} (${g.dayRate}%)`,
+                    g.totSessions,
+                    g.presSessions,
+                    g.absSessions,
+                    `${g.attRate}%`,
+                    therapiesText,
+                    g.consistency
+                ];
+            });
+
+            // Overall Totals Row
+            tableBody.push([
+                '', '', `TOTAL: ${data.totalChildren} CHILDREN`,
+                '', '',
+                data.totalSessions,
+                data.presentSessions,
+                data.absentSessions,
+                `${data.overallRate}%`,
+                '',
+                'ALL VERIFIED'
+            ]);
+
+            const colStyles = {
+                0:  { cellWidth: 8,   halign: 'center' },
+                1:  { cellWidth: 20,  halign: 'center' },
+                2:  { cellWidth: 42,  halign: 'left' },
+                3:  { cellWidth: 24,  halign: 'center' },
+                4:  { cellWidth: 30,  halign: 'center' },
+                5:  { cellWidth: 20,  halign: 'center' },
+                6:  { cellWidth: 18,  halign: 'center' },
+                7:  { cellWidth: 18,  halign: 'center' },
+                8:  { cellWidth: 20,  halign: 'center' },
+                9:  { cellWidth: 55,  halign: 'left' },
+                10: { cellWidth: 26,  halign: 'center' }
+            };
+
+            doc.autoTable({
+                startY: cardY + cardH + 4,
+                tableWidth: availableWidth,
+                margin: { left: margin, right: margin },
+                head: [[
+                    '#',
+                    'Adm No',
+                    'Child Name',
+                    'Category',
+                    'Days Attended',
+                    'Total Sess.',
+                    'Present',
+                    'Absent',
+                    'Att. Rate',
+                    'Therapies Attended',
+                    'Status'
+                ]],
+                body: tableBody,
+                theme: 'striped',
+                styles: {
+                    fontSize: 7.2,
+                    cellPadding: 1.6,
+                    textColor: [30, 41, 59],
+                    overflow: 'linebreak',
+                    valign: 'middle'
+                },
+                headStyles: {
+                    fillColor: [30, 58, 138],
+                    textColor: [255, 255, 255],
+                    fontStyle: 'bold',
+                    fontSize: 7.5,
+                    cellPadding: 2,
+                    halign: 'center',
+                    valign: 'middle'
+                },
+                columnStyles: colStyles,
+                didParseCell: (hookData) => {
+                    if (hookData.section === 'body') {
+                        if (hookData.row.index === tableBody.length - 1) {
+                            hookData.cell.styles.fontStyle = 'bold';
+                            hookData.cell.styles.fillColor = [226, 232, 240];
+                        } else {
+                            if (hookData.column.index === 6) {
+                                hookData.cell.styles.textColor = [22, 101, 52];
+                                hookData.cell.styles.fontStyle = 'bold';
+                            }
+                            if (hookData.column.index === 7 && hookData.cell.raw > 0) {
+                                hookData.cell.styles.textColor = [220, 38, 38];
+                            }
+                            if (hookData.column.index === 8) {
+                                hookData.cell.styles.fontStyle = 'bold';
+                            }
+                        }
+                    }
+                },
+                didDrawPage: (pageData) => {
+                    doc.setFontSize(7.5);
+                    doc.setTextColor(148, 163, 184);
+                    doc.text(`Page ${pageData.pageNumber}`, pageWidth - margin, pageHeight - 6, { align: 'right' });
+                    doc.text('Child Development & Early Intervention Centre — Official Consolidated Attendance Report', margin, pageHeight - 6);
+                }
+            });
+
+            // Signatures block
+            let sigY = doc.lastAutoTable.finalY + 12;
+            if (sigY + 25 > pageHeight - 12) {
+                doc.addPage();
+                sigY = 20;
+            }
+
+            const sigLineWidth = 60;
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(7.5);
+            doc.setTextColor(100, 116, 139);
+
+            doc.text('Prepared By:', margin, sigY);
+            doc.setDrawColor(148, 163, 184);
+            doc.setLineWidth(0.3);
+            doc.line(margin, sigY + 9, margin + sigLineWidth, sigY + 9);
+            doc.text('Clinical Administrator / Attendance Incharge', margin, sigY + 13);
+
+            const rightSigX = pageWidth - margin - sigLineWidth;
+            doc.text('Verified & Approved By:', rightSigX, sigY);
+            doc.line(rightSigX, sigY + 9, pageWidth - margin, sigY + 9);
+            doc.text('Centre Director / Authorized Management', rightSigX, sigY + 13);
+
+            const safeStart = (data.startDate || 'All').replace(/[^a-zA-Z0-9]/g, '_');
+            const safeEnd = (data.endDate || 'All').replace(/[^a-zA-Z0-9]/g, '_');
+            const filename = `Consolidated_Attendance_${safeStart}_to_${safeEnd}.pdf`;
+            saveAndOpenPdf(doc, filename);
+            showToast('Consolidated Attendance PDF opened & downloaded!');
+        } catch (err) {
+            console.error('Error generating consolidated attendance PDF:', err);
+            showToast('Error generating PDF', true);
+        }
+    }
+
+    function exportConsolidatedAttendanceCsv() {
+        const data = window.currentConsolidatedAttendanceData;
+        if (!data || !data.groups || data.groups.length === 0) {
+            showToast('No consolidated attendance data to export.', true);
+            return;
+        }
+
+        const headers = ['#', 'Admission No', 'Child Name', 'Age', 'Category', 'Days Present', 'Days Scheduled', 'Day Att Rate (%)', 'Total Sessions', 'Present Sessions', 'Absent Sessions', 'Session Att Rate (%)', 'Therapies Attended', 'Attendance Consistency'];
+        const rows = data.groups.map((g, idx) => [
+            idx + 1,
+            `"${(g.admission_no || '').replace(/"/g, '""')}"`,
+            `"${(g.name || '').replace(/"/g, '""')}"`,
+            g.age || '',
+            `"${(g.catLabel || '').replace(/"/g, '""')}"`,
+            g.daysPres,
+            g.daysSched,
+            g.dayRate,
+            g.totSessions,
+            g.presSessions,
+            g.absSessions,
+            g.attRate,
+            `"${Array.from(g.therapies).join(', ').replace(/"/g, '""')}"`,
+            `"${g.consistency}"`
+        ]);
+
+        const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const safeStart = (data.startDate || 'All').replace(/[^a-zA-Z0-9]/g, '_');
+        const safeEnd = (data.endDate || 'All').replace(/[^a-zA-Z0-9]/g, '_');
+        a.download = `Consolidated_Attendance_${safeStart}_to_${safeEnd}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        showToast('Consolidated Attendance CSV exported!');
+    }
+
+    function printConsolidatedAttendanceDirect() {
+        const data = window.currentConsolidatedAttendanceData;
+        if (!data || !data.groups || data.groups.length === 0) {
+            showToast('No consolidated attendance data to print. Please generate a report first.', true);
+            return;
+        }
+
+        let periodText = 'All Records';
+        if (data.startDate && data.endDate && data.startDate === data.endDate) {
+            periodText = formatDisplayDate(data.startDate);
+        } else if (data.startDate && data.endDate) {
+            periodText = `${formatDisplayDate(data.startDate)} to ${formatDisplayDate(data.endDate)}`;
+        } else if (data.startDate) {
+            periodText = `From ${formatDisplayDate(data.startDate)}`;
+        }
+
+        const rowsHtml = data.groups.map((g, idx) => `
+            <tr style="border-bottom: 1px solid #e2e8f0; ${idx % 2 === 1 ? 'background: #f8fafc;' : ''}">
+                <td style="text-align: center; padding: 5px 4px; font-weight: 600; color: #64748b;">${idx + 1}</td>
+                <td style="text-align: center; padding: 5px 6px; font-weight: 700; color: #1e40af;">${escapeHtmlSafe(g.admission_no || '-')}</td>
+                <td style="padding: 5px 8px; font-weight: 600; color: #1e293b;">${escapeHtmlSafe(g.name || '-')}</td>
+                <td style="padding: 5px 6px; font-size: 7.5pt; color: #475569;">${escapeHtmlSafe(g.catLabel || '-')}</td>
+                <td style="text-align: center; padding: 5px 6px;">${g.daysPres} / ${g.daysSched} (${g.dayRate}%)</td>
+                <td style="text-align: center; padding: 5px 6px; font-weight: 600;">${g.totSessions}</td>
+                <td style="text-align: center; padding: 5px 6px; font-weight: 700; color: #15803d;">${g.presSessions}</td>
+                <td style="text-align: center; padding: 5px 6px; color: ${g.absSessions > 0 ? '#dc2626' : '#64748b'};">${g.absSessions}</td>
+                <td style="text-align: center; padding: 5px 6px; font-weight: 700;">${g.attRate}%</td>
+                <td style="padding: 5px 8px; font-size: 7.5pt; color: #0369a1;">${escapeHtmlSafe(Array.from(g.therapies).join(', ') || '-')}</td>
+                <td style="text-align: center; padding: 5px 6px; font-weight: 700; font-size: 7.5pt;">${escapeHtmlSafe(g.consistency)}</td>
+            </tr>
+        `).join('');
+
+        const printHtml = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Consolidated Attendance Report — ${escapeHtmlSafe(periodText)}</title>
+    <style>
+        @page { size: A4 landscape; margin: 8mm; }
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: #1e293b;
+            margin: 0;
+            padding: 4px;
+            font-size: 8pt;
+            line-height: 1.35;
+        }
+        .banner {
+            background: #1e3a8a !important;
+            color: #ffffff !important;
+            text-align: center;
+            padding: 10px 12px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        .banner h1 { margin: 0 0 3px 0; font-size: 13pt; text-transform: uppercase; font-weight: 800; }
+        .banner h2 { margin: 0; font-size: 9pt; font-weight: 400; opacity: 0.95; }
+        .meta {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 8pt;
+            color: #475569;
+        }
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+        .card {
+            border: 1px solid #cbd5e1;
+            border-radius: 4px;
+            padding: 6px 4px;
+            text-align: center;
+            background: #f8fafc !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        .card-label { font-size: 6pt; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 2px; }
+        .card-val { font-size: 9.5pt; font-weight: 800; color: #1e3a8a; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+        th {
+            background: #1e3a8a !important;
+            color: #ffffff !important;
+            padding: 6px 5px;
+            font-size: 7.5pt;
+            font-weight: 700;
+            text-align: center;
+            border: 1px solid #1e3a8a;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        td { border: 1px solid #e2e8f0; font-size: 7.8pt; }
+        .totals-row td {
+            background: #e2e8f0 !important;
+            font-weight: 800;
+            padding: 7px 6px;
+            border-top: 2px solid #94a3b8;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        .sig-block {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 24px;
+            padding: 0 20px;
+            font-size: 8pt;
+            page-break-inside: avoid;
+        }
+        .sig-col { width: 30%; text-align: center; }
+        .sig-line { border-bottom: 1.5px solid #94a3b8; margin-top: 32px; margin-bottom: 4px; }
+    </style>
+</head>
+<body>
+    <div class="banner">
+        <h1>CHILD DEVELOPMENT & EARLY INTERVENTION CENTRE</h1>
+        <h2>CONSOLIDATED THERAPY ATTENDANCE REPORT</h2>
+    </div>
+    <div class="meta">
+        <div><strong>Period:</strong> ${escapeHtmlSafe(periodText)} &nbsp;|&nbsp; <strong>Enrolled Children:</strong> ${data.totalChildren}</div>
+        <div>Generated: ${new Date().toLocaleDateString('en-IN')} ${new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</div>
+    </div>
+    <div class="cards">
+        <div class="card"><div class="card-label">Children</div><div class="card-val">${data.totalChildren}</div></div>
+        <div class="card"><div class="card-label">Total Sessions</div><div class="card-val">${data.totalSessions}</div></div>
+        <div class="card"><div class="card-label">Present</div><div class="card-val" style="color:#166534;">${data.presentSessions}</div></div>
+        <div class="card"><div class="card-label">Absent</div><div class="card-val" style="color:#dc2626;">${data.absentSessions}</div></div>
+        <div class="card"><div class="card-label">Overall Att. Rate</div><div class="card-val" style="color:#0284c7;">${data.overallRate}%</div></div>
+        <div class="card"><div class="card-label">Status</div><div class="card-val">OFFICIAL</div></div>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 25px;">#</th>
+                <th style="width: 70px;">Adm No</th>
+                <th>Child Name</th>
+                <th style="width: 85px;">Category</th>
+                <th style="width: 110px;">Days Attended</th>
+                <th style="width: 60px;">Total</th>
+                <th style="width: 55px;">Present</th>
+                <th style="width: 55px;">Absent</th>
+                <th style="width: 65px;">Att %</th>
+                <th>Therapies Attended</th>
+                <th style="width: 85px;">Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            ${rowsHtml}
+            <tr class="totals-row">
+                <td colspan="4" style="text-align: right; padding-right: 10px;">TOTALS:</td>
+                <td style="text-align: center;">${data.totalChildren} Children</td>
+                <td style="text-align: center;">${data.totalSessions}</td>
+                <td style="text-align: center; color: #166534;">${data.presentSessions}</td>
+                <td style="text-align: center; color: #dc2626;">${data.absentSessions}</td>
+                <td style="text-align: center; color: #0284c7;">${data.overallRate}%</td>
+                <td colspan="2" style="text-align: center; color: #64748b;">All Verified</td>
+            </tr>
+        </tbody>
+    </table>
+    <div class="sig-block">
+        <div class="sig-col">
+            <div style="color: #64748b; font-weight: 600;">Prepared By</div>
+            <div class="sig-line"></div>
+            <div style="font-size: 7.5pt; color: #94a3b8;">Clinical Administrator / Attendance Incharge</div>
+        </div>
+        <div class="sig-col">
+            <div style="color: #64748b; font-weight: 600;">Verified & Approved By</div>
+            <div class="sig-line"></div>
+            <div style="font-size: 7.5pt; color: #94a3b8;">Centre Director / Management</div>
+        </div>
+    </div>
+</body>
+</html>`;
+
+        printDocumentHtml(printHtml, 'Consolidated_Attendance');
+        showToast('Consolidated attendance report sent to printer!');
     }
 
     // Direct In-App Daily Attendance Sheet Printing
