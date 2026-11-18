@@ -1840,12 +1840,13 @@ button {
     #attendance > .records-toolbar,
     #attendance > .att-metrics-dashboard,
     #attendance > .att-view-toggle,
-    #attendance > .att-date-controls {
+    #attendance > .att-date-controls,
+    .attendance-mode-selector {
         display: none !important;
     }
-    #attendance-print-area,
-    #attendance-present-area,
-    #attendance-consolidated-area {
+    #attendance-print-area:not([style*="display: none"]),
+    #attendance-present-area:not([style*="display: none"]),
+    #attendance-consolidated-area:not([style*="display: none"]) {
         display: block !important;
         width: 100% !important;
         overflow: visible !important;

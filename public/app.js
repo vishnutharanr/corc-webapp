@@ -488,16 +488,31 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
+        let isConsolidatedAttendanceReq = false;
+        if (targetId === 'attendance-report') {
+            targetId = 'attendance';
+            isConsolidatedAttendanceReq = true;
+        }
+
         navItems.forEach(n => {
             if (n.id !== 'nav-logout') {
-                const isMatch = n.getAttribute('data-target') === targetId ||
-                    (targetId === 'assessment-viewer' && n.getAttribute('data-target') === 'records');
+                const navTarget = n.getAttribute('data-target');
+                const isMatch = (navTarget === targetId && !isConsolidatedAttendanceReq && navTarget !== 'attendance-report') ||
+                    (isConsolidatedAttendanceReq && navTarget === 'attendance-report') ||
+                    (targetId === 'assessment-viewer' && navTarget === 'records');
                 n.classList.toggle('active', isMatch);
             }
         });
         tabContents.forEach(t => t.classList.toggle('active', t.id === targetId));
         document.querySelectorAll('.assessment-pane').forEach(p => p.classList.toggle('active', p.id === targetId));
-        if (targetId === 'attendance') loadAttendanceTab();
+        if (targetId === 'attendance') {
+            if (isConsolidatedAttendanceReq) {
+                switchAttendanceMode('consolidated');
+            } else {
+                switchAttendanceMode('daily');
+                loadAttendanceTab();
+            }
+        }
         if (targetId === 'reports') {
             initReportDatesDefault();
             populateReportChildSelect();
@@ -4385,7 +4400,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Attendance View Toggles (All Scheduled Sessions vs Children Present vs Consolidated Attendance Report)
+    // Attendance Mode Toggles (Single Day Daily Attendance vs Date Range Consolidated Report)
+    const btnAttModeDaily = document.getElementById('btn-att-mode-daily');
+    const btnAttModeRange = document.getElementById('btn-att-mode-range');
+    const attDailyWrapper = document.getElementById('attendance-daily-wrapper');
+    const attSectionTitle = document.getElementById('attendance-section-title');
+    const attSectionSubtitle = document.getElementById('attendance-section-subtitle');
+
+    // Attendance View Toggles inside Daily Mode
     const btnAttViewAll = document.getElementById('btn-att-view-all');
     const btnAttViewPresent = document.getElementById('btn-att-view-present');
     const btnAttViewConsolidated = document.getElementById('btn-att-view-consolidated');
@@ -4393,23 +4415,53 @@ document.addEventListener('DOMContentLoaded', () => {
     const attPresentArea = document.getElementById('attendance-present-area');
     const attConsArea = document.getElementById('attendance-consolidated-area');
 
-    function switchAttendanceView(mode) {
+    function setActiveConsolidatedPreset(btnId) {
+        ['btn-att-cons-today', 'btn-att-cons-week', 'btn-att-cons-month', 'btn-att-cons-last-month', 'btn-att-cons-ytd'].forEach(id => {
+            const btn = document.getElementById(id);
+            if (!btn) return;
+            if (id === btnId) {
+                btn.className = 'btn-sm btn-primary';
+                btn.style.fontWeight = '700';
+                btn.style.background = '#1e3a8a';
+                btn.style.color = '#fff';
+                btn.style.borderColor = '#1e3a8a';
+            } else {
+                btn.className = 'btn-sm btn-secondary';
+                btn.style.fontWeight = '600';
+                btn.style.background = '#fff';
+                btn.style.color = '#1e3a8a';
+                btn.style.borderColor = '#cbd5e1';
+            }
+        });
+    }
+
+    function switchAttendanceMode(mode) {
         if (mode === 'consolidated') {
-            if (btnAttViewConsolidated) {
-                btnAttViewConsolidated.className = 'btn-primary';
-                btnAttViewConsolidated.style.fontWeight = '700';
+            if (btnAttModeRange) {
+                btnAttModeRange.className = 'btn-primary';
+                btnAttModeRange.style.background = '#1e3a8a';
+                btnAttModeRange.style.color = '#ffffff';
+                btnAttModeRange.style.borderColor = '#1e3a8a';
+                btnAttModeRange.style.fontWeight = '700';
             }
-            if (btnAttViewAll) {
-                btnAttViewAll.className = 'btn-secondary';
-                btnAttViewAll.style.fontWeight = '600';
+            if (btnAttModeDaily) {
+                btnAttModeDaily.className = 'btn-secondary';
+                btnAttModeDaily.style.background = '#ffffff';
+                btnAttModeDaily.style.color = '#1e3a8a';
+                btnAttModeDaily.style.borderColor = '#93c5fd';
+                btnAttModeDaily.style.fontWeight = '600';
             }
-            if (btnAttViewPresent) {
-                btnAttViewPresent.className = 'btn-secondary';
-                btnAttViewPresent.style.fontWeight = '600';
-            }
+            if (attSectionTitle) attSectionTitle.textContent = '📊 Date Range Consolidated Attendance Report';
+            if (attSectionSubtitle) attSectionSubtitle.textContent = 'Consolidated session attendance, days attended, attendance rates & participation across any selected date range.';
+            
+            if (attDailyWrapper) attDailyWrapper.style.display = 'none';
             if (attConsArea) attConsArea.style.display = 'block';
-            if (attPrintArea) attPrintArea.style.display = 'none';
-            if (attPresentArea) attPresentArea.style.display = 'none';
+
+            // Synchronize sidebar nav
+            const navAttReport = document.getElementById('nav-attendance-report');
+            const navAtt = document.getElementById('nav-attendance');
+            if (navAttReport) navAttReport.classList.add('active');
+            if (navAtt) navAtt.classList.remove('active');
 
             // Initialize default date range if empty (e.g. 1st of month to today)
             const startDateInput = document.getElementById('att-cons-start-date');
@@ -4423,9 +4475,53 @@ document.addEventListener('DOMContentLoaded', () => {
             if (endDateInput && !endDateInput.value) {
                 endDateInput.value = getLocalTodayDateString();
             }
+            setActiveConsolidatedPreset('btn-att-cons-month');
             populateAttendanceFilters();
             fetchConsolidatedAttendanceData();
+        } else {
+            // Daily Attendance Mode
+            if (btnAttModeDaily) {
+                btnAttModeDaily.className = 'btn-primary';
+                btnAttModeDaily.style.background = '#1e3a8a';
+                btnAttModeDaily.style.color = '#ffffff';
+                btnAttModeDaily.style.borderColor = '#1e3a8a';
+                btnAttModeDaily.style.fontWeight = '700';
+            }
+            if (btnAttModeRange) {
+                btnAttModeRange.className = 'btn-secondary';
+                btnAttModeRange.style.background = '#ffffff';
+                btnAttModeRange.style.color = '#1e3a8a';
+                btnAttModeRange.style.borderColor = '#93c5fd';
+                btnAttModeRange.style.fontWeight = '600';
+            }
+            if (attSectionTitle) attSectionTitle.textContent = '✅ Daily Attendance';
+            if (attSectionSubtitle) attSectionSubtitle.textContent = 'Track daily session attendance, presence status, and roll calls.';
+            
+            if (attDailyWrapper) attDailyWrapper.style.display = 'block';
+            if (attConsArea) attConsArea.style.display = 'none';
+
+            // Synchronize sidebar nav
+            const navAttReport = document.getElementById('nav-attendance-report');
+            const navAtt = document.getElementById('nav-attendance');
+            if (navAtt) navAtt.classList.add('active');
+            if (navAttReport) navAttReport.classList.remove('active');
+
+            // Restore sub-view inside daily
+            if (btnAttViewPresent && btnAttViewPresent.classList.contains('btn-primary')) {
+                if (attPresentArea) attPresentArea.style.display = 'block';
+                if (attPrintArea) attPrintArea.style.display = 'none';
+            } else {
+                if (attPrintArea) attPrintArea.style.display = 'block';
+                if (attPresentArea) attPresentArea.style.display = 'none';
+            }
+        }
+    }
+
+    function switchAttendanceView(mode) {
+        if (mode === 'consolidated') {
+            switchAttendanceMode('consolidated');
         } else if (mode === 'present') {
+            switchAttendanceMode('daily');
             if (btnAttViewPresent) {
                 btnAttViewPresent.className = 'btn-primary';
                 btnAttViewPresent.style.fontWeight = '700';
@@ -4440,8 +4536,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             if (attPresentArea) attPresentArea.style.display = 'block';
             if (attPrintArea) attPrintArea.style.display = 'none';
-            if (attConsArea) attConsArea.style.display = 'none';
         } else {
+            switchAttendanceMode('daily');
             if (btnAttViewAll) {
                 btnAttViewAll.className = 'btn-primary';
                 btnAttViewAll.style.fontWeight = '700';
@@ -4456,9 +4552,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             if (attPrintArea) attPrintArea.style.display = 'block';
             if (attPresentArea) attPresentArea.style.display = 'none';
-            if (attConsArea) attConsArea.style.display = 'none';
         }
     }
+
+    btnAttModeDaily?.addEventListener('click', () => switchAttendanceMode('daily'));
+    btnAttModeRange?.addEventListener('click', () => switchAttendanceMode('consolidated'));
+    document.getElementById('btn-att-cons-back-daily')?.addEventListener('click', () => switchAttendanceMode('daily'));
 
     btnAttViewAll?.addEventListener('click', () => switchAttendanceView('all'));
     btnAttViewPresent?.addEventListener('click', () => switchAttendanceView('present'));
@@ -4466,6 +4565,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Attendance Consolidated Preset Buttons
     document.getElementById('btn-att-cons-today')?.addEventListener('click', () => {
+        setActiveConsolidatedPreset('btn-att-cons-today');
         const today = getLocalTodayDateString();
         const s = document.getElementById('att-cons-start-date');
         const e = document.getElementById('att-cons-end-date');
@@ -4475,6 +4575,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('btn-att-cons-week')?.addEventListener('click', () => {
+        setActiveConsolidatedPreset('btn-att-cons-week');
         const d = new Date();
         const day = d.getDay();
         const diff = d.getDate() - day + (day === 0 ? -6 : 1);
@@ -4489,6 +4590,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('btn-att-cons-month')?.addEventListener('click', () => {
+        setActiveConsolidatedPreset('btn-att-cons-month');
         const d = new Date();
         const y = d.getFullYear();
         const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -4500,6 +4602,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('btn-att-cons-last-month')?.addEventListener('click', () => {
+        setActiveConsolidatedPreset('btn-att-cons-last-month');
         const d = new Date();
         d.setDate(1);
         d.setMonth(d.getMonth() - 1);
@@ -4516,6 +4619,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('btn-att-cons-ytd')?.addEventListener('click', () => {
+        setActiveConsolidatedPreset('btn-att-cons-ytd');
         const d = new Date();
         const y = d.getFullYear();
         const s = document.getElementById('att-cons-start-date');
@@ -4526,8 +4630,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('btn-generate-att-cons')?.addEventListener('click', fetchConsolidatedAttendanceData);
-    document.getElementById('att-cons-start-date')?.addEventListener('change', fetchConsolidatedAttendanceData);
-    document.getElementById('att-cons-end-date')?.addEventListener('change', fetchConsolidatedAttendanceData);
+    document.getElementById('att-cons-start-date')?.addEventListener('change', () => {
+        setActiveConsolidatedPreset('');
+        fetchConsolidatedAttendanceData();
+    });
+    document.getElementById('att-cons-end-date')?.addEventListener('change', () => {
+        setActiveConsolidatedPreset('');
+        fetchConsolidatedAttendanceData();
+    });
     document.getElementById('att-cons-child-select')?.addEventListener('change', fetchConsolidatedAttendanceData);
     document.getElementById('att-cons-therapist-select')?.addEventListener('change', fetchConsolidatedAttendanceData);
     document.getElementById('att-cons-age-filter')?.addEventListener('change', fetchConsolidatedAttendanceData);
