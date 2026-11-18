@@ -488,31 +488,17 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        let isConsolidatedAttendanceReq = false;
-        if (targetId === 'attendance-report') {
-            targetId = 'attendance';
-            isConsolidatedAttendanceReq = true;
-        }
-
         navItems.forEach(n => {
             if (n.id !== 'nav-logout') {
                 const navTarget = n.getAttribute('data-target');
-                const isMatch = (navTarget === targetId && !isConsolidatedAttendanceReq && navTarget !== 'attendance-report') ||
-                    (isConsolidatedAttendanceReq && navTarget === 'attendance-report') ||
+                const isMatch = navTarget === targetId ||
                     (targetId === 'assessment-viewer' && navTarget === 'records');
                 n.classList.toggle('active', isMatch);
             }
         });
         tabContents.forEach(t => t.classList.toggle('active', t.id === targetId));
         document.querySelectorAll('.assessment-pane').forEach(p => p.classList.toggle('active', p.id === targetId));
-        if (targetId === 'attendance') {
-            if (isConsolidatedAttendanceReq) {
-                switchAttendanceMode('consolidated');
-            } else {
-                switchAttendanceMode('daily');
-                loadAttendanceTab();
-            }
-        }
+        if (targetId === 'attendance') loadAttendanceTab();
         if (targetId === 'reports') {
             initReportDatesDefault();
             populateReportChildSelect();
@@ -4401,13 +4387,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Attendance Mode Toggles (Single Day Daily Attendance vs Date Range Consolidated Report)
-    const btnAttModeDaily = document.getElementById('btn-att-mode-daily');
-    const btnAttModeRange = document.getElementById('btn-att-mode-range');
-    const attDailyWrapper = document.getElementById('attendance-daily-wrapper');
-    const attSectionTitle = document.getElementById('attendance-section-title');
-    const attSectionSubtitle = document.getElementById('attendance-section-subtitle');
-
-    // Attendance View Toggles inside Daily Mode
+    // Attendance View Toggles inside Attendance Report Tab
     const btnAttViewAll = document.getElementById('btn-att-view-all');
     const btnAttViewPresent = document.getElementById('btn-att-view-present');
     const btnAttViewConsolidated = document.getElementById('btn-att-view-consolidated');
@@ -4415,113 +4395,69 @@ document.addEventListener('DOMContentLoaded', () => {
     const attPresentArea = document.getElementById('attendance-present-area');
     const attConsArea = document.getElementById('attendance-consolidated-area');
 
-    function setActiveConsolidatedPreset(btnId) {
-        ['btn-att-cons-today', 'btn-att-cons-week', 'btn-att-cons-month', 'btn-att-cons-last-month', 'btn-att-cons-ytd'].forEach(id => {
+    function setActiveAttPreset(activeBtnId) {
+        ['btn-att-preset-today', 'btn-att-preset-yesterday', 'btn-att-preset-month', 'btn-att-preset-last-month', 'btn-att-toggle-custom'].forEach(id => {
             const btn = document.getElementById(id);
             if (!btn) return;
-            if (id === btnId) {
+            if (id === activeBtnId) {
                 btn.className = 'btn-sm btn-primary';
-                btn.style.fontWeight = '700';
-                btn.style.background = '#1e3a8a';
+                btn.style.background = '';
                 btn.style.color = '#fff';
-                btn.style.borderColor = '#1e3a8a';
+                btn.style.fontWeight = '700';
             } else {
                 btn.className = 'btn-sm btn-secondary';
-                btn.style.fontWeight = '600';
                 btn.style.background = '#fff';
-                btn.style.color = '#1e3a8a';
-                btn.style.borderColor = '#cbd5e1';
+                btn.style.color = '#334155';
+                btn.style.fontWeight = '600';
             }
         });
     }
 
-    function switchAttendanceMode(mode) {
-        if (mode === 'consolidated') {
-            if (btnAttModeRange) {
-                btnAttModeRange.className = 'btn-primary';
-                btnAttModeRange.style.background = '#1e3a8a';
-                btnAttModeRange.style.color = '#ffffff';
-                btnAttModeRange.style.borderColor = '#1e3a8a';
-                btnAttModeRange.style.fontWeight = '700';
-            }
-            if (btnAttModeDaily) {
-                btnAttModeDaily.className = 'btn-secondary';
-                btnAttModeDaily.style.background = '#ffffff';
-                btnAttModeDaily.style.color = '#1e3a8a';
-                btnAttModeDaily.style.borderColor = '#93c5fd';
-                btnAttModeDaily.style.fontWeight = '600';
-            }
-            if (attSectionTitle) attSectionTitle.textContent = '📊 Date Range Consolidated Attendance Report';
-            if (attSectionSubtitle) attSectionSubtitle.textContent = 'Consolidated session attendance, days attended, attendance rates & participation across any selected date range.';
-            
-            if (attDailyWrapper) attDailyWrapper.style.display = 'none';
-            if (attConsArea) attConsArea.style.display = 'block';
+    function setAttendanceRangeMode(isRange) {
+        const dailyKpi = document.getElementById('att-daily-metrics-dashboard');
+        const consKpi = document.getElementById('att-cons-metrics-dashboard');
+        const statusGrp = document.getElementById('att-status-filter-group');
+        const markAllBtn = document.getElementById('btn-att-mark-all-present');
+        const collapseBtn = document.getElementById('btn-att-toggle-expand');
 
-            // Synchronize sidebar nav
-            const navAttReport = document.getElementById('nav-attendance-report');
-            const navAtt = document.getElementById('nav-attendance');
-            if (navAttReport) navAttReport.classList.add('active');
-            if (navAtt) navAtt.classList.remove('active');
-
-            // Initialize default date range if empty (e.g. 1st of month to today)
-            const startDateInput = document.getElementById('att-cons-start-date');
-            const endDateInput = document.getElementById('att-cons-end-date');
-            if (startDateInput && !startDateInput.value) {
-                const d = new Date();
-                const y = d.getFullYear();
-                const m = String(d.getMonth() + 1).padStart(2, '0');
-                startDateInput.value = `${y}-${m}-01`;
-            }
-            if (endDateInput && !endDateInput.value) {
-                endDateInput.value = getLocalTodayDateString();
-            }
-            setActiveConsolidatedPreset('btn-att-cons-month');
-            populateAttendanceFilters();
-            fetchConsolidatedAttendanceData();
+        if (isRange) {
+            if (dailyKpi) dailyKpi.style.display = 'none';
+            if (consKpi) consKpi.style.display = 'grid';
+            if (statusGrp) statusGrp.style.display = 'none';
+            if (markAllBtn) markAllBtn.style.display = 'none';
+            if (collapseBtn) collapseBtn.style.display = 'none';
         } else {
-            // Daily Attendance Mode
-            if (btnAttModeDaily) {
-                btnAttModeDaily.className = 'btn-primary';
-                btnAttModeDaily.style.background = '#1e3a8a';
-                btnAttModeDaily.style.color = '#ffffff';
-                btnAttModeDaily.style.borderColor = '#1e3a8a';
-                btnAttModeDaily.style.fontWeight = '700';
-            }
-            if (btnAttModeRange) {
-                btnAttModeRange.className = 'btn-secondary';
-                btnAttModeRange.style.background = '#ffffff';
-                btnAttModeRange.style.color = '#1e3a8a';
-                btnAttModeRange.style.borderColor = '#93c5fd';
-                btnAttModeRange.style.fontWeight = '600';
-            }
-            if (attSectionTitle) attSectionTitle.textContent = '✅ Daily Attendance';
-            if (attSectionSubtitle) attSectionSubtitle.textContent = 'Track daily session attendance, presence status, and roll calls.';
-            
-            if (attDailyWrapper) attDailyWrapper.style.display = 'block';
-            if (attConsArea) attConsArea.style.display = 'none';
-
-            // Synchronize sidebar nav
-            const navAttReport = document.getElementById('nav-attendance-report');
-            const navAtt = document.getElementById('nav-attendance');
-            if (navAtt) navAtt.classList.add('active');
-            if (navAttReport) navAttReport.classList.remove('active');
-
-            // Restore sub-view inside daily
-            if (btnAttViewPresent && btnAttViewPresent.classList.contains('btn-primary')) {
-                if (attPresentArea) attPresentArea.style.display = 'block';
-                if (attPrintArea) attPrintArea.style.display = 'none';
-            } else {
-                if (attPrintArea) attPrintArea.style.display = 'block';
-                if (attPresentArea) attPresentArea.style.display = 'none';
-            }
+            if (dailyKpi) dailyKpi.style.display = 'grid';
+            if (consKpi) consKpi.style.display = 'none';
+            if (statusGrp) statusGrp.style.display = 'block';
+            if (markAllBtn) markAllBtn.style.display = '';
+            if (collapseBtn) collapseBtn.style.display = '';
         }
     }
 
     function switchAttendanceView(mode) {
+        const isRange = document.getElementById('att-start-date-group')?.style.display !== 'none';
+
         if (mode === 'consolidated') {
-            switchAttendanceMode('consolidated');
+            if (btnAttViewConsolidated) {
+                btnAttViewConsolidated.className = 'btn-primary';
+                btnAttViewConsolidated.style.fontWeight = '700';
+            }
+            if (btnAttViewAll) {
+                btnAttViewAll.className = 'btn-secondary';
+                btnAttViewAll.style.fontWeight = '600';
+            }
+            if (btnAttViewPresent) {
+                btnAttViewPresent.className = 'btn-secondary';
+                btnAttViewPresent.style.fontWeight = '600';
+            }
+            if (attConsArea) attConsArea.style.display = 'block';
+            if (attPrintArea) attPrintArea.style.display = 'none';
+            if (attPresentArea) attPresentArea.style.display = 'none';
+
+            if (isRange) setAttendanceRangeMode(true);
+            fetchConsolidatedAttendanceData();
         } else if (mode === 'present') {
-            switchAttendanceMode('daily');
             if (btnAttViewPresent) {
                 btnAttViewPresent.className = 'btn-primary';
                 btnAttViewPresent.style.fontWeight = '700';
@@ -4536,8 +4472,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             if (attPresentArea) attPresentArea.style.display = 'block';
             if (attPrintArea) attPrintArea.style.display = 'none';
+            if (attConsArea) attConsArea.style.display = 'none';
+            setAttendanceRangeMode(false);
         } else {
-            switchAttendanceMode('daily');
+            // mode === 'all'
             if (btnAttViewAll) {
                 btnAttViewAll.className = 'btn-primary';
                 btnAttViewAll.style.fontWeight = '700';
@@ -4552,100 +4490,190 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             if (attPrintArea) attPrintArea.style.display = 'block';
             if (attPresentArea) attPresentArea.style.display = 'none';
+            if (attConsArea) attConsArea.style.display = 'none';
+            setAttendanceRangeMode(false);
         }
     }
-
-    btnAttModeDaily?.addEventListener('click', () => switchAttendanceMode('daily'));
-    btnAttModeRange?.addEventListener('click', () => switchAttendanceMode('consolidated'));
-    document.getElementById('btn-att-cons-back-daily')?.addEventListener('click', () => switchAttendanceMode('daily'));
 
     btnAttViewAll?.addEventListener('click', () => switchAttendanceView('all'));
     btnAttViewPresent?.addEventListener('click', () => switchAttendanceView('present'));
     btnAttViewConsolidated?.addEventListener('click', () => switchAttendanceView('consolidated'));
 
-    // Attendance Consolidated Preset Buttons
-    document.getElementById('btn-att-cons-today')?.addEventListener('click', () => {
-        setActiveConsolidatedPreset('btn-att-cons-today');
+    // Attendance Quick Date Range Presets
+    document.getElementById('btn-att-preset-today')?.addEventListener('click', () => {
         const today = getLocalTodayDateString();
-        const s = document.getElementById('att-cons-start-date');
-        const e = document.getElementById('att-cons-end-date');
-        if (s) s.value = today;
-        if (e) e.value = today;
-        fetchConsolidatedAttendanceData();
+        const singleDate = document.getElementById('attendance-date-picker');
+        const startDate = document.getElementById('attendance-start-date');
+        const endDate = document.getElementById('attendance-end-date');
+        if (singleDate) singleDate.value = today;
+        if (startDate) startDate.value = today;
+        if (endDate) endDate.value = today;
+        currentAttendanceDate = today;
+
+        document.getElementById('att-single-date-group').style.display = 'block';
+        document.getElementById('att-start-date-group').style.display = 'none';
+        document.getElementById('att-end-date-group').style.display = 'none';
+        setAttendanceRangeMode(false);
+        setActiveAttPreset('btn-att-preset-today');
+        fetchAttendanceDailyData();
+        if (attConsArea && attConsArea.style.display !== 'none') {
+            fetchConsolidatedAttendanceData();
+        }
     });
 
-    document.getElementById('btn-att-cons-week')?.addEventListener('click', () => {
-        setActiveConsolidatedPreset('btn-att-cons-week');
+    document.getElementById('btn-att-preset-yesterday')?.addEventListener('click', () => {
         const d = new Date();
-        const day = d.getDay();
-        const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-        const monday = new Date(d.setDate(diff));
-        const monStr = `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`;
-        const today = getLocalTodayDateString();
-        const s = document.getElementById('att-cons-start-date');
-        const e = document.getElementById('att-cons-end-date');
-        if (s) s.value = monStr;
-        if (e) e.value = today;
-        fetchConsolidatedAttendanceData();
+        d.setDate(d.getDate() - 1);
+        const yest = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const singleDate = document.getElementById('attendance-date-picker');
+        const startDate = document.getElementById('attendance-start-date');
+        const endDate = document.getElementById('attendance-end-date');
+        if (singleDate) singleDate.value = yest;
+        if (startDate) startDate.value = yest;
+        if (endDate) endDate.value = yest;
+        currentAttendanceDate = yest;
+
+        document.getElementById('att-single-date-group').style.display = 'block';
+        document.getElementById('att-start-date-group').style.display = 'none';
+        document.getElementById('att-end-date-group').style.display = 'none';
+        setAttendanceRangeMode(false);
+        setActiveAttPreset('btn-att-preset-yesterday');
+        fetchAttendanceDailyData();
+        if (attConsArea && attConsArea.style.display !== 'none') {
+            fetchConsolidatedAttendanceData();
+        }
     });
 
-    document.getElementById('btn-att-cons-month')?.addEventListener('click', () => {
-        setActiveConsolidatedPreset('btn-att-cons-month');
+    document.getElementById('btn-att-preset-month')?.addEventListener('click', () => {
         const d = new Date();
         const y = d.getFullYear();
-        const m = String(d.getMonth() + 1).padStart(2, '0');
-        const s = document.getElementById('att-cons-start-date');
-        const e = document.getElementById('att-cons-end-date');
-        if (s) s.value = `${y}-${m}-01`;
-        if (e) e.value = getLocalTodayDateString();
-        fetchConsolidatedAttendanceData();
+        const m = d.getMonth() + 1;
+        const startDateVal = `${y}-${String(m).padStart(2, '0')}-01`;
+        const lastDay = new Date(y, m, 0).getDate();
+        const endDateVal = `${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+
+        const startDate = document.getElementById('attendance-start-date');
+        const endDate = document.getElementById('attendance-end-date');
+        if (startDate) startDate.value = startDateVal;
+        if (endDate) endDate.value = endDateVal;
+
+        document.getElementById('att-single-date-group').style.display = 'none';
+        document.getElementById('att-start-date-group').style.display = 'block';
+        document.getElementById('att-end-date-group').style.display = 'block';
+        setAttendanceRangeMode(true);
+        setActiveAttPreset('btn-att-preset-month');
+        switchAttendanceView('consolidated');
     });
 
-    document.getElementById('btn-att-cons-last-month')?.addEventListener('click', () => {
-        setActiveConsolidatedPreset('btn-att-cons-last-month');
+    document.getElementById('btn-att-preset-last-month')?.addEventListener('click', () => {
         const d = new Date();
         d.setDate(1);
         d.setMonth(d.getMonth() - 1);
         const y = d.getFullYear();
         const m = d.getMonth() + 1;
-        const startVal = `${y}-${String(m).padStart(2, '0')}-01`;
+        const startDateVal = `${y}-${String(m).padStart(2, '0')}-01`;
         const lastDay = new Date(y, m, 0).getDate();
-        const endVal = `${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
-        const s = document.getElementById('att-cons-start-date');
-        const e = document.getElementById('att-cons-end-date');
-        if (s) s.value = startVal;
-        if (e) e.value = endVal;
+        const endDateVal = `${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+
+        const startDate = document.getElementById('attendance-start-date');
+        const endDate = document.getElementById('attendance-end-date');
+        if (startDate) startDate.value = startDateVal;
+        if (endDate) endDate.value = endDateVal;
+
+        document.getElementById('att-single-date-group').style.display = 'none';
+        document.getElementById('att-start-date-group').style.display = 'block';
+        document.getElementById('att-end-date-group').style.display = 'block';
+        setAttendanceRangeMode(true);
+        setActiveAttPreset('btn-att-preset-last-month');
+        switchAttendanceView('consolidated');
+    });
+
+    document.getElementById('btn-att-toggle-custom')?.addEventListener('click', () => {
+        const startGrp = document.getElementById('att-start-date-group');
+        const endGrp = document.getElementById('att-end-date-group');
+        const singleGrp = document.getElementById('att-single-date-group');
+        const isRangeVisible = startGrp && startGrp.style.display !== 'none';
+
+        if (!isRangeVisible) {
+            singleGrp.style.display = 'none';
+            startGrp.style.display = 'block';
+            endGrp.style.display = 'block';
+            const startDate = document.getElementById('attendance-start-date');
+            const endDate = document.getElementById('attendance-end-date');
+            if (startDate && !startDate.value) {
+                const d = new Date();
+                startDate.value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+            }
+            if (endDate && !endDate.value) {
+                endDate.value = getLocalTodayDateString();
+            }
+            setActiveAttPreset('btn-att-toggle-custom');
+            setAttendanceRangeMode(true);
+            switchAttendanceView('consolidated');
+        } else {
+            startGrp.style.display = 'none';
+            endGrp.style.display = 'none';
+            singleGrp.style.display = 'block';
+            setActiveAttPreset('btn-att-preset-today');
+            setAttendanceRangeMode(false);
+            fetchAttendanceDailyData();
+        }
+    });
+
+    // Date change listeners
+    document.getElementById('attendance-date-picker')?.addEventListener('change', (e) => {
+        currentAttendanceDate = e.target.value;
+        const startDate = document.getElementById('attendance-start-date');
+        const endDate = document.getElementById('attendance-end-date');
+        if (startDate) startDate.value = currentAttendanceDate;
+        if (endDate) endDate.value = currentAttendanceDate;
+        fetchAttendanceDailyData();
+        if (attConsArea && attConsArea.style.display !== 'none') {
+            fetchConsolidatedAttendanceData();
+        }
+    });
+
+    document.getElementById('attendance-start-date')?.addEventListener('change', () => {
+        setActiveAttPreset('btn-att-toggle-custom');
+        fetchConsolidatedAttendanceData();
+    });
+    document.getElementById('attendance-end-date')?.addEventListener('change', () => {
+        setActiveAttPreset('btn-att-toggle-custom');
         fetchConsolidatedAttendanceData();
     });
 
-    document.getElementById('btn-att-cons-ytd')?.addEventListener('click', () => {
-        setActiveConsolidatedPreset('btn-att-cons-ytd');
-        const d = new Date();
-        const y = d.getFullYear();
-        const s = document.getElementById('att-cons-start-date');
-        const e = document.getElementById('att-cons-end-date');
-        if (s) s.value = `${y}-01-01`;
-        if (e) e.value = getLocalTodayDateString();
-        fetchConsolidatedAttendanceData();
+    document.getElementById('att-child-select')?.addEventListener('change', () => {
+        if (attConsArea && attConsArea.style.display !== 'none') {
+            fetchConsolidatedAttendanceData();
+        } else {
+            renderAttendanceList();
+        }
+    });
+    document.getElementById('att-therapist-select')?.addEventListener('change', () => {
+        if (attConsArea && attConsArea.style.display !== 'none') {
+            fetchConsolidatedAttendanceData();
+        } else {
+            renderAttendanceList();
+        }
+    });
+    document.getElementById('att-age-filter')?.addEventListener('change', () => {
+        if (attConsArea && attConsArea.style.display !== 'none') {
+            fetchConsolidatedAttendanceData();
+        } else {
+            renderAttendanceList();
+        }
     });
 
-    document.getElementById('btn-generate-att-cons')?.addEventListener('click', fetchConsolidatedAttendanceData);
-    document.getElementById('att-cons-start-date')?.addEventListener('change', () => {
-        setActiveConsolidatedPreset('');
-        fetchConsolidatedAttendanceData();
+    // Unified Export PDF button
+    document.getElementById('btn-export-att-pdf')?.addEventListener('click', () => {
+        if (attConsArea && attConsArea.style.display !== 'none') {
+            generateConsolidatedAttendancePdf();
+        } else if (attPresentArea && attPresentArea.style.display !== 'none') {
+            generatePresentChildrenRosterPdf();
+        } else {
+            generateConsolidatedAttendancePdf();
+        }
     });
-    document.getElementById('att-cons-end-date')?.addEventListener('change', () => {
-        setActiveConsolidatedPreset('');
-        fetchConsolidatedAttendanceData();
-    });
-    document.getElementById('att-cons-child-select')?.addEventListener('change', fetchConsolidatedAttendanceData);
-    document.getElementById('att-cons-therapist-select')?.addEventListener('change', fetchConsolidatedAttendanceData);
-    document.getElementById('att-cons-age-filter')?.addEventListener('change', fetchConsolidatedAttendanceData);
-
-    document.getElementById('btn-export-att-cons-pdf')?.addEventListener('click', generateConsolidatedAttendancePdf);
-    document.getElementById('btn-export-att-cons-csv')?.addEventListener('click', exportConsolidatedAttendanceCsv);
-    document.getElementById('btn-print-att-cons-report')?.addEventListener('click', printConsolidatedAttendanceDirect);
-    document.getElementById('btn-export-att-summary-pdf')?.addEventListener('click', generateConsolidatedAttendancePdf);
 
     // Export PDF: Daily Present Children Roster
     document.getElementById('btn-export-present-pdf')?.addEventListener('click', generatePresentChildrenRosterPdf);
@@ -4823,6 +4851,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     document.getElementById('btn-export-att-csv')?.addEventListener('click', () => {
+        const isConsArea = document.getElementById('attendance-consolidated-area')?.style.display !== 'none';
+        if (isConsArea) {
+            exportConsolidatedAttendanceCsv();
+            return;
+        }
+
         const isPresentArea = document.getElementById('attendance-present-area')?.style.display !== 'none';
 
         if (isPresentArea) {
@@ -4870,7 +4904,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('btn-print-attendance')?.addEventListener('click', () => {
-        printAttendanceSheetDirect();
+        const isConsArea = document.getElementById('attendance-consolidated-area')?.style.display !== 'none';
+        if (isConsArea) {
+            printConsolidatedAttendanceDirect();
+        } else {
+            printAttendanceSheetDirect();
+        }
     });
 
         // ── Reports Tab Logic ──────────────────────────────────────────
@@ -9833,13 +9872,20 @@ async function fetchReports() {
         const tfoot = document.getElementById('att-cons-table-foot');
         if (!tbody) return;
 
-        const startDateInput = document.getElementById('att-cons-start-date');
-        const endDateInput = document.getElementById('att-cons-end-date');
-        const startDate = startDateInput ? startDateInput.value : '';
-        const endDate = endDateInput ? endDateInput.value : '';
-        const childId = document.getElementById('att-cons-child-select')?.value || '';
-        const therapistFilter = document.getElementById('att-cons-therapist-select')?.value || '';
-        const ageFilter = document.getElementById('att-cons-age-filter')?.value || 'all';
+        const isRangeVisible = document.getElementById('att-start-date-group')?.style.display !== 'none';
+        let startDate = '';
+        let endDate = '';
+        if (isRangeVisible) {
+            startDate = document.getElementById('attendance-start-date')?.value || document.getElementById('att-cons-start-date')?.value || '';
+            endDate = document.getElementById('attendance-end-date')?.value || document.getElementById('att-cons-end-date')?.value || '';
+        } else {
+            const singleVal = document.getElementById('attendance-date-picker')?.value || currentAttendanceDate || getLocalTodayDateString();
+            startDate = singleVal;
+            endDate = singleVal;
+        }
+        const childId = document.getElementById('att-child-select')?.value || document.getElementById('att-cons-child-select')?.value || '';
+        const therapistFilter = document.getElementById('att-therapist-select')?.value || document.getElementById('att-cons-therapist-select')?.value || '';
+        const ageFilter = document.getElementById('att-age-filter')?.value || document.getElementById('att-cons-age-filter')?.value || 'all';
 
         let query = [];
         if (startDate) query.push('start_date=' + encodeURIComponent(startDate));
@@ -10106,9 +10152,9 @@ async function fetchReports() {
                 periodText = `From ${formatDisplayDate(data.startDate)}`;
             }
 
-            const childSelect = document.getElementById('att-cons-child-select');
+            const childSelect = document.getElementById('att-child-select') || document.getElementById('att-cons-child-select');
             const childName = childSelect && childSelect.selectedIndex > 0 ? childSelect.options[childSelect.selectedIndex].text : 'All Children';
-            const therapistSelect = document.getElementById('att-cons-therapist-select');
+            const therapistSelect = document.getElementById('att-therapist-select') || document.getElementById('att-cons-therapist-select');
             const therapistName = therapistSelect && therapistSelect.selectedIndex > 0 ? therapistSelect.options[therapistSelect.selectedIndex].text : 'All Therapists';
 
             doc.setFontSize(8);
